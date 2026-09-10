@@ -1,6 +1,6 @@
 {
   "name": "movement-atlas",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Shared map layer for svarog bundles.",
   "main": "backend/www/movement-atlas.js",
   "repository": {

@@ -1,5 +1,9 @@
 package com.prtech.atlas;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import com.google.gson.JsonObject;
 import com.prtech.svarog_interfaces.IPerunPlugin;
 import com.prtech.svarog_interfaces.ISvCore;
@@ -56,5 +60,39 @@ public class PerunPluginInfo implements IPerunPlugin {
 	@Override
 	public JsonObject getMenu(JsonObject existingMenu, ISvCore core) {
 		return existingMenu;
+	}
+
+	@Override
+	public boolean replaceMenuOnNew() {
+		return false;
+	}
+
+	/**
+	 * A library contributes no context menu entries of its own.
+	 */
+	@Override
+	public JsonObject getContextMenu(HashMap<String, String> contextMap, JsonObject existingMenu, ISvCore core) {
+		return null;
+	}
+
+	@Override
+	public boolean replaceContextMenuOnNew() {
+		return false;
+	}
+
+	/**
+	 * The shell resolves this list into a load order: every bundle named here has
+	 * its script executed before ours. We call into the spatial engine the moment a
+	 * map mounts, so window['spatial'] has to exist by then.
+	 *
+	 * Consumers of movement-atlas declare "movement-atlas" here in turn -- that
+	 * declaration, not an npm entry, is what guarantees the global is populated
+	 * before their code runs.
+	 */
+	@Override
+	public List<String> dependencies() {
+		List<String> deps = new ArrayList<String>();
+		deps.add("spatial");
+		return deps;
 	}
 }

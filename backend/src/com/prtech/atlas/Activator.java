@@ -11,6 +11,8 @@ import org.osgi.service.http.HttpService;
 import org.osgi.util.tracker.ServiceTracker;
 
 import com.prtech.svarog.SvConf;
+import com.prtech.svarog.SvCore;
+import com.prtech.svarog.svCONST;
 import com.prtech.svarog_interfaces.IPerunPlugin;
 
 /**
@@ -33,12 +35,24 @@ public class Activator implements BundleActivator {
 
 	private ArrayList<ServiceRegistration> services = new ArrayList<ServiceRegistration>();
 
+	/**
+	 * Held as a single instance for the life of the bundle: unregistering matches
+	 * on the reference, so a new object on stop would leave this one behind.
+	 */
+	private final GuiMetadataCallback guiMetadata = new GuiMetadataCallback();
+
 	@SuppressWarnings("rawtypes")
 	private ServiceTracker httpTracker;
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void start(BundleContext context) {
 		log4j.info("Starting movement-atlas OSGI bundle");
+
+		// Registered before the IPerunPlugin service is published, and deliberately
+		// so: svarog inserts this bundle's SVAROG_PERUN_PLUGIN row in response to
+		// that service appearing, and the callback has to already be in place to
+		// stamp the row on its first insert rather than one deployment later.
+		SvCore.registerOnSaveCallback(guiMetadata, svCONST.OBJECT_TYPE_PERUN_PLUGIN);
 
 		IPerunPlugin publisher = new PerunPluginInfo();
 		log4j.info("Registering " + Config.getDescription() + " plugin with Svarog");
@@ -68,6 +82,8 @@ public class Activator implements BundleActivator {
 	}
 
 	public void stop(BundleContext context) throws Exception {
+		SvCore.unregisterOnSaveCallback(guiMetadata, svCONST.OBJECT_TYPE_PERUN_PLUGIN);
+
 		for (ServiceRegistration svc : services) {
 			svc.unregister();
 		}
