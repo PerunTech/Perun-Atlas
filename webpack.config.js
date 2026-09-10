@@ -1,0 +1,70 @@
+const path = require('path');
+
+module.exports = (_, { mode }) => {
+  return {
+    ...mode !== 'production' && { devtool: 'source-map' },
+    mode: mode,
+    entry: mode === 'production' ? './frontend/index.js' : './frontend/client.js',
+    output: {
+      path: path.resolve('./backend/www'),
+      filename: 'movement-atlas.js',
+      library: 'movement-atlas',
+      libraryTarget: 'umd',
+      globalObject: 'this'
+    },
+    devServer: {
+      client: { overlay: false },
+      static: { directory: path.join(__dirname, './backend/www') },
+      compress: true
+    },
+    // Both are loaded by the shell as IPerunPlugin scripts. Never bundle spatial:
+    // a second copy would mean a second Leaflet alongside lpis / otscm / pdna.
+    externals: mode === 'production'
+      ? { 'perun-core': 'perun-core', spatial: 'spatial' }
+      : {},
+    module: {
+      rules: [
+        {
+          test: /\.(js|jsx)?$/,
+          exclude: /(node_modules)/,
+          use: {
+            loader: 'babel-loader',
+            options: {
+              presets: ['@babel/preset-env', '@babel/preset-react'],
+              cacheDirectory: true
+            }
+          }
+        },
+        {
+          test: /(\.jsx|\.js)$/,
+          use: {
+            loader: 'babel-loader',
+            options: {
+              presets: ['@babel/preset-env', '@babel/preset-react'],
+              cacheDirectory: true
+            }
+          },
+          enforce: 'pre',
+          include: [/perun-core/, /spatial/]
+        },
+        {
+          test: /\.css$/i,
+          exclude: /\.module\.css$/i,
+          use: ['style-loader', 'css-loader']
+        },
+        {
+          test: /\.module\.css$/i,
+          use: [
+            'style-loader',
+            { loader: 'css-loader', options: { modules: { localIdentName: '[name]-[local]' } } }
+          ]
+        },
+        {
+          test: /\.(png|jpe?g|gif|svg|eot|ttf|woff|woff2)$/i,
+          type: 'asset/resource'
+        }
+      ]
+    },
+    resolve: { extensions: ['.js', '.jsx'] }
+  };
+};
