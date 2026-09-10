@@ -2,6 +2,7 @@ stages:
   - 1_linter
   - 2_build_and_install
   - 3_mvn_install
+  - 4_generate_js
 
 before_script:
   - pwd
@@ -83,3 +84,31 @@ after_script:
     - mvn clean compile deploy -DskipTests
   only:
     - main
+
+# backend/www/perun-atlas.js is committed, because consumers install this
+# package from git and resolve package.json's `main` out of the checkout. That
+# makes it the one build artifact that can go stale: change frontend/ without
+# rebuilding and consumers keep getting the previous bundle.
+#
+# This regenerates and commits it, the same way spatial and perun-core do.
+# Manual on purpose -- it writes to the repository, so it should be a decision
+# rather than something every pipeline does.
+1_perun-atlas-generate-js:
+  stage: 4_generate_js
+  script:
+    - pwd
+    - cd $CI_PROJECT_DIR/
+    - git reset --hard HEAD
+    - rm -rf node_modules
+    - pnpm install
+    - rm -rf backend/www/*.js
+    - pnpm run build
+    - url_host=`git remote get-url origin | sed -e "s/https:\/\/gitlab-ci-token:.*@//g"`
+    - git remote set-url origin "https://gitlab-ci-token:${K8S_SECRET_GITLABCI_TOKEN}@${url_host}"
+    - git remote -v
+    - git add backend/www/*.js backend/www/*.LICENSE.txt
+    - git commit -m "Auto commit of perun-atlas bundle for npm" || exit 0
+    - git push origin HEAD:$CI_COMMIT_REF_NAME
+  only:
+    - main
+  when: manual

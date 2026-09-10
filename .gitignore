@@ -7,6 +7,8 @@ node_modules
 /backend/.classpath
 /backend/.project
 /backend/.settings
-backend/www/*.js
+# The built bundle is committed, because consumers install this package from
+# git and package.json's `main` points at it -- an ignored bundle means the
+# installed package has no entry point and webpack cannot resolve it. This is
+# how spatial and perun-core ship too. Only the source map stays out.
 backend/www/*.js.map
-backend/www/*.LICENSE.txt
