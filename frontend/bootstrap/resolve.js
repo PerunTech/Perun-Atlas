@@ -48,7 +48,7 @@ export const resolve = async (overrides = {}) => {
 
   if (problems.length) {
     throw new Error(
-      'movement-atlas: configuration could not be resolved.\n  - ' + problems.join('\n  - ')
+      'perun-atlas: configuration could not be resolved.\n  - ' + problems.join('\n  - ')
     );
   }
 

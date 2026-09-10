@@ -7,7 +7,7 @@ import * as style from './style';
 import { AtlasMap, Choropleth } from './components';
 
 /**
- * movement-atlas — the shared map layer.
+ * perun-atlas — the shared map layer.
  *
  * A library plugin: it exports components and helpers, and registers no routes of
  * its own. Consumers take this rather than `spatial`, so that the engine's API has

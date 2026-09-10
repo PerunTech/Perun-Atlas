@@ -10,7 +10,7 @@ const { useEffect, useRef, useState } = React;
  * A map, mounted into whatever container this component renders.
  *
  * Consumers embed this and add layers through the children render prop; nothing
- * outside movement-atlas should need to touch spatial's `Map` or `factory`.
+ * outside perun-atlas should need to touch spatial's `Map` or `factory`.
  *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
@@ -40,7 +40,7 @@ export const AtlasMap = ({
 
     if (mounted) {
       const err = new Error(
-        'movement-atlas: a map is already mounted. spatial provides one instance per page ' +
+        'perun-atlas: a map is already mounted. spatial provides one instance per page ' +
         'until 2.0 introduces createMap; render at most one AtlasMap at a time.'
       );
       setFailure(err);

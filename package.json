@@ -1,11 +1,11 @@
 {
-  "name": "movement-atlas",
+  "name": "perun-atlas",
   "version": "1.0.0",
   "description": "Shared map layer for svarog bundles.",
-  "main": "backend/www/movement-atlas.js",
+  "main": "backend/www/perun-atlas.js",
   "repository": {
     "type": "git",
-    "url": "https://gitlab.prtech.mk/svarog4/movement-atlas.git"
+    "url": "https://gitlab.prtech.mk/svarog4/perun-atlas.git"
   },
   "dependencies": {
     "perun-core": "git+https://git@gitlab.prtech.mk/svarog4/perun-core#dev",

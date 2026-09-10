@@ -1,5 +1,5 @@
 /**
- * Every environment-specific setting movement-atlas needs, declared once.
+ * Every environment-specific setting perun-atlas needs, declared once.
  *
  * One entry drives all of it: the remote parameter name, the type coercion, the
  * legacy `window` key kept for compatibility, and whether the application may

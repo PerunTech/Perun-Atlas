@@ -42,7 +42,7 @@ public class Config {
 	}
 
 	static String getProjectName() {
-		return properties.getProperty("projectName", "movement-atlas");
+		return properties.getProperty("projectName", "perun-atlas");
 	}
 
 	static String getProjectVersion() {

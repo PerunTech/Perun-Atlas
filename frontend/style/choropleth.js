@@ -43,7 +43,7 @@ export const colourBy = ({ field, palette = DEFAULT_PALETTE, fallback = DEFAULT_
     // entry is a configuration gap worth noticing, not worth flooding the console.
     if (!seenUnmapped.has(value)) {
       seenUnmapped.add(value);
-      console.warn(`movement-atlas: no palette entry for ${field}="${value}"`);
+      console.warn(`perun-atlas: no palette entry for ${field}="${value}"`);
     }
     return fallback;
   };

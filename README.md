@@ -1,4 +1,4 @@
-# movement-atlas
+# perun-atlas
 
 A shared map layer for svarog bundles.
 

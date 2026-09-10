@@ -16,7 +16,7 @@ import com.prtech.svarog.svCONST;
 import com.prtech.svarog_interfaces.IPerunPlugin;
 
 /**
- * Bundle lifecycle for movement-atlas.
+ * Bundle lifecycle for perun-atlas.
  *
  * This bundle serves static assets and registers itself as a Perun plugin. It
  * publishes no web services: the geometry endpoints it consumes belong to
@@ -28,7 +28,7 @@ public class Activator implements BundleActivator {
 	static final Logger log4j = SvConf.getLogger(Activator.class);
 
 	/** Context path under which the bundle's /www folder is served. */
-	static final String httpContextPath = "/movement-atlas";
+	static final String httpContextPath = "/perun-atlas";
 
 	/** Directory inside the bundle served at the context path. */
 	static final String httpLocalDir = "/www";
@@ -46,7 +46,7 @@ public class Activator implements BundleActivator {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public void start(BundleContext context) {
-		log4j.info("Starting movement-atlas OSGI bundle");
+		log4j.info("Starting perun-atlas OSGI bundle");
 
 		// Registered before the IPerunPlugin service is published, and deliberately
 		// so: svarog inserts this bundle's SVAROG_PERUN_PLUGIN row in response to

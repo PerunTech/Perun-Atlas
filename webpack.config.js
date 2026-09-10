@@ -7,8 +7,8 @@ module.exports = (_, { mode }) => {
     entry: mode === 'production' ? './frontend/index.js' : './frontend/client.js',
     output: {
       path: path.resolve('./backend/www'),
-      filename: 'movement-atlas.js',
-      library: 'movement-atlas',
+      filename: 'perun-atlas.js',
+      library: 'perun-atlas',
       libraryTarget: 'umd',
       globalObject: 'this'
     },

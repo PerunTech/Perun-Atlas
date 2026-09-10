@@ -11,7 +11,7 @@ import com.prtech.svarog_interfaces.ISvCore;
 /**
  * Registers the frontend bundle with svarog so the shell loads its script.
  *
- * movement-atlas is a library rather than a product: it contributes no menu of its
+ * perun-atlas is a library rather than a product: it contributes no menu of its
  * own, and consumers embed its components. getMenu therefore returns the existing
  * menu untouched.
  */
@@ -85,7 +85,7 @@ public class PerunPluginInfo implements IPerunPlugin {
 	 * its script executed before ours. We call into the spatial engine the moment a
 	 * map mounts, so window['spatial'] has to exist by then.
 	 *
-	 * Consumers of movement-atlas declare "movement-atlas" here in turn -- that
+	 * Consumers of perun-atlas declare "perun-atlas" here in turn -- that
 	 * declaration, not an npm entry, is what guarantees the global is populated
 	 * before their code runs.
 	 */

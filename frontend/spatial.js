@@ -1,5 +1,5 @@
 /**
- * The single point at which movement-atlas touches the map engine.
+ * The single point at which perun-atlas touches the map engine.
  *
  * `spatial` is assembled with its modules on the prototype, so they are reached
  * through getPrototypeOf rather than directly off the export. Every other file in

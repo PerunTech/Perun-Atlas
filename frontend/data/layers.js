@@ -8,7 +8,7 @@ const { factory } = core;
  *
  * Deployments configure their layers in the GEO_LAYER_TYPE table, which has an
  * admin console screen in perun-core, and `GET /spatial/getLayers/{session}/`
- * serves them. Consumers of movement-atlas should never parse those rows
+ * serves them. Consumers of perun-atlas should never parse those rows
  * themselves — farm-registry's GpsMapSelect currently does, in about fifty lines,
  * and that duplication is one of the things this layer exists to remove.
  */
@@ -42,7 +42,7 @@ const buildTileLayer = (row) => {
 
   if (row.protocol === 'tile') return factory.tileLayer(service);
 
-  console.warn(`movement-atlas: unsupported layer protocol "${row.protocol}" for "${row.title}"`);
+  console.warn(`perun-atlas: unsupported layer protocol "${row.protocol}" for "${row.title}"`);
   return null;
 };
 
@@ -57,7 +57,7 @@ export const fetchLayers = async (session) => {
   const response = await axios
     .get(`${window.server}/spatial/getLayers/${session}/`)
     .catch(err => {
-      console.error('movement-atlas: layer catalogue unavailable', err);
+      console.error('perun-atlas: layer catalogue unavailable', err);
       return null;
     });
 

@@ -12,7 +12,7 @@
 
 const fail = (key, value, expected) => {
   throw new TypeError(
-    `movement-atlas: cannot read "${key}" as ${expected} (got ${JSON.stringify(value)})`
+    `perun-atlas: cannot read "${key}" as ${expected} (got ${JSON.stringify(value)})`
   );
 };
 
@@ -83,6 +83,6 @@ export const COERCE = {
 
 export const coerce = (key, value, entry) => {
   const fn = COERCE[entry.type];
-  if (!fn) throw new TypeError(`movement-atlas: no coercion for type "${entry.type}" on "${key}"`);
+  if (!fn) throw new TypeError(`perun-atlas: no coercion for type "${entry.type}" on "${key}"`);
   return fn(key, value, entry);
 };

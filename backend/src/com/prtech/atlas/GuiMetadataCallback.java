@@ -15,10 +15,10 @@ import com.prtech.svarog_common.ISvOnSave;
  * Keeps SVAROG_PERUN_PLUGIN.GUI_METADATA for this bundle stamped with
  * cardHidden = true.
  *
- * movement-atlas is a library, not a product: it registers no routes, so
+ * perun-atlas is a library, not a product: it registers no routes, so
  * ModuleMenu already declines to draw a card for it. PerunNavbar's burger menu
  * has no such check though -- it tests cardHidden alone -- so without this the
- * bundle shows up there as a link to /main/movement-atlas that resolves to
+ * bundle shows up there as a link to /main/perun-atlas that resolves to
  * nothing.
  *
  * GUI_METADATA is not part of IPerunPlugin, so a plugin has no way to declare
@@ -62,7 +62,7 @@ public class GuiMetadataCallback implements ISvOnSave {
 			dbo.setVal(Sv.GUI_METADATA, meta.toString());
 		} catch (Exception e) {
 			// Never abort a plugin registration over card visibility.
-			log4j.error("Failed stamping " + CARD_HIDDEN + " on the movement-atlas plugin row", e);
+			log4j.error("Failed stamping " + CARD_HIDDEN + " on the perun-atlas plugin row", e);
 		}
 		return true;
 	}
@@ -96,7 +96,7 @@ public class GuiMetadataCallback implements ISvOnSave {
 				// An unparseable blob is already inert -- WsConf logs and falls back to
 				// false for every key it holds -- so starting fresh loses no working
 				// configuration. Logged loudly because it points at a bad manual edit.
-				log4j.warn("Discarding unparseable GUI_METADATA on the movement-atlas plugin row: " + raw, e);
+				log4j.warn("Discarding unparseable GUI_METADATA on the perun-atlas plugin row: " + raw, e);
 			}
 		}
 

@@ -53,7 +53,7 @@ export const Choropleth = ({
           }
         }).addTo(Map);
       } catch (err) {
-        console.error('movement-atlas: choropleth failed to render', err);
+        console.error('perun-atlas: choropleth failed to render', err);
       }
     };
 

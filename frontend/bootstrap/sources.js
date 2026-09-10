@@ -62,7 +62,7 @@ export const legacySource = () => {
   const keys = Object.keys(found);
   if (keys.length) {
     console.warn(
-      `movement-atlas: read ${keys.length} setting(s) from window globals — ` +
+      `perun-atlas: read ${keys.length} setting(s) from window globals — ` +
       keys.map(k => `window.${SCHEMA[k].legacy}`).join(', ') + '. ' +
       'Seed the corresponding SPATIAL_* parameters in SVAROG_SYS_PARAMS; ' +
       'this fallback is temporary.'
