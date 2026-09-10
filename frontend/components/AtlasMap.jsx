@@ -90,6 +90,49 @@ export const AtlasMap = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /**
+   * Leaflet measures its container once and caches the result, so a map that
+   * mounts while its container has no height renders against nothing: grey
+   * tiles, the centre in the wrong place, and clicks landing off-target.
+   *
+   * That happens whenever the map is not visible at mount — inside a modal
+   * before its transition finishes, in a collapsed panel, behind an inactive
+   * tab — and again whenever the surrounding layout moves, such as a side menu
+   * collapsing beside it.
+   *
+   * Observing the container covers all of those without the consumer knowing
+   * any of it, which matters here: a consumer cannot call invalidateSize itself
+   * without importing the engine, and not importing the engine is the one thing
+   * this package exists to guarantee.
+   */
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return undefined;
+
+    let frame = null;
+
+    const observer = new ResizeObserver(entries => {
+      const box = entries[0]?.contentRect;
+      // A hidden container reports zero, and recomputing against zero is the
+      // failure being avoided. Wait until it has real dimensions.
+      if (!box || box.width === 0 || box.height === 0) return;
+
+      // Coalesce the burst a modal transition produces into one recompute.
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        Map.invalidateSize();
+      });
+    });
+
+    observer.observe(node);
+
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [ready]);
+
   if (failure) {
     return (
       <div className={`${className} atlas-map-error`} role="alert">
