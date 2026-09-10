@@ -1,0 +1,5 @@
+# spatial depends on perun-core through a git URL, and pnpm 11 refuses
+# git-resolved subdependencies by default. Every dependency in this graph is a
+# first-party repository on gitlab.prtech.mk -- that layering is the house
+# architecture rather than something to work around.
+blockExoticSubdeps: false
