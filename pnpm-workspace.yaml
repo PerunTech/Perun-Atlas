@@ -1,5 +1,10 @@
-# spatial depends on perun-core through a git URL, and pnpm 11 refuses
-# git-resolved subdependencies by default. Every dependency in this graph is a
-# first-party repository on gitlab.prtech.mk -- that layering is the house
-# architecture rather than something to work around.
+# pnpm 9 reads this file as a workspace definition alone and refuses it without
+# a packages list. pnpm 10 and 11, which also read their settings from here,
+# accept it either way. Empty is accurate: there are no sub-packages.
+packages: []
+
+# perun-atlas depends on spatial, and spatial on perun-core, both through git
+# URLs -- pnpm 11 refuses git-resolved subdependencies by default. Every
+# dependency in this graph is a first-party repository on gitlab.prtech.mk, so
+# that layering is the house architecture rather than something to work around.
 blockExoticSubdeps: false
