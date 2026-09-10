@@ -1,0 +1,85 @@
+stages:
+  - 1_linter
+  - 2_build_and_install
+  - 3_mvn_install
+
+before_script:
+  - pwd
+  - echo $CI_BUILD_REF_NAME
+  - git remote -v
+  - git reset --hard HEAD
+  - git stash
+  - git pull origin $CI_BUILD_REF_NAME
+
+after_script:
+  - git reset --hard HEAD
+  - git stash
+  - git pull origin $CI_BUILD_REF_NAME
+
+# The two rules this bundle exists to hold. Neither needs node_modules, so this
+# runs alongside the install rather than after it, and fails in seconds.
+1_architecture_guards:
+  stage: 1_linter
+  script:
+    - |
+      echo "--- only frontend/spatial.js may import the engine ---"
+      # Bare specifier only: internal modules importing '../spatial' are the
+      # supported path and must not trip this.
+      offenders=$(grep -rln --include='*.js' --include='*.jsx' -E "from ['\"]spatial['\"]" frontend/ | grep -v '^frontend/spatial.js$' || true)
+      if [ -n "$offenders" ]; then
+        echo "Engine imported outside the shim. One file owns that relationship:"
+        echo "$offenders" | sed 's/^/  /'
+        echo "Route the call through frontend/spatial.js, or add what is missing to it."
+        exit 1
+      fi
+      echo "ok - the engine has exactly one caller"
+    - |
+      echo "--- no deployment coordinates in the bundle ---"
+      # This layer ships to every deployment and must carry nothing specific to
+      # any of them. A coordinate pair in source is how that promise breaks:
+      # centre, bounds and CRS all resolve from SVAROG_SYS_PARAMS at runtime.
+      coords=$(grep -rnE '\[[[:space:]]*-?[0-9]{1,3}\.[0-9]+[[:space:]]*,[[:space:]]*-?[0-9]{1,3}\.[0-9]+[[:space:]]*\]' --include='*.js' --include='*.jsx' frontend/ || true)
+      if [ -n "$coords" ]; then
+        echo "Coordinate literal in source:"
+        echo "$coords" | sed 's/^/  /'
+        echo "Declare it in frontend/config/Schema.js and resolve it per deployment."
+        exit 1
+      fi
+      echo "ok - no coordinates baked in"
+
+1_pnpm_install_test_build:
+  stage: 1_linter
+  script:
+    - pwd
+    - git reset --hard HEAD
+    - rm -rf node_modules
+    - pnpm install
+    - pnpm run test
+    # `test` is `eslint --fix ... || exit 0`, which cannot fail a pipeline.
+    # Re-run it strictly so a lint error is actually caught here.
+    - pnpm exec eslint frontend/
+    - pnpm run build
+
+1_build_test_java:
+  stage: 2_build_and_install
+  script:
+    - cd backend
+    - mvn clean
+    - mvn test
+
+1_perun-atlas-install:
+  stage: 3_mvn_install
+  script:
+    - pwd
+    - cd $CI_PROJECT_DIR/
+    - git reset --hard HEAD
+    - rm -rf node_modules
+    - pnpm install
+    - rm -rf backend/www/*.js
+    - pnpm run build
+    - cd backend
+    - ls -al www/
+    - pwd
+    - mvn clean compile deploy -DskipTests
+  only:
+    - main
