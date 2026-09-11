@@ -16,14 +16,37 @@ import { remoteSource, legacySource, defaultSource } from './sources';
  * an administrator can act on, rather than render a plausible map of the wrong
  * country. Section H of the plan has the reasoning.
  */
+/**
+ * Names the globals a deployment is still relying on.
+ *
+ * Only the ones that actually won: a global that a seeded parameter outranks is
+ * dead weight in index.html, not a dependency, and reporting it as one sends an
+ * administrator to change a line that has no effect. Saying which globals still
+ * decide something is also saying which lines are now safe to delete.
+ */
+const warnOnLegacy = (legacy, remote, overrides) => {
+  const used = Object.keys(legacy).filter(key => !(key in remote) && !(key in overrides));
+  if (!used.length) return;
+
+  console.warn(
+    `perun-atlas: ${used.length} setting(s) still come from window globals — ` +
+    used.map(key => `window.${SCHEMA[key].legacy}`).join(', ') + '. ' +
+    'Seed ' + used.map(key => SCHEMA[key].param).join(', ') + ' in SVAROG_SYS_PARAMS; ' +
+    'this fallback is temporary.'
+  );
+};
+
 export const resolve = async (overrides = {}) => {
   const remote = await remoteSource();
+  const legacy = legacySource();
   const layered = {
     ...defaultSource(),
-    ...legacySource(),
+    ...legacy,
     ...remote,
     ...overrides
   };
+
+  warnOnLegacy(legacy, remote, overrides);
 
   const resolved = {};
   const problems = [];

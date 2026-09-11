@@ -12,8 +12,8 @@ import { SCHEMA } from '../config';
  * Remote parameters from SVAROG_SYS_PARAMS.
  *
  * `GET /WsConf/params/get/sys/{paramName}` is unauthenticated and already in
- * production use (farm-registry's index.html resolves its assets location this
- * way), so this works today with no backend change. It costs one request per
+ * production use — every deployment's index.html resolves its assets location
+ * this way — so this works today with no backend change. It costs one request per
  * parameter, which is the argument for the batched `GET /spatial/config/{session}`
  * proposed alongside this project; swap `remoteSource` for `batchSource` once
  * that endpoint exists and nothing else here changes.
@@ -47,8 +47,7 @@ export const batchSource = async (session) => {
  * Legacy `window` globals.
  *
  * A compatibility shim so deployments keep working while SPATIAL_* parameters are
- * seeded. Every hit is a deployment that has not been migrated yet, so it says so
- * once rather than silently.
+ * seeded.
  */
 export const legacySource = () => {
   const found = {};
@@ -59,16 +58,9 @@ export const legacySource = () => {
     if (value !== undefined && value !== null && value !== '') found[key] = value;
   });
 
-  const keys = Object.keys(found);
-  if (keys.length) {
-    console.warn(
-      `perun-atlas: read ${keys.length} setting(s) from window globals — ` +
-      keys.map(k => `window.${SCHEMA[k].legacy}`).join(', ') + '. ' +
-      'Seed the corresponding SPATIAL_* parameters in SVAROG_SYS_PARAMS; ' +
-      'this fallback is temporary.'
-    );
-  }
-
+  // Deliberately silent. Finding a global is not the same as using one -- a
+  // seeded parameter outranks it -- and only `resolve` knows which won. It says
+  // so there, where the answer is true.
   return found;
 };
 

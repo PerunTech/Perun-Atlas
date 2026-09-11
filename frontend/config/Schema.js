@@ -46,7 +46,22 @@ export const SCHEMA = {
     values: ['metric', 'imperial'],
     default: 'metric'
   },
-  attribution: { type: 'string', param: 'SPATIAL_ATTRIBUTION', default: '' }
+  attribution: { type: 'string', param: 'SPATIAL_ATTRIBUTION', default: '' },
+
+  /**
+   * The CRS the database stores geometry in, which is not the CRS the map draws
+   * in and frequently differs from it: a deployment commonly keeps geometry in
+   * 4326 and displays on the Web Mercator tile grid.
+   *
+   * Named by svarog rather than by this project, because it is svarog's own
+   * parameter and has been read under that name since long before SPATIAL_*.
+   */
+  dataSrid: {
+    type: 'srid',
+    param: 'sys.gis.default_srid',
+    default: '4326',
+    doc: 'EPSG code the database stores geometry in, without the prefix.'
+  }
 };
 
 /** Settings that must resolve to a value before a map may be constructed. */

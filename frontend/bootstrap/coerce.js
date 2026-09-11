@@ -70,6 +70,15 @@ export const COERCE = {
   },
 
   /**
+   * A bare EPSG code, as svarog writes it: the number alone. `EPSG:4326` is
+   * accepted too, because that is how a hand-edited parameter tends to read.
+   */
+  srid: (key, value) => {
+    const s = String(value).trim().replace(/^EPSG:/i, '');
+    return /^\d{4,6}$/.test(s) ? s : fail(key, value, 'an EPSG code such as 4326');
+  },
+
+  /**
    * A CRS is either a bare EPSG code that spatial resolves itself, or a
    * { code, def } pair carrying a proj4 definition for a local projection.
    */
