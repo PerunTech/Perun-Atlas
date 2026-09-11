@@ -1,0 +1,24 @@
+/*
+ * The default pin.
+ *
+ * Leaflet only applies `leaflet-div-icon` — a white box with a grey border —
+ * when no className is given, but reset it here in case that ever changes.
+ *
+ * The pin takes its fill from `color`, so a consumer restyles it with one
+ * declaration and does not have to supply its own markup.
+ */
+.atlas-pin {
+  background: transparent;
+  border: 0;
+  color: #4a6a85;
+  cursor: grab;
+}
+
+.atlas-pin:active {
+  cursor: grabbing;
+}
+
+.atlas-pin svg {
+  display: block;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.22));
+}

@@ -1,9 +1,11 @@
 import { React } from 'perun-core';
-import { core } from '../spatial';
-import { resolve } from '../bootstrap';
+import { core, data } from '../spatial';
+import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
+import '../style/controls.css';
 
 const { Map } = core;
+const { layerControl } = data;
 const { useEffect, useRef, useState } = React;
 
 /**
@@ -22,9 +24,35 @@ const { useEffect, useRef, useState } = React;
 
 let mounted = false;
 
+/**
+ * The layers spatial puts on its own map when it builds it: empty groups that
+ * its tools draw into. They belong to the engine, not to a screen, and a screen
+ * that removes them leaves those tools drawing into nothing.
+ *
+ * Read here rather than inside the component, because module scope is the one
+ * moment that is after spatial's script and before any screen has mounted.
+ */
+const engineLayers = new Set();
+Map.eachLayer(layer => engineLayers.add(layer));
+
+/**
+ * Take off everything a screen put on, and leave the engine's own layers.
+ *
+ * The map is one instance shared with anything else in the page that draws on
+ * spatial directly -- a coordinate picker, a legacy screen -- and there is no
+ * guarantee the previous tenant removed what it added. So adopt it clean and
+ * hand it back clean, and neither side inherits the other's layers.
+ */
+const clearLayers = () => {
+  const added = [];
+  Map.eachLayer(layer => { if (!engineLayers.has(layer)) added.push(layer); });
+  added.forEach(layer => Map.removeLayer(layer));
+};
+
 export const AtlasMap = ({
   session,
   overrides,
+  layerSwitcher = false,
   className = 'atlas-map',
   style,
   onReady,
@@ -32,6 +60,8 @@ export const AtlasMap = ({
   children
 }) => {
   const containerRef = useRef(null);
+  const switcherRef = useRef(null);
+  const adoptedStyleRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState(null);
 
@@ -54,10 +84,27 @@ export const AtlasMap = ({
         const config = await resolve(overrides);
         if (cancelled) return;
 
+        // Push what the deployment declared into the engine before the map is
+        // touched, so spatial reads this rather than globals from the page.
+        applyToEngine(config);
+
         // Adopt spatial's container directly rather than calling Map.render(),
         // which reaches for the host's navbar and footer and hides them.
         const element = Map.getContainer();
+
+        // spatial builds that container with an inline `height: 100vh`, so it
+        // sizes itself to the window and ignores the box it is put in --
+        // overflowing a short panel and leaving a tall one half empty.
+        // Deployments have been undoing it per screen with rules like
+        // `#holding-map #map { height: 100% !important }`. Take it over while
+        // the map is ours, and hand it back exactly as we found it.
+        adoptedStyleRef.current = { height: element.style.height, width: element.style.width };
+        element.style.height = '100%';
+        element.style.width = '100%';
+
         containerRef.current?.appendChild(element);
+
+        clearLayers();
 
         Map.setMinZoom(config.minZoom).setMaxZoom(config.maxZoom);
         Map.setView(config.center, config.zoom);
@@ -67,6 +114,13 @@ export const AtlasMap = ({
 
         const base = firstOf(basemap);
         if (base) base.addTo(Map);
+
+        // Built here rather than through spatial's app builder, which adds the
+        // control and keeps no reference to it. A control is not a layer, so
+        // nothing else takes it off again, and the map outlives this component.
+        if (layerSwitcher) {
+          switcherRef.current = layerControl(basemap, overlays, { collapsed: true }).addTo(Map);
+        }
 
         Map.invalidateSize();
         setReady(true);
@@ -84,7 +138,17 @@ export const AtlasMap = ({
     return () => {
       cancelled = true;
       mounted = false;
+      if (switcherRef.current) {
+        switcherRef.current.remove();
+        switcherRef.current = null;
+      }
+      clearLayers();
       const element = Map.getContainer();
+      if (element && adoptedStyleRef.current) {
+        element.style.height = adoptedStyleRef.current.height;
+        element.style.width = adoptedStyleRef.current.width;
+        adoptedStyleRef.current = null;
+      }
       if (element?.parentNode) element.parentNode.removeChild(element);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

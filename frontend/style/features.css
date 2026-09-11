@@ -1,0 +1,64 @@
+/*
+ * The one stylesheet this package ships.
+ *
+ * `atlas-map` and friends are left to the deployment's stylesheets, as the rest
+ * of the front end is. These cannot be: a divIcon with no CSS has no size and no
+ * background, so an unstyled marker is not plain, it is invisible. A package
+ * whose job is that consumers do not reimplement the map should not ship a map
+ * that renders nothing until someone edits a site stylesheet.
+ *
+ * Neutral on purpose. A descriptor names its own class when a screen wants its
+ * own look, and these are single-class selectors, so anything loaded later wins.
+ */
+
+.atlas-marker {
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #4a5c66;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+.leaflet-tooltip.atlas-label {
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 3px;
+  background: #fff;
+  color: #1f2a30;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+
+  /*
+   * spatial draws every tooltip as white text inside a solid black outline,
+   * which suits a label painted straight onto imagery and ruins one set in a
+   * pill: at this size the outline closes up the counters of the letters and
+   * the text reads as a dark smear. The pill is the legibility mechanism here,
+   * so drop the outline rather than layer the two.
+   */
+  text-shadow: none;
+}
+
+.leaflet-tooltip.atlas-label::before {
+  display: none;
+}
+
+/*
+ * The date filter is an RJSF form, so it arrives as .form-group children rather
+ * than as markup this package controls. Laying them out in a row is the only
+ * thing changed here: the widgets, labels and error text stay whatever the
+ * deployment's form stylesheet makes them.
+ */
+.atlas-date-range .rjsf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.atlas-date-range .form-group {
+  margin-bottom: 0;
+}

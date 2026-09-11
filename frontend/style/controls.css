@@ -1,0 +1,21 @@
+/*
+ * Controls, made clickable.
+ *
+ * Leaflet's stylesheet is a pair: the corner containers take
+ * `pointer-events: none` so a drag can begin anywhere across them, and
+ * `.leaflet-control` takes `auto` back so the controls themselves still
+ * receive clicks.
+ *
+ * spatial replaces those corners with its own frame — `control-center` >
+ * `control-map` > `control-topright` — and carries the first half of the pair
+ * but not the second. Every control it places in a map corner therefore arrives
+ * inert, and deployments have been restoring it one screen at a time with
+ * `!important` rules keyed to a container id.
+ *
+ * Restore the missing half here, once, for anything that draws through this
+ * package. The durable fix is the same declaration in spatial's own
+ * control.css, after which this file can go.
+ */
+.leaflet-control {
+  pointer-events: auto;
+}

@@ -4,7 +4,7 @@ import * as bootstrap from './bootstrap';
 import * as config from './config';
 import * as data from './data';
 import * as style from './style';
-import { AtlasMap, Choropleth } from './components';
+import { AtlasMap, Choropleth, DateRange, FeatureSet, PointPicker } from './components';
 
 /**
  * perun-atlas — the shared map layer.
@@ -19,5 +19,5 @@ import { AtlasMap, Choropleth } from './components';
 export const name = pkg.name;
 export const version = pkg.version;
 
-export { AtlasMap, Choropleth };
+export { AtlasMap, Choropleth, DateRange, FeatureSet, PointPicker };
 export { bootstrap, config, data, style };
