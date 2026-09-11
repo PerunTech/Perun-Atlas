@@ -47,6 +47,22 @@ after_script:
         exit 1
       fi
       echo "ok - no coordinates baked in"
+    - |
+      echo "--- nothing from any one deployment's domain ---"
+      # This layer is shared by every bundle that draws a map, so it must not
+      # know what any of them are about. Descriptor names, field names, table
+      # names and service paths all belong to the caller and arrive as props or
+      # configuration. The pattern is deliberately upper-case and word-bounded so
+      # that ordinary prose -- "the property holding the category" -- is fine.
+      domain=$(grep -rnE '\b(ANIMAL|ANIMALS|HOLDING|HOLDINGS|MOVEMENT|MOVEMENTS|EAR_TAG|EARTAG|PIC|AREA_HEALTH|SVAROG_SDI_UNITS|QUARANTINE)\b' --include='*.js' --include='*.jsx' --include='*.css' frontend/ || true)
+      endpoints=$(grep -rniE 'WsAims|/SDI/' --include='*.js' --include='*.jsx' --include='*.css' frontend/ || true)
+      if [ -n "$domain$endpoints" ]; then
+        echo "A caller's domain has leaked into the shared layer:"
+        echo "$domain$endpoints" | sed 's/^/  /'
+        echo "Pass it in as a descriptor, a prop or a service path instead."
+        exit 1
+      fi
+      echo "ok - no caller's domain in here"
 
 1_pnpm_install_test_build:
   stage: 1_linter

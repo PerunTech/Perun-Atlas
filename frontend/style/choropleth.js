@@ -1,10 +1,9 @@
 /**
  * Colouring features by a categorical attribute.
  *
- * Deliberately categorical rather than a continuous ramp: the first consumer
- * colours administrative areas by disease status, which is a code list, not a
- * measurement. A sequential scale for numeric attributes is a separate concern
- * and should not be bolted onto this one.
+ * Deliberately categorical rather than a continuous ramp: what these screens
+ * colour by is a code list, not a measurement. A sequential scale for numeric
+ * attributes is a separate concern and should not be bolted onto this one.
  */
 
 /**
@@ -52,9 +51,8 @@ export const colourBy = ({ field, palette = DEFAULT_PALETTE, fallback = DEFAULT_
 /**
  * Joins a status feed onto features by a shared key.
  *
- * The first consumer needs this because the geometry and the thing being coloured
- * come from different tables: SVAROG_SDI_UNITS carries the polygons, AREA_HEALTH
- * carries the status, and they meet on an area code.
+ * Needed because the geometry and the thing being coloured generally come from
+ * different services, and meet on a shared key rather than arriving joined.
  *
  * @param {Object} collection      - GeoJSON FeatureCollection.
  * @param {Array}  rows            - Status records.

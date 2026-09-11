@@ -9,11 +9,10 @@ const { useEffect, useRef } = React;
 /**
  * Polygons fetched by bounding box, filled by a categorical attribute.
  *
- * The first consumer is an epidemiology screen: administrative units from
- * SVAROG_SDI_UNITS, coloured by the disease status recorded against each area. The
- * geometry and the status come from different tables, so `statusRows` and `join`
- * exist to marry them in the browser rather than requiring a bespoke endpoint per
- * screen.
+ * The polygons and the thing they are coloured by usually come from different
+ * places — one service serves the geometry, another the records carrying the
+ * category — so `statusRows` and `join` exist to marry them in the browser
+ * rather than requiring a bespoke endpoint per screen.
  *
  * Refetches when the map stops moving, because the service is bbox-scoped.
  */
