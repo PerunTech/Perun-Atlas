@@ -70,7 +70,7 @@ after_script:
     - pwd
     - git reset --hard HEAD
     - rm -rf node_modules
-    - pnpm install
+    - pnpm install --frozen-lockfile
     - pnpm run test
     # `test` is `eslint --fix ... || exit 0`, which cannot fail a pipeline.
     # Re-run it strictly so a lint error is actually caught here.
@@ -91,7 +91,7 @@ after_script:
     - cd $CI_PROJECT_DIR/
     - git reset --hard HEAD
     - rm -rf node_modules
-    - pnpm install
+    - pnpm install --frozen-lockfile
     - rm -rf backend/www/*.js
     - pnpm run build
     - cd backend
@@ -116,7 +116,7 @@ after_script:
     - cd $CI_PROJECT_DIR/
     - git reset --hard HEAD
     - rm -rf node_modules
-    - pnpm install
+    - pnpm install --frozen-lockfile
     - rm -rf backend/www/*.js
     - pnpm run build
     - url_host=`git remote get-url origin | sed -e "s/https:\/\/gitlab-ci-token:.*@//g"`
