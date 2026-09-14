@@ -27,15 +27,28 @@ export const Choropleth = ({
   tooltip
 }) => {
   const layerRef = useRef(null);
+  const requestRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     const fill = colourBy({ field, palette });
 
     const draw = async () => {
+      /**
+       * Which fetch this is.
+       *
+       * Every `moveend` starts one, and they can land out of order: pan twice
+       * over an uneven connection and the first response arrives last, removes
+       * the layer the second one drew, and redraws the map with polygons for a
+       * bounding box the user has already left. `cancelled` does not cover it —
+       * it guards unmount, and both of these fetches belong to a mounted
+       * component. Only the newest request may touch the map.
+       */
+      const request = ++requestRef.current;
+
       try {
         const collection = await fetchGeometry(servicePath, { map: { bbox: Map.getBBox() } });
-        if (cancelled) return;
+        if (cancelled || request !== requestRef.current) return;
 
         const joined = join && statusRows
           ? joinStatus(collection, statusRows, join)

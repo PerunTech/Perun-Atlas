@@ -36,11 +36,68 @@ const readRow = (row, table = LAYER_TABLE) => ({
   label: row?.[`${table}.LABEL_CODE`] || row?.[`${table}.TITLE`]
 });
 
-const buildTileLayer = (row) => {
+/**
+ * What a tile provider actually serves, for the ones whose limits are known.
+ *
+ * `maxNativeZoom` is the deepest zoom that returns a real tile; past it Leaflet
+ * upscales the last one instead of requesting tiles that do not exist. That is
+ * what the hardcoded `maxZoom: 20` below used to do -- OpenStreetMap answers
+ * HTTP 400 at z20, and OpenTopoMap answers 200 with the *same* placeholder image
+ * at every zoom above 17, so zooming in produced blank tiles that read as
+ * missing data rather than as the edge of the data.
+ *
+ * `attribution` is the credit each provider's terms require. It belongs in
+ * GEO_LAYER_TYPE, which has no column for it; until it does, a deployment that
+ * adds one of these layers is credited without having to know it had to be.
+ * Matching on the URL is what this file already does to pick Google's subdomains.
+ *
+ * Measured against tiles rather than taken from documentation. A provider that is
+ * not listed is left unconstrained, which is the behaviour before this existed.
+ */
+const PROVIDERS = [
+  {
+    match: /openstreetmap\.org/i,
+    maxNativeZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  },
+  {
+    match: /opentopomap\.org/i,
+    maxNativeZoom: 17,
+    attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
+  },
+  {
+    match: /cartocdn\.com/i,
+    maxNativeZoom: 20,
+    attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+  },
+  {
+    match: /arcgisonline\.com/i,
+    attribution: 'Tiles &copy; <a href="https://www.esri.com">Esri</a>'
+  }
+];
+
+const providerFor = (url) => PROVIDERS.find(entry => entry.match.test(url ?? '')) ?? {};
+
+/**
+ * @param {Object} row - A catalogue row, already read by `readRow`.
+ * @param {Object} [options] - `maxZoom`, the deployment's own ceiling.
+ */
+const buildTileLayer = (row, { maxZoom } = {}) => {
   // A row with no URL of its own is served by this deployment. That is the
   // origin, not `window.server` -- which carries the /services path the REST
   // API lives under, and would send every tile request one level too deep.
   const service = row.url || getServerOrigin();
+
+  const provider = providerFor(service);
+
+  // A layer's ceiling follows the deployment's, rather than a constant that
+  // happened to suit one basemap; `maxNativeZoom` keeps requests inside what the
+  // provider will answer.
+  const limits = {
+    ...(maxZoom != null && { maxZoom }),
+    ...(provider.maxNativeZoom != null && { maxNativeZoom: provider.maxNativeZoom })
+  };
+  const credit = provider.attribution ? { attribution: provider.attribution } : {};
 
   if (row.protocol === 'wms') {
     return factory.tileLayer.extendedWMS(service, {
@@ -49,6 +106,8 @@ const buildTileLayer = (row) => {
       version: row.version,
       transparent: true,
       uppercase: true,
+      ...limits,
+      ...credit,
       ...(row.layerType === LAYER_TYPE.OVERLAY && { tiled: true, isOverlay: true })
     });
   }
@@ -60,7 +119,8 @@ const buildTileLayer = (row) => {
     // hosts that do not resolve, so it is decided per URL.
     const google = /google|mt\{s\}/i.test(service);
     return factory.tileLayer(service, {
-      maxZoom: 20,
+      ...limits,
+      ...credit,
       ...(google && { subdomains: ['mt0', 'mt1', 'mt2', 'mt3'] })
     });
   }
@@ -80,10 +140,13 @@ const buildTileLayer = (row) => {
 };
 
 /**
+ * @param {string} session - svarog session.
+ * @param {Object} [options] - `maxZoom`, the deployment's ceiling, applied to
+ *        every tiled layer so they follow the map rather than a constant.
  * @returns {Promise<{ basemap: Object, overlays: Object }>} Grouped Leaflet layers,
  *          shaped for spatial's layer control: { groupName: { label: layer } }.
  */
-export const fetchLayers = async (session) => {
+export const fetchLayers = async (session, options = {}) => {
   const basemap = {};
   const overlays = {};
 
@@ -99,7 +162,7 @@ export const fetchLayers = async (session) => {
 
   rows.forEach(raw => {
     const row = readRow(raw);
-    const layer = buildTileLayer(row);
+    const layer = buildTileLayer(row, options);
     if (!layer) return;
 
     const target = row.layerType === LAYER_TYPE.OVERLAY ? overlays : basemap;

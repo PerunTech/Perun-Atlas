@@ -4,7 +4,7 @@ import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
 import '../style/controls.css';
 
-const { Map } = core;
+const { Map, factory } = core;
 const { layerControl } = data;
 const { useEffect, useRef, useState } = React;
 
@@ -13,6 +13,12 @@ const { useEffect, useRef, useState } = React;
  *
  * Consumers embed this and add layers through the children render prop; nothing
  * outside perun-atlas should need to touch spatial's `Map` or `factory`.
+ *
+ * Controls: spatial's map is built with its own zoom and attribution controls
+ * switched off, because its toolbar supplies them and this component does not
+ * mount that toolbar. Both are added here instead — zoom on by default and
+ * positionable with `zoomControl` / `zoomPosition`, attribution always, since a
+ * tile provider's terms are not an option a screen gets to decline.
  *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
@@ -53,6 +59,8 @@ export const AtlasMap = ({
   session,
   overrides,
   layerSwitcher = false,
+  zoomControl = true,
+  zoomPosition = 'topleft',
   className = 'atlas-map',
   style,
   onReady,
@@ -61,6 +69,8 @@ export const AtlasMap = ({
 }) => {
   const containerRef = useRef(null);
   const switcherRef = useRef(null);
+  const zoomRef = useRef(null);
+  const attributionRef = useRef(null);
   const adoptedStyleRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState(null);
@@ -109,7 +119,28 @@ export const AtlasMap = ({
         Map.setMinZoom(config.minZoom).setMaxZoom(config.maxZoom);
         Map.setView(config.center, config.zoom);
 
-        const { basemap, overlays } = await fetchLayers(session);
+        // spatial builds its map with `zoomControl: false` and
+        // `attributionControl: false`, because its own toolbar carries a
+        // NavigationControl and that toolbar is part of the app chrome this
+        // component deliberately does not mount -- it adopts the bare container
+        // instead. So a screen embedding a map this way had no way to zoom
+        // without a wheel or a trackpad, and no way to display a credit.
+        //
+        // Added before the layers, so the attribution control is listening when
+        // they arrive and picks up whatever credit each one carries.
+        if (zoomControl) {
+          zoomRef.current = factory.control.zoom({ position: zoomPosition }).addTo(Map);
+        }
+
+        // `prefix: false` drops Leaflet's own 'Leaflet' link: this is where a
+        // deployment's credit and a tile provider's terms are satisfied, not an
+        // advertisement for the mapping library.
+        attributionRef.current = factory.control.attribution({ prefix: false }).addTo(Map);
+        if (config.attribution) attributionRef.current.addAttribution(config.attribution);
+
+        // Layers take the deployment's ceiling rather than a constant, so a
+        // basemap stops where the map does.
+        const { basemap, overlays } = await fetchLayers(session, { maxZoom: config.maxZoom });
         if (cancelled) return;
 
         const base = firstOf(basemap);
@@ -138,10 +169,14 @@ export const AtlasMap = ({
     return () => {
       cancelled = true;
       mounted = false;
-      if (switcherRef.current) {
-        switcherRef.current.remove();
-        switcherRef.current = null;
-      }
+      // Controls are not layers, so `clearLayers` never sees them and the map
+      // outlives this component. Each one that was added has to come off.
+      [switcherRef, zoomRef, attributionRef].forEach(ref => {
+        if (ref.current) {
+          ref.current.remove();
+          ref.current = null;
+        }
+      });
       clearLayers();
       const element = Map.getContainer();
       if (element && adoptedStyleRef.current) {
