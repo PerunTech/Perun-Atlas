@@ -8,3 +8,29 @@ packages: []
 # dependency in this graph is a first-party repository on gitlab.prtech.mk, so
 # that layering is the house architecture rather than something to work around.
 blockExoticSubdeps: false
+
+# pnpm 11 holds back releases younger than its minimum-release-age window as a
+# supply-chain measure. The express override below asks for a version inside
+# that window, so pnpm recorded this exemption for it. It becomes a no-op once
+# the release ages out, and older pnpm ignores the key.
+minimumReleaseAgeExclude:
+  - express@4.22.3
+
+# Two subdependencies carry advisories their parents pin too tightly to fix on
+# their own: monaco-editor asks for dompurify 3.4.8 exactly, and sockjs for
+# uuid 8. Neither reaches the shipped bundle -- monaco arrives through
+# perun-core, which is external in production, and sockjs only through
+# webpack-dev-server -- so this clears the audit and protects the dev machine
+# rather than changing what ships. Mirrors the same pair in svarog-spatial.
+#
+# pnpm 11 reads overrides from here; pnpm 9 and 10 read them from the "pnpm"
+# field of package.json. Both are declared, and must be kept in step.
+overrides:
+  dompurify: ^3.4.15
+  uuid: ^11.1.1
+  # webpack-dev-server asks for express ^4.22.1; 4.22.2 is what this lockfile
+  # happened to capture, and it pulls qs ~6.15.1, which carries two advisories.
+  # 4.22.3 asks for qs ~6.16.0 and is what svarog-spatial already resolves.
+  # The key is scoped to the range the dependent declares, so this lifts the
+  # floor rather than pinning: drop it once a fresh resolve picks 4.22.3 anyway.
+  express@^4.22.1: ^4.22.3
