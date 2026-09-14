@@ -8,6 +8,31 @@ const { Map, factory } = core;
 const { useEffect, useRef } = React;
 
 /**
+ * A descriptor's own styling, applied to the element Leaflet built.
+ *
+ * A marker and a label are Leaflet's elements rather than this component's, so a
+ * descriptor that wants a colour has two ways to ask for one: name a class the
+ * consumer's stylesheet defines, or carry the declarations itself. The second is
+ * what lets a whole descriptor live in configuration — a screen described in a
+ * menu table has no stylesheet to name, and shipping one for it would put the
+ * look back into code.
+ *
+ * Assigned onto the element's style object rather than written into markup: the
+ * values arrive from configuration, and a property assignment cannot inject
+ * anything, while an html string could. Keys are camelCase, as the CSSOM spells
+ * them ('borderRadius'), and custom properties are set by name. A declaration
+ * the browser rejects is dropped, which is what an unknown property in a
+ * stylesheet does too.
+ */
+const applyStyle = (element, style) => {
+  if (!element || !style) return;
+  Object.entries(style).forEach(([property, value]) => {
+    if (property.startsWith('--')) element.style.setProperty(property, value);
+    else element.style[property] = value;
+  });
+};
+
+/**
  * A geometry set, fetched once and drawn per descriptor.
  *
  * Services return mixed sets — points, lines and polygons in one response, each
@@ -24,9 +49,11 @@ const { useEffect, useRef } = React;
  * Descriptors are a map of descriptor name to:
  *
  *   style   Leaflet path options for lines and polygons
- *   marker  { className, size } for points
- *   label   { field, scale: { min, max }, className, direction, offset } — a
- *           permanent label, banded by zoom
+ *   marker  { className, size, style } for points — a class, CSS declarations,
+ *           or both; `style` is what a descriptor kept in configuration uses,
+ *           since it has no stylesheet of its own to name
+ *   label   { field, scale: { min, max }, className, style, direction, offset } —
+ *           a permanent label, banded by zoom
  *   arrow   { pixelSize, repeat, offset } — direction markers along a line
  *
  * @param {string} servicePath - Path with {token} placeholders.
@@ -91,17 +118,22 @@ export const FeatureSet = ({
         clear();
 
         const group = factory.geoJSON(collection, {
-          // spatial draws its markers as styled divs, so the look lives in CSS
-          // and a descriptor only names the class.
+          // spatial draws its markers as styled divs, so the look is a class, a
+          // style, or both — see `applyStyle`.
           pointToLayer: (feature, latlng) => {
             const { marker = {} } = descriptors[nameOf(feature)] ?? {};
             const size = marker.size ?? 24;
-            return factory.marker(latlng, {
+            const point = factory.marker(latlng, {
               icon: factory.divIcon({
                 className: marker.className ?? 'atlas-marker',
                 iconSize: [size, size]
               })
             });
+            // The element exists only once the marker is on the map, and again
+            // after every redraw, so the style is applied on the event rather
+            // than to the layer.
+            if (marker.style) point.on('add', () => applyStyle(point.getElement(), marker.style));
+            return point;
           },
 
           style: (feature) => pathOptions(descriptors[nameOf(feature)]),
@@ -132,6 +164,12 @@ export const FeatureSet = ({
                 // basemap is the thing being fixed.
                 opacity: 1
               });
+              // Same as a marker's: the pill is Leaflet's element, and it is
+              // built when the tooltip opens, which a zoom band may do long after
+              // this runs and more than once.
+              if (descriptor.label?.style) {
+                layer.on('tooltipopen', (event) => applyStyle(event.tooltip.getElement(), descriptor.label.style));
+              }
               if (descriptor.label?.scale) labelledRef.current.push({ layer, descriptor });
             }
 
