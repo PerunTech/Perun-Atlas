@@ -71,9 +71,13 @@ after_script:
     - git reset --hard HEAD
     - rm -rf node_modules
     - pnpm install --frozen-lockfile
-    - pnpm run test
-    # `test` is `eslint --fix ... || exit 0`, which cannot fail a pipeline.
-    # Re-run it strictly so a lint error is actually caught here.
+    # Deliberately not `pnpm run test`. That script is
+    # `eslint --fix frontend/ || exit 0`: it can never fail a pipeline, and its
+    # fix pass repaired every auto-fixable violation before a strict run could
+    # see it -- so only non-fixable errors ever failed the build, and the
+    # repairs were thrown away by after_script's reset. The script stays in
+    # package.json for local use, where fixing your working tree is the point.
+    # CI wants the verdict, so it asks for it directly.
     - pnpm exec eslint frontend/
     - pnpm run build
 
