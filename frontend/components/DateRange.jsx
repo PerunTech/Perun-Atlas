@@ -33,7 +33,6 @@ export const DateRange = ({
       to: { type: 'string', format: 'date', title: labels.to ?? 'To' }
     }
     // Titles are the only thing that changes, and only with the locale.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [labels.from, labels.to]);
 
   const uiSchema = useMemo(() => ({
