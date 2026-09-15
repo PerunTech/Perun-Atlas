@@ -67,9 +67,14 @@ export const labelFor = (descriptor, feature) => {
  *
  * @param {Object} descriptor - The descriptor entry for this feature's type.
  * @param {Object} feature    - The GeoJSON feature.
+ * @param {Function} [resolveLabel] - Turns a field's label into display text.
+ *        Descriptors routinely arrive from configuration, where everything
+ *        user-visible is a label code rather than a word, and only the consumer
+ *        can resolve one. Returning nothing for a code it does not know is the
+ *        expected answer, not a failure — see the ladder below.
  * @returns {{ title: string|null, rows: Array<{label: string, value: string}> }|null}
  */
-export const popupFor = (descriptor, feature) => {
+export const popupFor = (descriptor, feature, resolveLabel) => {
   const spec = descriptor?.popup;
   if (!spec) return null;
 
@@ -80,12 +85,15 @@ export const popupFor = (descriptor, feature) => {
 
   const title = spec.title ? read(spec.title) : null;
 
-  // The field name is the fallback label rather than an error: it is a column
-  // name and it will look like one, which is the correct amount of pressure to
-  // put on a descriptor that has not named its fields yet. Labels belong to the
-  // caller — this package ships no module's translations.
+  // Resolved label, then the configured one, then the field name. Every rung
+  // is legible on screen and says which one was reached: a translated word, an
+  // unregistered code, or a bare column name. Nothing renders blank, and the
+  // package still ships no module's translations — it only asks the caller.
   const rows = (spec.fields ?? [])
-    .map(({ label, field }) => ({ label: label ?? field, value: read(field) }))
+    .map(({ label, field }) => ({
+      label: (label && resolveLabel?.(label)) || label || field,
+      value: read(field)
+    }))
     .filter(row => row.value !== null);
 
   return title === null && rows.length === 0 ? null : { title, rows };

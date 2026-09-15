@@ -21,6 +21,9 @@ const { useEffect, useRef } = React;
  * behind an area on a click, which is where a joined status belongs: the fill
  * says which band an area is in, and the popup says what it actually is. Name a
  * joined field the way the join wrote it, e.g. `status.AREA_HEALTH.AREA_STATUS`.
+ *
+ * `labelResolver` turns those field labels into display text, for descriptors
+ * that arrive from configuration carrying label codes rather than words.
  */
 export const Choropleth = ({
   servicePath,
@@ -31,7 +34,8 @@ export const Choropleth = ({
   descriptor,
   onFeatureClick,
   tooltip,
-  popup
+  popup,
+  labelResolver
 }) => {
   const layerRef = useRef(null);
   const requestRef = useRef(0);
@@ -72,7 +76,7 @@ export const Choropleth = ({
             if (text) layer.bindTooltip(asNode(text), { sticky: true });
 
             const supplied = popup?.(feature);
-            const rows = popup ? null : popupFor(descriptor, feature);
+            const rows = popup ? null : popupFor(descriptor, feature, labelResolver);
             const content = supplied !== undefined && supplied !== null
               ? asNode(supplied)
               : (rows ? popupElement(rows) : null);

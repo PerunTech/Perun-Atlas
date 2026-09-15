@@ -63,6 +63,9 @@ const applyStyle = (element, style) => {
  * @param {Object} context     - The values those placeholders resolve against.
  * @param {Object} descriptors - Descriptor name to the above. Caller-owned.
  * @param {Function} [descriptorFor] - Per-feature override; see `nameOf` below.
+ * @param {Function} [labelResolver] - Turns a popup field's label into display
+ *        text, for descriptors that arrive from configuration carrying label
+ *        codes. Left out, a label is shown as written.
  * @param {Function} [popup] - Per-feature popup content, replacing the descriptor's.
  *        Return an element for rich content, a string for plain text, or nothing
  *        for no popup. A returned string is rendered as text, never as markup.
@@ -75,6 +78,7 @@ export const FeatureSet = ({
   fit = true,
   tooltip,
   popup,
+  labelResolver,
   onFeatureClick,
   onLoad,
   onError
@@ -112,7 +116,7 @@ export const FeatureSet = ({
         const supplied = popup(feature);
         return supplied === undefined || supplied === null ? null : asNode(supplied);
       }
-      const rows = popupFor(descriptor, feature);
+      const rows = popupFor(descriptor, feature, labelResolver);
       return rows ? popupElement(rows) : null;
     };
 
