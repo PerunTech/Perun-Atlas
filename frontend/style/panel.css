@@ -126,3 +126,31 @@
     flex-direction: column;
   }
 }
+
+/*
+ * The export buttons.
+ *
+ * Pushed to the far end of the toolbar, away from the controls that change what
+ * is on screen: these do not change the view, they take a copy of it. `margin-
+ * inline-start: auto` rather than a spacer element, so the group still wraps
+ * onto its own line at a narrow width instead of being held out by a gap.
+ */
+.atlas-panel__export {
+  display: flex;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+/*
+ * Icon and label on one line.
+ *
+ * Two classes deep, so this holds whatever the deployment's sheet does to
+ * `.atlas-panel__btn` at one class: that rule owns the look of the button, and
+ * this owns the arrangement of the two things inside it, which it cannot know
+ * about. An icon that fails to load leaves the label where it was.
+ */
+.atlas-panel__export .atlas-panel__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

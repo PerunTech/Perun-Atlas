@@ -1,10 +1,22 @@
-import { React } from 'perun-core';
+import { React, elements } from 'perun-core';
 import { AtlasMap } from './AtlasMap';
 import { DateRange } from './DateRange';
 import { FeatureSet } from './FeatureSet';
-import { identityOf } from '../data';
+import { identityOf, toCSV, toGeoJSON } from '../data';
+import { download } from './dom';
 import '../style/panel.css';
 const { useMemo, useState } = React
+
+/**
+ * Tabler, through perun-core rather than as a dependency of this package.
+ *
+ * perun-core already ships `@tabler/icons-react` and loads it as its own lazy
+ * chunk, so this costs no bundle weight and stays on whatever version the shell
+ * is serving. It renders nothing until that chunk arrives and nothing at all if
+ * it fails, so every button here keeps a text label beside the icon rather than
+ * relying on one.
+ */
+const { Icon } = elements
 
 /**
  * A geometry set, with a date window over it when the service takes one.
@@ -52,6 +64,13 @@ const { useMemo, useState } = React
  *                                resolve itself, because it never reads them.
  * @param {Object} [map]        - Passed to `AtlasMap`: `layerSwitcher`,
  *                                `zoomControl`, `zoomPosition`, `overrides`.
+ * @param {Object|boolean} [exportable] - Offer the set as a file. `true` for the
+ *                                defaults, or { geojson, csv, filename, fields }
+ *                                to choose the formats, name the file, or fix the
+ *                                CSV's columns. Left out, no export is offered:
+ *                                a screen showing a set and a screen handing it
+ *                                over are not the same permission, and that is
+ *                                the deployment's call rather than this file's.
  * @param {Object} [tokens]     - CSS custom properties for the panel's root:
  *                                '--ap-accent' and friends. This is how a screen
  *                                described entirely in configuration carries its
@@ -80,6 +99,7 @@ export const FeaturePanel = ({
   defaultMonths,
   labels = {},
   map,
+  exportable,
   tokens,
   title,
   className = '',
@@ -146,6 +166,29 @@ export const FeaturePanel = ({
     setSet(null)
   }
 
+  /**
+   * How this set is offered as a file, or nothing.
+   *
+   * `true` is shorthand for the defaults, so a menu row can turn it on without
+   * describing it. Only offered once a set has actually arrived and has
+   * something in it -- a button that writes an empty file is worse than no
+   * button, because it looks like the export worked.
+   */
+  const offer = exportable === true ? {} : (exportable || null)
+  const canExport = offer && set && (set.features?.length ?? 0) > 0
+
+  /**
+   * What the file is called.
+   *
+   * The range when there is one, the day when there is not, so two exports of
+   * the same screen do not land in a downloads folder as `features (3)`. The
+   * stem is the caller's, because this file has no idea what the set is.
+   */
+  const filename = [offer?.filename ?? 'features', timeScoped ? `${range.from}_${range.to}` : iso(new Date())].join('-')
+
+  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(set), 'application/geo+json')
+  const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, labelResolver }), 'text/csv;charset=utf-8')
+
   const empty = set !== null && (set.features?.length ?? 0) === 0
 
   /** Offering the longest range is only an offer while the range is shorter than it. */
@@ -206,6 +249,23 @@ export const FeaturePanel = ({
           </span>
           {labels.labels ?? 'Labels'}
         </button>
+
+        {canExport && (
+          <div className='atlas-panel__export'>
+            {offer.geojson !== false && (
+              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveGeoJSON}>
+                <Icon name='IconJson' size={16} stroke={1.75} aria-hidden='true' />
+                {labels.exportGeoJSON ?? 'GeoJSON'}
+              </button>
+            )}
+            {offer.csv !== false && (
+              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveCSV}>
+                <Icon name='IconFileTypeCsv' size={16} stroke={1.75} aria-hidden='true' />
+                {labels.exportCsv ?? 'CSV'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className='atlas-panel__mapwrap'>

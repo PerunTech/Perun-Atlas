@@ -47,3 +47,35 @@ export const applyStyle = (element, style) => {
  */
 export const asNode = (content) =>
   content instanceof Node ? content : document.createTextNode(String(content));
+
+/**
+ * A file, handed to the browser.
+ *
+ * An object URL and a synthetic click, which is the only way a page gives
+ * someone a file it built itself. The link is never in the document's layout:
+ * it is created, clicked and dropped.
+ *
+ * The revoke is deferred rather than immediate. Releasing the URL in the same
+ * turn as the click cancels the download in some browsers -- the click is
+ * queued, and by the time it is handled the URL it names is already gone.
+ *
+ * A BOM for CSV, because that is what tells a spreadsheet the file is UTF-8.
+ * Without it the usual default is a legacy code page, and every non-ASCII name
+ * in the export opens as mojibake. JSON needs no such help: its encoding is
+ * UTF-8 by specification and a BOM would only confuse a parser.
+ */
+export const download = (filename, content, type) => {
+  const bom = type.startsWith('text/csv') ? '﻿' : '';
+  const url = URL.createObjectURL(new Blob([bom, content], { type }));
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+};
