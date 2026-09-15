@@ -1,7 +1,8 @@
 import { React } from 'perun-core';
 import { core } from '../spatial';
 import { fetchGeometry } from '../data';
-import { colourBy, joinStatus, pathOptions } from '../style';
+import { colourBy, joinStatus, pathOptions, popupFor } from '../style';
+import { asNode, popupElement, POPUP_OPTIONS } from './popup';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
@@ -15,6 +16,11 @@ const { useEffect, useRef } = React;
  * rather than requiring a bespoke endpoint per screen.
  *
  * Refetches when the map stops moving, because the service is bbox-scoped.
+ *
+ * `descriptor.popup` — `{ title, fields: [{ label, field }] }` — puts the detail
+ * behind an area on a click, which is where a joined status belongs: the fill
+ * says which band an area is in, and the popup says what it actually is. Name a
+ * joined field the way the join wrote it, e.g. `status.AREA_HEALTH.AREA_STATUS`.
  */
 export const Choropleth = ({
   servicePath,
@@ -24,7 +30,8 @@ export const Choropleth = ({
   palette,
   descriptor,
   onFeatureClick,
-  tooltip
+  tooltip,
+  popup
 }) => {
   const layerRef = useRef(null);
   const requestRef = useRef(0);
@@ -60,7 +67,17 @@ export const Choropleth = ({
           style: (feature) => pathOptions(descriptor, { fillColor: fill(feature) }),
           onEachFeature: (feature, layer) => {
             const text = tooltip?.(feature);
-            if (text) layer.bindTooltip(text, { sticky: true });
+            // A text node, not the string: Leaflet applies string content
+            // with innerHTML, and this one comes from a record's field.
+            if (text) layer.bindTooltip(asNode(text), { sticky: true });
+
+            const supplied = popup?.(feature);
+            const rows = popup ? null : popupFor(descriptor, feature);
+            const content = supplied !== undefined && supplied !== null
+              ? asNode(supplied)
+              : (rows ? popupElement(rows) : null);
+            if (content) layer.bindPopup(content, POPUP_OPTIONS);
+
             if (onFeatureClick) layer.on('click', () => onFeatureClick(feature));
           }
         }).addTo(Map);

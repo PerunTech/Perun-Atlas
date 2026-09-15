@@ -62,3 +62,50 @@
 .atlas-date-range .form-group {
   margin-bottom: 0;
 }
+
+/*
+ * Popups.
+ *
+ * Leaflet supplies the frame — the wrapper, the tip, the close button — and these
+ * style only what sits inside it. A deployment that restyles .leaflet-popup keeps
+ * its own frame and keeps this layout, and one that wants neither overrides these
+ * single-class selectors from a stylesheet loaded later.
+ *
+ * A definition list rather than a table: these are label/value pairs about one
+ * feature, which is what a dl is, and it lets the grid line the values up without
+ * either column being measured against the other rows of a table that is not
+ * there.
+ */
+.atlas-popup {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #1f2a30;
+}
+
+.atlas-popup-title {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.atlas-popup-fields {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 14px;
+  margin: 0;
+}
+
+.atlas-popup-fields dt {
+  color: #5b6b73;
+  font-weight: 400;
+  /* The label is the narrow column, so it sets the grid's first track and should
+     not be the thing that wraps; the value has the room. */
+  white-space: nowrap;
+}
+
+.atlas-popup-fields dd {
+  margin: 0;
+  font-weight: 600;
+  /* Identifiers and codes have no spaces to break at, and a popup is narrow. */
+  overflow-wrap: anywhere;
+}

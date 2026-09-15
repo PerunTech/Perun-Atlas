@@ -1,7 +1,8 @@
 import { React } from 'perun-core';
 import { core } from '../spatial';
 import { descriptorOf, fetchGeometry } from '../data';
-import { labelFor, labelVisible, pathOptions } from '../style';
+import { labelFor, labelVisible, pathOptions, popupFor } from '../style';
+import { asNode, popupElement, POPUP_OPTIONS } from './popup';
 import '../style/features.css';
 
 const { Map, factory } = core;
@@ -54,12 +55,17 @@ const applyStyle = (element, style) => {
  *           since it has no stylesheet of its own to name
  *   label   { field, scale: { min, max }, className, style, direction, offset } —
  *           a permanent label, banded by zoom
+ *   popup   { title, fields: [{ label, field }] } — the detail behind the label,
+ *           opened on click; the label names the feature, this explains it
  *   arrow   { pixelSize, repeat, offset } — direction markers along a line
  *
  * @param {string} servicePath - Path with {token} placeholders.
  * @param {Object} context     - The values those placeholders resolve against.
  * @param {Object} descriptors - Descriptor name to the above. Caller-owned.
  * @param {Function} [descriptorFor] - Per-feature override; see `nameOf` below.
+ * @param {Function} [popup] - Per-feature popup content, replacing the descriptor's.
+ *        Return an element for rich content, a string for plain text, or nothing
+ *        for no popup. A returned string is rendered as text, never as markup.
  */
 export const FeatureSet = ({
   servicePath,
@@ -68,6 +74,7 @@ export const FeatureSet = ({
   descriptorFor,
   fit = true,
   tooltip,
+  popup,
   onFeatureClick,
   onLoad,
   onError
@@ -92,6 +99,22 @@ export const FeatureSet = ({
      * differently, or nothing to leave the producer's choice alone.
      */
     const nameOf = (feature) => descriptorFor?.(feature) ?? descriptorOf(feature);
+
+    /**
+     * A feature's popup content, or nothing.
+     *
+     * `popup` overrides the descriptor entirely rather than merging with it, the
+     * same way `descriptorFor` overrides the producer's choice: a caller that is
+     * building its own content has already decided what the bubble says.
+     */
+    const contentFor = (feature, descriptor) => {
+      if (popup) {
+        const supplied = popup(feature);
+        return supplied === undefined || supplied === null ? null : asNode(supplied);
+      }
+      const rows = popupFor(descriptor, feature);
+      return rows ? popupElement(rows) : null;
+    };
 
     /** Permanent labels are banded by zoom, so they follow the zoom rather than the fetch. */
     const syncLabels = () => {
@@ -152,7 +175,11 @@ export const FeatureSet = ({
 
               // Permanent, because a label of this kind names a feature rather
               // than explains it — a hover tooltip would hide the thing read.
-              layer.bindTooltip(text, {
+              //
+              // A text node, not the string. Leaflet applies string content with
+              // innerHTML, and `text` is a record's field — so a holding named
+              // with anything that parses as markup was parsed as markup.
+              layer.bindTooltip(asNode(text), {
                 permanent: true,
                 direction: descriptor.label?.direction ?? (point ? 'top' : 'center'),
                 offset: descriptor.label?.offset ?? (point ? [0, -clearance] : [0, 0]),
@@ -173,6 +200,12 @@ export const FeatureSet = ({
               if (descriptor.label?.scale) labelledRef.current.push({ layer, descriptor });
             }
 
+            const content = contentFor(feature, descriptor);
+            if (content) layer.bindPopup(content, POPUP_OPTIONS);
+
+            // Both, when both are given. A popup says what the feature is; the
+            // callback is how a screen reacts to it — selecting a row, opening
+            // the record — and a screen that wants only one supplies only one.
             if (onFeatureClick) layer.on('click', () => onFeatureClick(feature));
           }
         }).addTo(Map);
