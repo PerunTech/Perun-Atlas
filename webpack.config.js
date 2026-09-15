@@ -50,12 +50,12 @@ module.exports = (_, { mode }) => {
         {
           test: /\.css$/i,
           exclude: /\.module\.css$/i,
-          use: ['style-loader', 'css-loader']
+          use: [{ loader: 'style-loader', options: { insert: require.resolve('./build/style-insert.js') } }, 'css-loader']
         },
         {
           test: /\.module\.css$/i,
           use: [
-            'style-loader',
+            { loader: 'style-loader', options: { insert: require.resolve('./build/style-insert.js') } },
             { loader: 'css-loader', options: { modules: { localIdentName: '[name]-[local]' } } }
           ]
         },

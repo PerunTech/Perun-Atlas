@@ -1,0 +1,128 @@
+/*
+ * The panel's structure, and nothing about its look.
+ *
+ * `FeaturePanel` ships in this package, so the rules that make it a panel rather
+ * than a stack of divs have to ship with it: a deployment that serves no
+ * stylesheet of its own must still get a header, a toolbar, a map that fills the
+ * space left over, and an empty-state that sits on top of the map instead of
+ * below it.
+ *
+ * What it deliberately does not carry is the design -- colours, type, radii,
+ * shadows, spacing. That lives in the deployment's own `atlas-panel.css`, which
+ * is how the look of every map screen changes without releasing a bundle.
+ *
+ * For that to work the deployment's sheet has to win, and it does: `style-loader`
+ * is configured to insert this at the *top* of `<head>`, before the links the
+ * page adds for its own stylesheets. Appending -- its default -- would have put
+ * this last and made the package the final word on a look it should not have an
+ * opinion about. See the `insert` option in webpack.config.js.
+ *
+ * Everything stays scoped under `.atlas-panel`. The Leaflet container is a single
+ * instance borrowed from spatial and handed back, so a bare `.leaflet-container`
+ * rule here would follow it onto every other screen that draws a map.
+ */
+
+.atlas-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+}
+
+.atlas-panel__header,
+.atlas-panel__toolbar,
+.atlas-panel__footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+}
+
+.atlas-panel__toolbar {
+  align-items: flex-end;
+}
+
+.atlas-panel__title {
+  /* Takes the row and lets the close button keep its corner. `min-width: 0` so a
+     long title ellipsises inside the flex item rather than widening it. */
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.atlas-panel__summary {
+  flex: 1 1 auto;
+}
+
+.atlas-panel__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/*
+ * The map and anything drawn over it.
+ *
+ * `position: relative` is what the empty-state is absolutely positioned against,
+ * and `min-height: 0` is what stops a flex item from refusing to shrink below
+ * its content -- without it the map pushes the footer off the bottom.
+ */
+.atlas-panel__mapwrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 20rem;
+}
+
+.atlas-panel__map {
+  width: 100%;
+  height: 100%;
+}
+
+.atlas-panel__map .atlas-map {
+  width: 100%;
+  height: 100%;
+}
+
+.atlas-panel__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Above Leaflet's panes (400) and its controls (1000 is the shadow pane), so
+     the message is not drawn underneath the tiles it is explaining. */
+  z-index: 1001;
+  /* The map underneath stays usable: only the card takes pointer events. */
+  pointer-events: none;
+}
+
+.atlas-panel__emptycard {
+  pointer-events: auto;
+  max-width: 22rem;
+  padding: 16px 20px;
+  text-align: center;
+  background: #fff;
+}
+
+/*
+ * The labels switch, which is behaviour rather than decoration.
+ *
+ * The button is part of the component now, so the rule that makes it do
+ * something has to ship with it -- a deployment serving no stylesheet would
+ * otherwise get a control that toggles a class nothing reads.
+ *
+ * Hiding is the honest half of the switch: a label is opened and closed by its
+ * zoom band, and CSS can take one off the screen but cannot put one on the
+ * screen that Leaflet has not opened. So this hides what is showing, and the
+ * band still decides what shows.
+ */
+.atlas-panel--nolabels .atlas-label {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .atlas-panel__toolbar,
+  .atlas-panel__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
