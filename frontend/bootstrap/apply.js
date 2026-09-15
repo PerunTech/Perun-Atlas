@@ -5,11 +5,11 @@ const { Map, factory, store } = core;
 /**
  * Hands the resolved configuration to the engine.
  *
- * spatial 4.2.1 replaced its `window.sys*` globals with `config.configure()`, so
- * a deployment's parameters can reach the engine as values rather than as script
- * tags a human keeps in step. perun-atlas already resolves those parameters from
- * SVAROG_SYS_PARAMS, which makes it the natural caller: the database becomes the
- * single source and `index.html` stops carrying configuration.
+ * spatial replaced its `window.sys*` globals with `config.configure()`, and in
+ * 5.0 removed them, so a deployment's parameters reach the engine as values
+ * rather than as script tags a human keeps in step. perun-atlas already resolves
+ * those parameters from SVAROG_SYS_PARAMS, which makes it the natural caller:
+ * the database is the single source and `index.html` carries no configuration.
  *
  * The two projects name these things differently, and deliberately so — `units`
  * and `bboxOrder` read better in a schema than `measurementSystem` and
@@ -17,26 +17,30 @@ const { Map, factory, store } = core;
  * renaming either side.
  */
 const TO_ENGINE = {
+  crs: 'crs',
   center: 'center',
   bounds: 'bounds',
+  zoom: 'zoom',
+  minZoom: 'minZoom',
+  maxZoom: 'maxZoom',
   units: 'measurementSystem',
   bboxOrder: 'switchBboxOrder'
 };
 
 /**
- * Warns when the deployment's declared CRS is not the one the map was built with.
+ * Warns when the engine did not end up on the CRS this deployment declared.
  *
- * `crs` is the one setting `configure()` cannot deliver: spatial constructs its
- * map as its bundle evaluates, and Leaflet fixes a map's CRS at construction, so
- * the value has to be on the page before any of this runs. Rather than write a
- * setting that would not take effect — and leave `settings()` describing a map
- * that does not exist — say plainly that the two disagree.
+ * Until spatial 5.0 this was the common case rather than a fault: a map's CRS
+ * was fixed when the bundle evaluated, so it came from a `window.sysCrs` on the
+ * page and SPATIAL_CRS could not reach it. A deployment that set the parameter
+ * and not the global ran on spatial's own default, asked its basemap for tiles
+ * far outside the Web Mercator grid, and got back nothing but HTTP 400.
  *
- * This is the check that turns a whole class of silent failure into one line:
- * XYZ basemaps only exist on the Web Mercator tile grid, so a map built with a
- * national projection requests tiles far outside it and every one comes back 400.
+ * `configure({ crs })` now applies, so this is a check rather than a warning
+ * about a known limitation — it should only fire if the code is one spatial
+ * cannot resolve, and it names the code so that is obvious.
  */
-const checkCrs = (declared) => {
+const verifyCrs = (declared) => {
   if (!declared) return;
 
   const actual = Map.getCRS?.()?.code;
@@ -44,10 +48,10 @@ const checkCrs = (declared) => {
   if (!actual || !wanted || actual === wanted) return;
 
   console.warn(
-    `perun-atlas: this deployment declares ${wanted}, but the map was built with ${actual}. ` +
-    'A map\'s CRS is fixed when spatial loads, so it comes from the page, not from ' +
-    'SVAROG_SYS_PARAMS — set window.sysCrs in index.html to match, or expect tile ' +
-    'requests outside the grid your basemaps are published on.'
+    `perun-atlas: this deployment declares ${wanted}, but the map is on ${actual}. ` +
+    'The engine could not resolve the declared value — as a plain code it must be ' +
+    'EPSG:3857, EPSG:3395 or EPSG:4326, and any other projection needs a proj4 ' +
+    'definition. Basemap tiles will be requested outside the grid they are published on.'
   );
 };
 
@@ -107,8 +111,12 @@ export const applyToEngine = (config = {}) => {
     if (config[ours] !== undefined) settings[theirs] = config[ours];
   });
 
-  checkCrs(config.crs);
+  const applied = engine.configure(settings);
+
+  // Both checks read the map's CRS, so both have to run after the engine has
+  // been given the chance to change it.
+  verifyCrs(config.crs);
   applyDataCrs(config.dataSrid);
 
-  return engine.configure(settings);
+  return applied;
 };
