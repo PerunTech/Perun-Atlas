@@ -21,7 +21,8 @@ const { useEffect, useRef } = React;
  * `descriptor.popup` — `{ title, fields: [{ label, field }] }` — puts the detail
  * behind an area on a click, which is where a joined status belongs: the fill
  * says which band an area is in, and the popup says what it actually is. Name a
- * joined field the way the join wrote it, e.g. `status.AREA_HEALTH.AREA_STATUS`.
+ * joined field the way `joinStatus` wrote it — under its `as` key, so
+ * `status.<column>` unless the caller renamed it.
  *
  * `labelResolver` turns those field labels into display text, for descriptors
  * that arrive from configuration carrying label codes rather than words, and the
