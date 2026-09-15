@@ -109,6 +109,7 @@ export const FeaturePanel = ({
   const [preset, setPreset] = useState(initial)
   const [range, setRange] = useState(() => rangeOf(initial))
   const [set, setSet] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [labelled, setLabelled] = useState(true)
 
   /**
@@ -189,7 +190,10 @@ export const FeaturePanel = ({
   const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(set), 'application/geo+json')
   const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, labelResolver }), 'text/csv;charset=utf-8')
 
-  const empty = set !== null && (set.features?.length ?? 0) === 0
+  // Not while a fetch is out: an empty set from the previous range is not news
+  // about the one being fetched, and the two messages would flicker past each
+  // other on every change.
+  const empty = !loading && set !== null && (set.features?.length ?? 0) === 0
 
   /** Offering the longest range is only an offer while the range is shorter than it. */
   const longest = presets[presets.length - 1]
@@ -279,11 +283,21 @@ export const FeaturePanel = ({
               descriptors={descriptors}
               descriptorFor={descriptorFor}
               labelResolver={labelResolver}
-              onLoad={(collection) => setSet(collection ?? { features: [] })}
-              onError={() => setSet({ features: [] })}
+              onLoadStart={() => setLoading(true)}
+              onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
+              onError={() => { setSet({ features: [] }); setLoading(false) }}
             />
           </AtlasMap>
         </div>
+
+        {loading && (
+          <div className='atlas-panel__loading' role='status' aria-live='polite'>
+            <div className='atlas-panel__loadingcard'>
+              <div className='atlas-panel__spinner' aria-hidden='true' />
+              <span>{labels.loading ?? 'Loading\u2026'}</span>
+            </div>
+          </div>
+        )}
 
         {empty && (
           <div className='atlas-panel__empty'>

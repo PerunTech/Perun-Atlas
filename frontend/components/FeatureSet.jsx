@@ -43,6 +43,10 @@ const { useEffect, useRef } = React;
  * @param {Function} [labelResolver] - Turns a popup field's label into display
  *        text, for descriptors that arrive from configuration carrying label
  *        codes. Left out, a label is shown as written.
+ * @param {Function} [onLoadStart] - Called as a fetch begins, before the request
+ *        goes out. Paired with `onLoad` and `onError`, which end it -- a caller
+ *        showing progress needs the edge, not just the result, because the
+ *        interesting half of a slow request is the part before it answers.
  * @param {Function} [popup] - Per-feature popup content, replacing the descriptor's.
  *        Return an element for rich content, a string for plain text, or nothing
  *        for no popup. A returned string is rendered as text, never as markup.
@@ -57,6 +61,7 @@ export const FeatureSet = ({
   popup,
   labelResolver,
   onFeatureClick,
+  onLoadStart,
   onLoad,
   onError
 }) => {
@@ -116,6 +121,7 @@ export const FeatureSet = ({
 
     const draw = async () => {
       try {
+        onLoadStart?.();
         const collection = await fetchGeometry(servicePath, context);
         if (cancelled) return;
 
