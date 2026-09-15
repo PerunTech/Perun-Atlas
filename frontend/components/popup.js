@@ -1,38 +1,49 @@
+import { applyStyle } from './dom';
+
 /**
  * Turning popup rows into elements.
  *
  * The split is deliberate: `popupFor` in `style/` decides *what* a popup says and
- * is plain data with no DOM in it, and this decides how that is built. Both
- * FeatureSet and Choropleth draw popups, so this is here rather than in either.
+ * is plain data with no DOM in it, and this decides how that is built and how it
+ * looks. Both FeatureSet and Choropleth draw popups, so this is here rather than
+ * in either.
  *
- * Why elements and not a string of markup. Every value in a popup is a record's
- * field — a holding's name, an area's status, whatever the descriptor names — and
- * Leaflet applies string content with `innerHTML`:
- *
- *     if (typeof content === 'string') { node.innerHTML = content; }
- *     else { ...; node.appendChild(content); }          // DivOverlay._updateContent
- *
- * So a string of markup makes every one of those fields an injection point, and
- * an element makes none of them one. `textContent` never parses, and an element
- * handed to Leaflet is appended rather than parsed.
- *
- * This is the same reasoning `applyStyle` in FeatureSet already applies to a
- * descriptor's inline styles, one layer out.
+ * Content is built as elements and never as a string of markup. See `asNode` in
+ * `dom.js` for why that is load-bearing rather than tidy.
  */
 
 /**
  * A popup's content element.
  *
+ * The styling keys mirror `marker` and `label`, for the same reason those have
+ * them: a screen described entirely in a menu table has no stylesheet to name,
+ * so its descriptor carries the declarations. Without these a configured screen
+ * could style its markers and its labels and then get the package's default
+ * bubble between them.
+ *
+ * Applied as the element is built rather than on `popupopen`, which is what a
+ * label has to do. A label's pill belongs to Leaflet and is rebuilt every time
+ * it opens; this element is ours, and Leaflet only appends it.
+ *
  * @param {{ title: string|null, rows: Array<{label: string, value: string}> }} content
+ * @param {Object} [spec] - The descriptor's `popup` entry:
+ *        `className`  added to the content root, for a screen that does have a
+ *                     stylesheet;
+ *        `style`      the content root;
+ *        `titleStyle` the title line;
+ *        `labelStyle` each field's name;
+ *        `valueStyle` each field's value.
  */
-export const popupElement = ({ title, rows }) => {
+export const popupElement = ({ title, rows }, spec = {}) => {
   const root = document.createElement('div');
-  root.className = 'atlas-popup';
+  root.className = ['atlas-popup', spec.className].filter(Boolean).join(' ');
+  applyStyle(root, spec.style);
 
   if (title) {
     const heading = document.createElement('p');
     heading.className = 'atlas-popup-title';
     heading.textContent = title;
+    applyStyle(heading, spec.titleStyle);
     root.appendChild(heading);
   }
 
@@ -42,8 +53,12 @@ export const popupElement = ({ title, rows }) => {
     rows.forEach(({ label, value }) => {
       const term = document.createElement('dt');
       term.textContent = label;
+      applyStyle(term, spec.labelStyle);
+
       const detail = document.createElement('dd');
       detail.textContent = value;
+      applyStyle(detail, spec.valueStyle);
+
       fields.append(term, detail);
     });
     root.appendChild(fields);
@@ -51,18 +66,6 @@ export const popupElement = ({ title, rows }) => {
 
   return root;
 };
-
-/**
- * Content a caller supplied, kept out of the parser.
- *
- * A caller that returns an element gets it used as it is — that is how rich
- * content is built, and building it is one `createElement` away. A caller that
- * returns a string gets a text node, because that string is almost always a
- * record's field, and handing a record's field to an HTML parser is the one thing
- * this package should never do on a caller's behalf.
- */
-export const asNode = (content) =>
-  content instanceof Node ? content : document.createTextNode(String(content));
 
 /**
  * What Leaflet is told about the bubble itself.

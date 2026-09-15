@@ -2,36 +2,12 @@ import { React } from 'perun-core';
 import { core } from '../spatial';
 import { descriptorOf, fetchGeometry } from '../data';
 import { labelFor, labelVisible, pathOptions, popupFor } from '../style';
-import { asNode, popupElement, POPUP_OPTIONS } from './popup';
+import { applyStyle, asNode } from './dom';
+import { popupElement, POPUP_OPTIONS } from './popup';
 import '../style/features.css';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
-
-/**
- * A descriptor's own styling, applied to the element Leaflet built.
- *
- * A marker and a label are Leaflet's elements rather than this component's, so a
- * descriptor that wants a colour has two ways to ask for one: name a class the
- * consumer's stylesheet defines, or carry the declarations itself. The second is
- * what lets a whole descriptor live in configuration — a screen described in a
- * menu table has no stylesheet to name, and shipping one for it would put the
- * look back into code.
- *
- * Assigned onto the element's style object rather than written into markup: the
- * values arrive from configuration, and a property assignment cannot inject
- * anything, while an html string could. Keys are camelCase, as the CSSOM spells
- * them ('borderRadius'), and custom properties are set by name. A declaration
- * the browser rejects is dropped, which is what an unknown property in a
- * stylesheet does too.
- */
-const applyStyle = (element, style) => {
-  if (!element || !style) return;
-  Object.entries(style).forEach(([property, value]) => {
-    if (property.startsWith('--')) element.style.setProperty(property, value);
-    else element.style[property] = value;
-  });
-};
 
 /**
  * A geometry set, fetched once and drawn per descriptor.
@@ -55,8 +31,9 @@ const applyStyle = (element, style) => {
  *           since it has no stylesheet of its own to name
  *   label   { field, scale: { min, max }, className, style, direction, offset } —
  *           a permanent label, banded by zoom
- *   popup   { title, fields: [{ label, field }] } — the detail behind the label,
- *           opened on click; the label names the feature, this explains it
+ *   popup   { title, fields: [{ label, field }], className, style, titleStyle,
+ *           labelStyle, valueStyle } — the detail behind the label, opened on
+ *           click; the label names the feature, this explains it
  *   arrow   { pixelSize, repeat, offset } — direction markers along a line
  *
  * @param {string} servicePath - Path with {token} placeholders.
@@ -117,7 +94,7 @@ export const FeatureSet = ({
         return supplied === undefined || supplied === null ? null : asNode(supplied);
       }
       const rows = popupFor(descriptor, feature, labelResolver);
-      return rows ? popupElement(rows) : null;
+      return rows ? popupElement(rows, descriptor?.popup) : null;
     };
 
     /** Permanent labels are banded by zoom, so they follow the zoom rather than the fetch. */

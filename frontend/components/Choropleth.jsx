@@ -2,7 +2,8 @@ import { React } from 'perun-core';
 import { core } from '../spatial';
 import { fetchGeometry } from '../data';
 import { colourBy, joinStatus, pathOptions, popupFor } from '../style';
-import { asNode, popupElement, POPUP_OPTIONS } from './popup';
+import { asNode } from './dom';
+import { popupElement, POPUP_OPTIONS } from './popup';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
@@ -23,7 +24,9 @@ const { useEffect, useRef } = React;
  * joined field the way the join wrote it, e.g. `status.AREA_HEALTH.AREA_STATUS`.
  *
  * `labelResolver` turns those field labels into display text, for descriptors
- * that arrive from configuration carrying label codes rather than words.
+ * that arrive from configuration carrying label codes rather than words, and the
+ * popup's `style`, `titleStyle`, `labelStyle` and `valueStyle` carry its look the
+ * way `marker` and `label` carry theirs elsewhere.
  */
 export const Choropleth = ({
   servicePath,
@@ -79,7 +82,7 @@ export const Choropleth = ({
             const rows = popup ? null : popupFor(descriptor, feature, labelResolver);
             const content = supplied !== undefined && supplied !== null
               ? asNode(supplied)
-              : (rows ? popupElement(rows) : null);
+              : (rows ? popupElement(rows, descriptor?.popup) : null);
             if (content) layer.bindPopup(content, POPUP_OPTIONS);
 
             if (onFeatureClick) layer.on('click', () => onFeatureClick(feature));
