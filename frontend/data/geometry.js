@@ -29,6 +29,28 @@ export const bindPath = (path, context) =>
   });
 
 /**
+ * What came back, as the decoder saw it.
+ *
+ * Always, with no switch to find. The people who need this are debugging an
+ * encoder against a deployed environment, and a flag they have to be told about
+ * is a flag that is off at the moment it would have explained something.
+ *
+ * Collapsed, because a bbox-scoped screen refetches on every `moveend` and an
+ * expanded entry per pan would bury everything else in the console. The
+ * collection is logged as a live object rather than a string so it can be
+ * expanded, and the newest is left on `window` so devtools' `copy()` takes it
+ * whole -- usually the quickest way to compare what arrived against what the
+ * encoder meant to send.
+ */
+const logCollection = (url, bytes, collection) => {
+  window.PERUN_ATLAS_LAST = collection;
+  console.groupCollapsed(`perun-atlas: ${collection.features.length} feature(s), ${bytes} bytes — ${url}`);
+  console.log('collection', collection);
+  console.log('also at window.PERUN_ATLAS_LAST');
+  console.groupEnd();
+};
+
+/**
  * Fetches a geometry set and decodes it.
  *
  * @param {string} servicePath - Path with optional {token} placeholders, from configuration.
@@ -40,8 +62,12 @@ export const fetchGeometry = async (servicePath, context = {}) => {
 
   const response = await axios({ method: 'get', url, responseType: 'arraybuffer' });
 
-  if (!response?.data || response.data.byteLength === 0) {
-    return { type: 'FeatureCollection', features: [] };
+  const bytes = response?.data?.byteLength ?? 0;
+
+  if (!response?.data || bytes === 0) {
+    const empty = { type: 'FeatureCollection', features: [] };
+    logCollection(url, bytes, empty);
+    return empty;
   }
 
   // A failed service writes a plain-text error into the stream rather than a
@@ -49,12 +75,25 @@ export const fetchGeometry = async (servicePath, context = {}) => {
   const decoded = geobuf.decode(new Pbf(new Uint8Array(response.data)));
 
   if (!decoded || !decoded.type) {
-    return { type: 'FeatureCollection', features: [] };
+    // A body that decodes to something without a `type` is the shape a service
+    // takes when it has written a plain-text error into the stream, and returning
+    // an empty set for that looks exactly like a query that legitimately matched
+    // nothing. The body is printed because that is where the message actually is.
+    console.warn(`perun-atlas: response from ${url} decoded to no GeoJSON type; treating as empty`);
+    console.warn('perun-atlas: response body was', new TextDecoder().decode(response.data).slice(0, 500));
+
+    const empty = { type: 'FeatureCollection', features: [] };
+    logCollection(url, bytes, empty);
+    return empty;
   }
 
-  return decoded.type === 'FeatureCollection'
+  const collection = decoded.type === 'FeatureCollection'
     ? decoded
     : { type: 'FeatureCollection', features: [decoded] };
+
+  logCollection(url, bytes, collection);
+
+  return collection;
 };
 
 /** Reads the svarog type descriptor a feature was encoded with. */

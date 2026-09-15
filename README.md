@@ -40,6 +40,35 @@ Loaded by the shell as an `IPerunPlugin` script. Its `sortOrder` (4) must stay
 above `spatial`'s (3): this bundle resolves the `spatial` global as its own script
 evaluates, so spatial has to load first.
 
+## Reading a response
+
+Every fetch logs what came back, on every environment, with nothing to switch on.
+Each entry is a collapsed group in the console carrying the URL, the byte count,
+the feature count and the decoded FeatureCollection as a live object:
+
+```
+perun-atlas: 42 feature(s), 8310 bytes — https://.../Ws.../get/...
+```
+
+The newest collection also stays at `window.PERUN_ATLAS_LAST`, so devtools'
+`copy(PERUN_ATLAS_LAST)` puts the whole thing on the clipboard — usually the
+quickest way to compare what arrived against what the encoder meant to send.
+
+There is deliberately no flag. The people this serves are debugging an encoder
+against a deployed environment, and a switch they have to be told about is a
+switch that is off at the moment it would have explained something. Two
+consequences worth knowing:
+
+- a bbox-scoped screen refetches on every `moveend`, so panning produces an entry
+  per pan — collapsed, but present;
+- `PERUN_ATLAS_LAST` holds a reference to the newest collection, so that one set
+  is not collected while the page lives.
+
+A body that decodes to no GeoJSON `type` warns and prints the body. That is the
+shape a service takes when it has written a plain-text error into the stream
+instead of a protobuf body, it would otherwise be indistinguishable from a query
+that legitimately matched nothing, and the body is where the message is.
+
 ## Known constraint
 
 `spatial` constructs one Leaflet map when its script evaluates, so `AtlasMap`
