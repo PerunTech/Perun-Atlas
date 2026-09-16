@@ -130,6 +130,12 @@
 .atlas-panel__detailsbody {
   margin: 0;
   padding: 0 16px 16px;
+  /* Takes the space the heading leaves, and `min-height: 0` is what lets it:
+     without it a flex item will not shrink below its content, so a long record
+     would push past the pane and be clipped by the `overflow: hidden` above
+     rather than scrolling inside it. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   /* A record scrolled to its end should not then scroll the page behind it. */
   overscroll-behavior: contain;
