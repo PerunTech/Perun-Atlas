@@ -63,7 +63,8 @@ const { Icon } = elements
  *                                part of the configuration this panel does not
  *                                resolve itself, because it never reads them.
  * @param {Object} [map]        - Passed to `AtlasMap`: `layerSwitcher`,
- *                                `zoomControl`, `zoomPosition`, `overrides`.
+ *                                `zoomControl`, `zoomPosition`, `coordinates`,
+ *                                `coordinatesPosition`, `overrides`.
  * @param {Object|boolean} [exportable] - Offer the set as a file. Left out, it is
  *                                offered with the defaults; `false` withholds
  *                                the buttons; { geojson, csv, filename, fields,

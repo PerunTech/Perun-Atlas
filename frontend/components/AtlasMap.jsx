@@ -1,10 +1,10 @@
 import { React } from 'perun-core';
-import { core, data } from '../spatial';
+import { core, data, ui } from '../spatial';
 import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
 import '../style/controls.css';
 
-const { Map, factory } = core;
+const { Map, control, factory } = core;
 const { layerControl } = data;
 const { useEffect, useRef, useState } = React;
 
@@ -18,7 +18,10 @@ const { useEffect, useRef, useState } = React;
  * switched off, because its toolbar supplies them and this component does not
  * mount that toolbar. Both are added here instead — zoom on by default and
  * positionable with `zoomControl` / `zoomPosition`, attribution always, since a
- * tile provider's terms are not an option a screen gets to decline.
+ * tile provider's terms are not an option a screen gets to decline, and a
+ * coordinate readout, on by default and positionable the same way -- it quotes
+ * the pointer's position in whichever system the reader picks, which is how a
+ * feature is checked against the GPS fields in its own record.
  *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
@@ -61,6 +64,8 @@ export const AtlasMap = ({
   layerSwitcher = false,
   zoomControl = true,
   zoomPosition = 'topleft',
+  coordinates = true,
+  coordinatesPosition = 'bottomleft',
   className = 'atlas-map',
   style,
   onReady,
@@ -70,6 +75,7 @@ export const AtlasMap = ({
   const containerRef = useRef(null);
   const switcherRef = useRef(null);
   const zoomRef = useRef(null);
+  const coordinatesRef = useRef(null);
   const attributionRef = useRef(null);
   const adoptedStyleRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -138,6 +144,24 @@ export const AtlasMap = ({
         attributionRef.current = factory.control.attribution({ prefix: false }).addTo(Map);
         if (config.attribution) attributionRef.current.addAttribution(config.attribution);
 
+        // Where the pointer is, quoted in a system the reader chooses -- which is
+        // not the system the map is projected in, and deliberately so: the map's
+        // is the deployment's decision, and changing it invalidates every tile,
+        // while changing what a position is quoted in costs one conversion.
+        //
+        // Mounted through spatial's `control`, which renders a React component
+        // into a Leaflet control rather than a factory returning a layer.
+        //
+        // Checked for rather than assumed: this bundle and the engine are
+        // deployed separately, and an environment still serving an older
+        // spatial has no such export -- which would otherwise take the whole
+        // map down at the moment the control was added.
+        if (coordinates && ui.CoordinatesControl) {
+          coordinatesRef.current = control(ui.CoordinatesControl, {}, { position: coordinatesPosition });
+        } else if (coordinates) {
+          console.warn('perun-atlas: the engine on this environment has no coordinate readout; skipping it.');
+        }
+
         // Layers take the deployment's ceiling rather than a constant, so a
         // basemap stops where the map does.
         const { basemap, overlays } = await fetchLayers(session, { maxZoom: config.maxZoom });
@@ -171,7 +195,7 @@ export const AtlasMap = ({
       mounted = false;
       // Controls are not layers, so `clearLayers` never sees them and the map
       // outlives this component. Each one that was added has to come off.
-      [switcherRef, zoomRef, attributionRef].forEach(ref => {
+      [switcherRef, zoomRef, coordinatesRef, attributionRef].forEach(ref => {
         if (ref.current) {
           ref.current.remove();
           ref.current = null;
