@@ -66,9 +66,10 @@ const { Icon } = elements
  *                                `zoomControl`, `zoomPosition`, `overrides`.
  * @param {Object|boolean} [exportable] - Offer the set as a file. Left out, it is
  *                                offered with the defaults; `false` withholds
- *                                the buttons; { geojson, csv, filename, fields }
- *                                chooses the formats, names the file, or fixes
- *                                the CSV's columns.
+ *                                the buttons; { geojson, csv, filename, fields,
+ *                                exclude } chooses the formats, names the file,
+ *                                fixes the CSV's columns, or drops the ones
+ *                                nobody reads.
  * A feature whose descriptor declares `details` opens a pane beside the map
  * carrying its whole record. The pane is here rather than in a popup because a
  * service that returns fifteen columns has already decided the answer is long,
@@ -216,7 +217,7 @@ export const FeaturePanel = ({
   const filename = [offer?.filename ?? 'features', timeScoped ? `${range.from}_${range.to}` : iso(new Date())].join('-')
 
   const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(set), 'application/geo+json')
-  const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, labelResolver }), 'text/csv;charset=utf-8')
+  const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
 
   // Not while a fetch is out: an empty set from the previous range is not news
   // about the one being fetched, and the two messages would flicker past each
