@@ -1,13 +1,24 @@
 import { React } from 'perun-core';
 import { core } from '../spatial';
 import { descriptorOf, fetchGeometry } from '../data';
-import { labelFor, labelVisible, pathOptions, popupFor } from '../style';
+import { labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../style';
 import { applyStyle, asNode } from './dom';
 import { popupElement, POPUP_OPTIONS } from './popup';
 import '../style/features.css';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
+
+/**
+ * A path's points, end to end reversed.
+ *
+ * Nested arrays are a line in several parts: each part is reversed and so is
+ * their order, so the whole path still reads from one end through to the other.
+ */
+const reversed = (points) =>
+  Array.isArray(points?.[0])
+    ? points.map(reversed).reverse()
+    : [...(points ?? [])].reverse();
 
 /**
  * A geometry set, fetched once and drawn per descriptor.
@@ -34,7 +45,10 @@ const { useEffect, useRef } = React;
  *   popup   { title, fields: [{ label, field }], className, style, titleStyle,
  *           labelStyle, valueStyle } — the detail behind the label, opened on
  *           click; the label names the feature, this explains it
- *   arrow   { pixelSize, repeat, offset } — direction markers along a line
+ *   arrow   { pixelSize, repeat, offset, reverse } — direction markers along a
+ *           line; `reverse` turns the heads back the way the path came
+ *   variants { by, cases } — one column splitting the kind in two, each case
+ *           merged over everything above it. See `variantOf`
  *
  * @param {string} servicePath - Path with {token} placeholders.
  * @param {Object} context     - The values those placeholders resolve against.
@@ -87,6 +101,16 @@ export const FeatureSet = ({
     const nameOf = (feature) => descriptorFor?.(feature) ?? descriptorOf(feature);
 
     /**
+     * The descriptor a feature is drawn with, its variant already merged in.
+     *
+     * Every read of a descriptor goes through here rather than indexing the map
+     * directly, so a variant reaches the marker, the label, the popup and the
+     * arrow alike -- a colour that applied to the line but not to its arrow
+     * heads would be the obvious way to get this half right.
+     */
+    const entryFor = (feature) => variantOf(descriptors[nameOf(feature)], feature);
+
+    /**
      * A feature's popup content, or nothing.
      *
      * `popup` overrides the descriptor entirely rather than merging with it, the
@@ -131,7 +155,7 @@ export const FeatureSet = ({
           // spatial draws its markers as styled divs, so the look is a class, a
           // style, or both — see `applyStyle`.
           pointToLayer: (feature, latlng) => {
-            const { marker = {} } = descriptors[nameOf(feature)] ?? {};
+            const { marker = {} } = entryFor(feature) ?? {};
             const size = marker.size ?? 24;
             const point = factory.marker(latlng, {
               icon: factory.divIcon({
@@ -146,10 +170,10 @@ export const FeatureSet = ({
             return point;
           },
 
-          style: (feature) => pathOptions(descriptors[nameOf(feature)]),
+          style: (feature) => pathOptions(entryFor(feature)),
 
           onEachFeature: (feature, layer) => {
-            const descriptor = descriptors[nameOf(feature)] ?? {};
+            const descriptor = entryFor(feature) ?? {};
 
             const text = tooltip ? tooltip(feature) : labelFor(descriptor, feature);
             if (text) {
@@ -202,10 +226,20 @@ export const FeatureSet = ({
         // Direction, drawn on the lines themselves. Decorators are separate
         // layers, so they join the same group and are removed with it.
         group.eachLayer((layer) => {
-          const arrow = descriptors[nameOf(layer.feature)]?.arrow;
+          const arrow = entryFor(layer.feature)?.arrow;
           if (!arrow || typeof layer.getLatLngs !== 'function') return;
 
-          factory.polylineDecorator(layer, {
+          // Which way a head points is the order of the points, and
+          // `Symbol.arrowHead` has no option to turn one around -- so an arrow
+          // that has to point back is drawn on a reversed copy of the path
+          // rather than on the layer.
+          //
+          // Which end that is belongs to the producer: a set of these paths is
+          // emitted from the record the screen is about outwards, so a plain
+          // arrow points away from it and a reversed one points at it.
+          const path = arrow.reverse ? reversed(layer.getLatLngs()) : layer;
+
+          factory.polylineDecorator(path, {
             patterns: [{
               offset: arrow.offset ?? '12%',
               repeat: arrow.repeat ?? 160,

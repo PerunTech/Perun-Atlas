@@ -29,6 +29,65 @@ export const pathOptions = (descriptor = {}, overrides = {}) => ({
 });
 
 /**
+ * Two blocks of a descriptor, merged -- and undefined when neither exists.
+ *
+ * The undefined is the point. Several of these keys are read as "is this
+ * configured at all", so an empty object answers yes: a descriptor with no
+ * `arrow` that merged into `{}` would put arrow heads on every line in the set.
+ */
+const merged = (base, over) => (base || over ? { ...base, ...over } : undefined);
+
+/**
+ * A descriptor, with the variant for this feature merged over it.
+ *
+ * A descriptor describes a kind of feature, and that is usually the whole
+ * story. Sometimes one column splits a kind in two -- the same line, but
+ * arriving rather than leaving -- and that distinction is a property of the
+ * data rather than a second kind of thing:
+ *
+ *     "variants": {
+ *       "by": "SOME_COLUMN",
+ *       "cases": {
+ *         "SOME_VALUE":  { "style": { "color": "#1565c0" }, "arrow": { "reverse": true } },
+ *         "OTHER_VALUE": { "style": { "color": "#e65100" } }
+ *       }
+ *     }
+ *
+ * The column and its values belong to whoever produces the set, so both are
+ * named in configuration and neither appears here -- the same reason the
+ * descriptors themselves are configuration.
+ *
+ * Merged one level down rather than replacing, so a case states only what
+ * differs: a colour, without restating the weight, the line caps and the arrow
+ * spacing that both cases share. The alternative -- two complete descriptors
+ * and a `descriptorFor` to pick between them -- puts code back in the consumer,
+ * which is what this package spent a round removing.
+ *
+ * A value with no case, a column the feature does not carry, or no `variants`
+ * at all: the descriptor is returned as written.
+ *
+ * @param {Object} descriptor - The descriptor entry for this feature's type.
+ * @param {Object} feature    - The GeoJSON feature.
+ */
+export const variantOf = (descriptor, feature) => {
+  const spec = descriptor?.variants;
+  if (!spec?.by) return descriptor;
+
+  const variant = spec.cases?.[feature?.properties?.[spec.by]];
+  if (!variant) return descriptor;
+
+  return {
+    ...descriptor,
+    ...variant,
+    style: merged(descriptor.style, variant.style),
+    marker: merged(descriptor.marker, variant.marker),
+    label: merged(descriptor.label, variant.label),
+    popup: merged(descriptor.popup, variant.popup),
+    arrow: merged(descriptor.arrow, variant.arrow)
+  };
+};
+
+/**
  * Whether a feature's label should render at the current zoom.
  *
  * The legacy module expressed this as a `label_scale` band per descriptor and
