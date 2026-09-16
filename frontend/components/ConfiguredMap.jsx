@@ -40,10 +40,10 @@ const { useMemo } = React;
  *                 so a new one needs a menu row and no code here
  *   title         a label code for the heading, when the caller passes no title
  *   map           { layerSwitcher, zoomControl, zoomPosition }, passed to AtlasMap
- *   export        true, or { geojson, csv, filename, fields }, to offer the set
- *                 as a file. Absent means no export is offered -- showing a set
- *                 and handing it over are not the same permission, so it is the
- *                 deployment that decides, in the menu row
+ *   export        false to withhold the file buttons, or { geojson, csv,
+ *                 filename, fields } to choose the formats, name the file, or
+ *                 fix the CSV's columns. Absent means the set is offered as a
+ *                 file with the defaults
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit

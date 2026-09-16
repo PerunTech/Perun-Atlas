@@ -64,13 +64,11 @@ const { Icon } = elements
  *                                resolve itself, because it never reads them.
  * @param {Object} [map]        - Passed to `AtlasMap`: `layerSwitcher`,
  *                                `zoomControl`, `zoomPosition`, `overrides`.
- * @param {Object|boolean} [exportable] - Offer the set as a file. `true` for the
- *                                defaults, or { geojson, csv, filename, fields }
- *                                to choose the formats, name the file, or fix the
- *                                CSV's columns. Left out, no export is offered:
- *                                a screen showing a set and a screen handing it
- *                                over are not the same permission, and that is
- *                                the deployment's call rather than this file's.
+ * @param {Object|boolean} [exportable] - Offer the set as a file. Left out, it is
+ *                                offered with the defaults; `false` withholds
+ *                                the buttons; { geojson, csv, filename, fields }
+ *                                chooses the formats, names the file, or fixes
+ *                                the CSV's columns.
  * A feature whose descriptor declares `details` opens a pane beside the map
  * carrying its whole record. The pane is here rather than in a popup because a
  * service that returns fifteen columns has already decided the answer is long,
@@ -195,12 +193,17 @@ export const FeaturePanel = ({
   /**
    * How this set is offered as a file, or nothing.
    *
-   * `true` is shorthand for the defaults, so a menu row can turn it on without
-   * describing it. Only offered once a set has actually arrived and has
-   * something in it -- a button that writes an empty file is worse than no
-   * button, because it looks like the export worked.
+   * On unless a menu row says otherwise. The set is already on screen and
+   * already in the browser -- `PERUN_ATLAS_LAST` holds the whole response --
+   * so withholding the buttons withholds the convenience rather than the data,
+   * and every screen that wanted them would have to remember to ask. `false`
+   * turns them off for a screen where saving the set is the wrong offer.
+   *
+   * Only offered once a set has actually arrived and has something in it -- a
+   * button that writes an empty file is worse than no button, because it looks
+   * like the export worked.
    */
-  const offer = exportable === true ? {} : (exportable || null)
+  const offer = exportable === false ? null : (exportable && exportable !== true ? exportable : {})
   const canExport = offer && set && (set.features?.length ?? 0) > 0
 
   /**
