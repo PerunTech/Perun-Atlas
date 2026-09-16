@@ -79,10 +79,28 @@
   min-height: 0;
 }
 
+/*
+ * How tall a map is when nothing above it says.
+ *
+ * `.atlas-panel` takes its height from whatever contains it, and a good many
+ * containers -- a bootstrap modal body among them -- have none of their own, so
+ * the panel is only as tall as its parts and the map falls back to this floor.
+ * At 20rem that was 320px of map under a toolbar, which is a thumbnail rather
+ * than something to measure on.
+ *
+ * Viewport-relative rather than a fixed rem, because the containers that supply
+ * no height are the ones filling the window, and a token rather than a constant
+ * so a screen that wants a short map can say so from its menu row:
+ *
+ *     "tokens": { "--ap-map-height": "24rem" }
+ *
+ * Still a floor, not a height: a container that does give the panel a height
+ * keeps deciding, and this never fights it.
+ */
 .atlas-panel__mapwrap {
   position: relative;
   flex: 1 1 auto;
-  min-height: 20rem;
+  min-height: var(--ap-map-height, 55vh);
   /* The map is what gives way when the pane opens, and a flex item will not go
      below its content width without this. */
   min-width: 0;
