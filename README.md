@@ -78,6 +78,6 @@ lands, only the mount effect in `AtlasMap` changes and no consumer is affected.
 
 ## Scope
 
-This layer serves new bundles. The legacy NAITS GIS module keeps running on
-`Sofi.js` and is not migrated — it is a source of proven functionality to harvest,
-nothing more.
+This layer serves new bundles. The legacy GIS module is not migrated and keeps
+running unchanged — it is a source of proven functionality to harvest, nothing
+more.
