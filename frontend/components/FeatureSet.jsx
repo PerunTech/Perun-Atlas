@@ -1,7 +1,7 @@
 import { React } from 'perun-core';
 import { core } from '../spatial';
 import { descriptorOf, fetchGeometry } from '../data';
-import { labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../style';
+import { detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../style';
 import { applyStyle, asNode } from './dom';
 import { popupElement, POPUP_OPTIONS } from './popup';
 import '../style/features.css';
@@ -49,6 +49,10 @@ const reversed = (points) =>
  *           line; `reverse` turns the heads back the way the path came
  *   variants { by, cases } — one column splitting the kind in two, each case
  *           merged over everything above it. See `variantOf`
+ *   details { title, exclude, className, style, titleStyle, labelStyle,
+ *           valueStyle } — the whole record, for a caller that shows one
+ *           somewhere with room. A descriptor carrying this binds no popup:
+ *           see `onFeatureClick`
  *
  * @param {string} servicePath - Path with {token} placeholders.
  * @param {Object} context     - The values those placeholders resolve against.
@@ -64,6 +68,12 @@ const reversed = (points) =>
  * @param {Function} [popup] - Per-feature popup content, replacing the descriptor's.
  *        Return an element for rich content, a string for plain text, or nothing
  *        for no popup. A returned string is rendered as text, never as markup.
+ * @param {Function} [onFeatureClick] - Called with `(feature, details)`, where
+ *        `details` is the feature's whole record as `detailsFor` resolved it, or
+ *        null for a descriptor that declares none. Resolving it here rather than
+ *        in the caller is what lets a panel show a record without reading a
+ *        descriptor -- the one piece of its configuration a panel is not
+ *        supposed to know the shape of.
  */
 export const FeatureSet = ({
   servicePath,
@@ -211,13 +221,20 @@ export const FeatureSet = ({
               if (descriptor.label?.scale) labelledRef.current.push({ layer, descriptor });
             }
 
-            const content = contentFor(feature, descriptor);
+            // A descriptor with `details` has somewhere with more room to show
+            // a record, so it gets no bubble -- both would fire on one click,
+            // and the bubble is the one that covers the map. An explicit
+            // `popup` prop still wins: a caller building its own content has
+            // said what it wants.
+            const content = descriptor.details && !popup ? null : contentFor(feature, descriptor);
             if (content) layer.bindPopup(content, POPUP_OPTIONS);
 
             // Both, when both are given. A popup says what the feature is; the
             // callback is how a screen reacts to it — selecting a row, opening
             // the record — and a screen that wants only one supplies only one.
-            if (onFeatureClick) layer.on('click', () => onFeatureClick(feature));
+            if (onFeatureClick) {
+              layer.on('click', () => onFeatureClick(feature, detailsFor(descriptor, feature, labelResolver)));
+            }
           }
         }).addTo(Map);
 

@@ -5,7 +5,7 @@ import { FeatureSet } from './FeatureSet';
 import { identityOf, toCSV, toGeoJSON } from '../data';
 import { download } from './dom';
 import '../style/panel.css';
-const { useMemo, useState } = React
+const { useEffect, useMemo, useState } = React
 
 /**
  * Tabler, through perun-core rather than as a dependency of this package.
@@ -71,6 +71,13 @@ const { Icon } = elements
  *                                a screen showing a set and a screen handing it
  *                                over are not the same permission, and that is
  *                                the deployment's call rather than this file's.
+ * A feature whose descriptor declares `details` opens a pane beside the map
+ * carrying its whole record. The pane is here rather than in a popup because a
+ * service that returns fifteen columns has already decided the answer is long,
+ * and a bubble that size covers the thing it is describing. What it shows is
+ * resolved by `FeatureSet`, which owns the descriptors -- this renders rows and
+ * still never reads one.
+ *
  * @param {Object} [tokens]     - CSS custom properties for the panel's root:
  *                                '--ap-accent' and friends. This is how a screen
  *                                described entirely in configuration carries its
@@ -111,6 +118,7 @@ export const FeaturePanel = ({
   const [set, setSet] = useState(null)
   const [loading, setLoading] = useState(true)
   const [labelled, setLabelled] = useState(true)
+  const [record, setRecord] = useState(null)
 
   /**
    * Whether this map is scoped to a date window.
@@ -155,16 +163,33 @@ export const FeaturePanel = ({
 
   const descriptorFor = (feature) => (subject?.descriptor && isSubject(feature) ? subject.descriptor : null)
 
+  /**
+   * Escape closes the pane.
+   *
+   * It is the one control on this panel that covers something, so it is the one
+   * that needs a way out that is not a mouse -- and the map underneath keeps its
+   * own keyboard handling, since this listens on the document rather than
+   * trapping focus.
+   */
+  useEffect(() => {
+    if (!record) return undefined
+    const onKey = (event) => { if (event.key === 'Escape') setRecord(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [record])
+
   const applyPreset = (months) => {
     setPreset(months)
     setRange(rangeOf(months))
     setSet(null)
+    setRecord(null)
   }
 
   const onRangeChange = (next) => {
     setPreset(null)
     setRange(next)
     setSet(null)
+    setRecord(null)
   }
 
   /**
@@ -272,6 +297,7 @@ export const FeaturePanel = ({
         )}
       </div>
 
+      <div className='atlas-panel__body'>
       <div className='atlas-panel__mapwrap'>
         <div className='atlas-panel__map'>
           {/* Merged rather than defaulted: a caller setting one of AtlasMap's
@@ -283,7 +309,8 @@ export const FeaturePanel = ({
               descriptors={descriptors}
               descriptorFor={descriptorFor}
               labelResolver={labelResolver}
-              onLoadStart={() => setLoading(true)}
+              onFeatureClick={(feature, details) => details && setRecord(details)}
+              onLoadStart={() => { setLoading(true); setRecord(null) }}
               onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
               onError={() => { setSet({ features: [] }); setLoading(false) }}
             />
@@ -318,6 +345,38 @@ export const FeaturePanel = ({
             </div>
           </div>
         )}
+      </div>
+
+      {record && (
+        <aside
+          className={['atlas-panel__details', record.spec?.className].filter(Boolean).join(' ')}
+          style={record.spec?.style}
+          aria-label={labels.details ?? 'Details'}
+        >
+          <div className='atlas-panel__detailshead'>
+            <div className='atlas-panel__detailstitle' style={record.spec?.titleStyle}>
+              {record.title ?? labels.details ?? 'Details'}
+            </div>
+            <button
+              type='button'
+              className='atlas-panel__close'
+              aria-label={labels.close ?? 'Close'}
+              onClick={() => setRecord(null)}
+            >
+              ×
+            </button>
+          </div>
+
+          <dl className='atlas-panel__detailsbody'>
+            {record.rows.map(({ field, label, value }) => (
+              <div key={field} className='atlas-panel__detailsrow'>
+                <dt style={record.spec?.labelStyle}>{label}</dt>
+                <dd style={record.spec?.valueStyle}>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </aside>
+      )}
       </div>
 
       {(timeScoped || onClose) && (

@@ -157,3 +157,68 @@ export const popupFor = (descriptor, feature, resolveLabel) => {
 
   return title === null && rows.length === 0 ? null : { title, rows };
 };
+
+/**
+ * Everything a feature carries, for the detail pane.
+ *
+ * `popupFor` above answers "which three fields name this thing" and a bubble is
+ * the right size for that. This answers a different question -- "what is this
+ * record" -- and a service that returns fifteen columns has already decided the
+ * answer is long. So the spec is inverted: rather than list what to show, list
+ * what to leave out.
+ *
+ *     "details": {
+ *       "title": "SOME_CODE",
+ *       "exclude": ["pkid", "parent_id", "type", "SOME_INTERNAL_ID"]
+ *     }
+ *
+ * The trade is deliberate and worth stating, because it runs the other way from
+ * the popup's. A column the service starts returning appears here on its own,
+ * which is the point -- nothing is silently missing from a record because a menu
+ * row was not updated. The cost is that a column nobody wants on screen has to
+ * be named, and until it is, it is on screen.
+ *
+ * Order is the producer's: the columns come out in the order they were stamped,
+ * which is a deliberate order far more often than alphabetical would be.
+ *
+ * Labels follow the same ladder as everywhere else, one rung shorter because
+ * there is no configured label to sit in the middle: the column name lowercased
+ * is tried as a label code, and failing that the column name is shown as it is.
+ * That is legible and it says which rung was reached -- a bare `VILLAGE_CODE` on
+ * screen is exactly the instruction to register `village_code`.
+ *
+ * Nested objects are skipped, the same rule `columnsOf` uses for a CSV: a joined
+ * record would otherwise contribute one unreadable row holding a whole object.
+ *
+ * @param {Object} descriptor - The descriptor entry for this feature's type.
+ * @param {Object} feature    - The GeoJSON feature.
+ * @param {Function} [resolveLabel] - Turns a label code into display text.
+ * @returns {{ title: string|null, rows: Array<{field, label, value}>, spec: Object }|null}
+ */
+export const detailsFor = (descriptor, feature, resolveLabel) => {
+  const spec = descriptor?.details;
+  if (!spec) return null;
+
+  const properties = feature?.properties ?? {};
+  const hidden = new Set(spec.exclude ?? []);
+
+  const read = (value) =>
+    value === undefined || value === null || value === '' ? null : String(value);
+
+  const title = spec.title ? read(properties[spec.title]) : null;
+
+  const rows = Object.entries(properties)
+    // The title's own column is the heading already, so showing it again as a
+    // row is the one duplication this spec would otherwise guarantee.
+    .filter(([field, value]) =>
+      !hidden.has(field) && field !== spec.title &&
+      (value === null || typeof value !== 'object'))
+    .map(([field, value]) => ({
+      field,
+      label: resolveLabel?.(field.toLowerCase()) || field,
+      value: read(value)
+    }))
+    .filter(row => row.value !== null);
+
+  return title === null && rows.length === 0 ? null : { title, rows, spec };
+};

@@ -66,10 +66,26 @@
  * and `min-height: 0` is what stops a flex item from refusing to shrink below
  * its content -- without it the map pushes the footer off the bottom.
  */
+/*
+ * The map and the record beside it.
+ *
+ * One row, so a record opens next to what it describes rather than on top of
+ * it. `min-height: 0` for the same reason the panel root has it -- a flex item
+ * that will not shrink below its content pushes the footer off the bottom.
+ */
+.atlas-panel__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
 .atlas-panel__mapwrap {
   position: relative;
   flex: 1 1 auto;
   min-height: 20rem;
+  /* The map is what gives way when the pane opens, and a flex item will not go
+     below its content width without this. */
+  min-width: 0;
 }
 
 .atlas-panel__map {
@@ -80,6 +96,71 @@
 .atlas-panel__map .atlas-map {
   width: 100%;
   height: 100%;
+}
+
+/*
+ * The record pane.
+ *
+ * A fixed column rather than a share of the row: a record of four fields and one
+ * of twenty should not resize the map by different amounts. Only the list
+ * scrolls, so the heading and its close button stay reachable however long the
+ * record is -- which, with a spec that shows everything a feature carries, is
+ * not a length this package gets to assume.
+ */
+.atlas-panel__details {
+  flex: 0 0 20rem;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.atlas-panel__detailshead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.atlas-panel__detailstitle {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.atlas-panel__detailsbody {
+  margin: 0;
+  padding: 0 16px 16px;
+  overflow-y: auto;
+  /* A record scrolled to its end should not then scroll the page behind it. */
+  overscroll-behavior: contain;
+}
+
+.atlas-panel__detailsrow {
+  min-width: 0;
+}
+
+.atlas-panel__detailsrow dt,
+.atlas-panel__detailsrow dd {
+  margin: 0;
+  /* An identifier or an address has no spaces to break at, and a column this
+     narrow is where that shows as text running out of the panel. */
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Narrow: the pane goes under the map rather than beside it, and takes a share
+ * of the height instead of a fixed width. Half at most, so the map it is
+ * describing is still on screen.
+ */
+@media (max-width: 40rem) {
+  .atlas-panel__body {
+    flex-direction: column;
+  }
+
+  .atlas-panel__details {
+    flex: 0 1 auto;
+    max-height: 50%;
+  }
 }
 
 .atlas-panel__empty {
