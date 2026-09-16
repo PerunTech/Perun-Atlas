@@ -1,3 +1,5 @@
+import { SYSTEM_FIELDS } from '../data/system';
+
 /**
  * Descriptors: how a feature is drawn.
  *
@@ -169,8 +171,14 @@ export const popupFor = (descriptor, feature, resolveLabel) => {
  *
  *     "details": {
  *       "title": "SOME_CODE",
- *       "exclude": ["pkid", "parent_id", "type", "SOME_INTERNAL_ID"]
+ *       "exclude": ["SOME_INTERNAL_ID"]
  *     }
+ *
+ * `SYSTEM_FIELDS` are already out and need no naming -- the object model's
+ * bookkeeping, which is on every feature and means nothing to the person reading
+ * one. `exclude` is for the columns that are real fields and still not worth the
+ * space. The pane and the CSV read the same list, so a record does not describe
+ * itself one way beside the map and another way in a file.
  *
  * The trade is deliberate and worth stating, because it runs the other way from
  * the popup's. A column the service starts returning appears here on its own,
@@ -179,7 +187,8 @@ export const popupFor = (descriptor, feature, resolveLabel) => {
  * be named, and until it is, it is on screen.
  *
  * Order is the producer's: the columns come out in the order they were stamped,
- * which is a deliberate order far more often than alphabetical would be.
+ * which is as much of an order as there is -- an encoder serialising from a map
+ * has none to give, so it is worth nothing more than being stable within a set.
  *
  * Labels follow the same ladder as everywhere else, one rung shorter because
  * there is no configured label to sit in the middle: the column name lowercased
@@ -200,7 +209,7 @@ export const detailsFor = (descriptor, feature, resolveLabel) => {
   if (!spec) return null;
 
   const properties = feature?.properties ?? {};
-  const hidden = new Set(spec.exclude ?? []);
+  const hidden = new Set([...SYSTEM_FIELDS, ...(spec.exclude ?? [])]);
 
   const read = (value) =>
     value === undefined || value === null || value === '' ? null : String(value);

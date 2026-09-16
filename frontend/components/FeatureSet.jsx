@@ -51,8 +51,9 @@ const reversed = (points) =>
  *           merged over everything above it. See `variantOf`
  *   details { title, exclude, className, style, titleStyle, labelStyle,
  *           valueStyle } — the whole record, for a caller that shows one
- *           somewhere with room. A descriptor carrying this binds no popup:
- *           see `onFeatureClick`
+ *           somewhere with room. `exclude` names what to leave out on top of
+ *           `SYSTEM_FIELDS`, which are never shown. A descriptor carrying this
+ *           binds no popup: see `onFeatureClick`
  *
  * @param {string} servicePath - Path with {token} placeholders.
  * @param {Object} context     - The values those placeholders resolve against.

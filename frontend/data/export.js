@@ -1,3 +1,5 @@
+import { SYSTEM_FIELDS } from './system';
+
 /**
  * A set, as a file.
  *
@@ -39,14 +41,15 @@ export const toGeoJSON = (collection) =>
  * column per field of a row that most features do not have -- so a caller
  * wanting one names it with a dotted path in `fields`.
  *
- * `exclude` drops columns by name, for the ones every row carries and nobody
- * reads: internal ids, the type discriminators, the status a filter already
- * guarantees. Same inversion as a descriptor's `details` -- name what to leave
- * out and let the rest through -- so a column the service starts returning
- * appears on its own rather than waiting for a menu row.
+ * `SYSTEM_FIELDS` are always out: the object model's bookkeeping, which every
+ * row carries and nobody reads. `exclude` adds a screen's own, for the columns
+ * that are real fields and still not worth a column here. Same inversion as a
+ * descriptor's `details` -- name what to leave out and let the rest through --
+ * so a column the service starts returning appears on its own rather than
+ * waiting for a menu row.
  */
 const columnsOf = (features, exclude = []) => {
-  const hidden = new Set(exclude);
+  const hidden = new Set([...SYSTEM_FIELDS, ...exclude]);
   const seen = new Set();
   features.forEach(feature => {
     Object.entries(feature?.properties ?? {}).forEach(([key, value]) => {
@@ -133,8 +136,12 @@ const cell = (value) => {
  * person actually reads -- and a caller that has already made it for the popup
  * can hand over the same array.
  *
- * Without one, every property the set mentions is a column, minus any named in
- * `exclude`, and each header takes the same ladder the record pane takes: the
+ * Without one, every property the set mentions is a column, minus the system
+ * fields and any named in `exclude`. `fields` is also the way back to one of
+ * those: it fixes the columns outright and consults neither list, so a screen
+ * that really does need `status` in the file can ask for it by name.
+ *
+ * Each header takes the same ladder the record pane takes: the
  * column lowercased, tried as a label code, and the column name itself when that
  * misses. A file headed `VILLAGE_CODE` beside a screen reading `Village` is the
  * same record described twice, and only one of them is readable.
@@ -147,8 +154,9 @@ const cell = (value) => {
  *
  * @param {Object} collection - GeoJSON FeatureCollection.
  * @param {Array}  [fields]   - [{ field, label }], fixing the columns and order.
- * @param {Array}  [exclude]  - Property names to leave out, when `fields` is not
- *                              given. Ignored when it is: that already says.
+ * @param {Array}  [exclude]  - Property names to leave out on top of
+ *                              `SYSTEM_FIELDS`, when `fields` is not given.
+ *                              Ignored when it is: that already says.
  * @param {Function} [labelResolver] - Turns a field's label into display text.
  */
 export const toCSV = (collection, { fields, exclude, labelResolver } = {}) => {

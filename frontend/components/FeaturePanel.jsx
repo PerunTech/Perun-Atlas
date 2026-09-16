@@ -68,8 +68,8 @@ const { Icon } = elements
  *                                offered with the defaults; `false` withholds
  *                                the buttons; { geojson, csv, filename, fields,
  *                                exclude } chooses the formats, names the file,
- *                                fixes the CSV's columns, or drops the ones
- *                                nobody reads.
+ *                                fixes the CSV's columns, or drops more of them:
+ *                                `SYSTEM_FIELDS` are already out.
  * A feature whose descriptor declares `details` opens a pane beside the map
  * carrying its whole record. The pane is here rather than in a popup because a
  * service that returns fifteen columns has already decided the answer is long,

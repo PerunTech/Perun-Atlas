@@ -42,8 +42,10 @@ const { useMemo } = React;
  *   map           { layerSwitcher, zoomControl, zoomPosition }, passed to AtlasMap
  *   export        false to withhold the file buttons, or { geojson, csv,
  *                 filename, fields, exclude } to choose the formats, name the
- *                 file, fix the CSV's columns, or drop the ones nobody reads.
- *                 Absent means the set is offered as a file with the defaults
+ *                 file, fix the CSV's columns, or drop more of them -- the
+ *                 object model's own are out of both the file and the record
+ *                 pane already. Absent means the set is offered as a file with
+ *                 the defaults
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit
