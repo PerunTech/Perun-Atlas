@@ -18,10 +18,15 @@ const { useEffect, useRef, useState } = React;
  * switched off, because its toolbar supplies them and this component does not
  * mount that toolbar. Both are added here instead — zoom on by default and
  * positionable with `zoomControl` / `zoomPosition`, attribution always, since a
- * tile provider's terms are not an option a screen gets to decline, and a
+ * tile provider's terms are not an option a screen gets to decline, a
  * coordinate readout, on by default and positionable the same way -- it quotes
  * the pointer's position in whichever system the reader picks, which is how a
- * feature is checked against the GPS fields in its own record.
+ * feature is checked against the GPS fields in its own record -- and a
+ * measurement control, also on by default, which answers the questions no
+ * service is going to: how far, how large, which way. Fullscreen, a scale bar
+ * and a locate button are on by default too: the first because this map usually
+ * lives in a modal, the second because a distance on screen means nothing
+ * without one, and the third because field use on tablets is real.
  *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
@@ -66,6 +71,15 @@ export const AtlasMap = ({
   zoomPosition = 'topleft',
   coordinates = true,
   coordinatesPosition = 'bottomleft',
+  measure = true,
+  measurePosition = 'topleft',
+  measureTools,
+  fullscreen = true,
+  fullscreenPosition = 'topleft',
+  locate = true,
+  locatePosition = 'topleft',
+  scale = true,
+  scalePosition = 'bottomleft',
   className = 'atlas-map',
   style,
   onReady,
@@ -76,6 +90,10 @@ export const AtlasMap = ({
   const switcherRef = useRef(null);
   const zoomRef = useRef(null);
   const coordinatesRef = useRef(null);
+  const measureRef = useRef(null);
+  const fullscreenRef = useRef(null);
+  const locateRef = useRef(null);
+  const scaleRef = useRef(null);
   const attributionRef = useRef(null);
   const adoptedStyleRef = useRef(null);
   const [ready, setReady] = useState(false);
@@ -138,11 +156,42 @@ export const AtlasMap = ({
           zoomRef.current = factory.control.zoom({ position: zoomPosition }).addTo(Map);
         }
 
+        // Worth more here than on a full-page screen, because this map is
+        // usually inside a modal: a panel sized for a record is not sized for
+        // reading a country. `leaflet.fullscreen` is one of spatial's own
+        // dependencies and its Factory imports it, so this is a control the
+        // engine already carries rather than a new one.
+        if (fullscreen && factory.control.fullscreen) {
+          fullscreenRef.current = factory.control.fullscreen({ position: fullscreenPosition }).addTo(Map);
+        }
+
+        // Where the reader is. Guarded like the readout and the measure tools --
+        // this bundle and the engine deploy separately -- and worth knowing that
+        // the browser only answers over https or on localhost, which the control
+        // reports rather than failing as a denied permission.
+        if (locate && ui.LocateControl) {
+          locateRef.current = control(ui.LocateControl, {}, { position: locatePosition });
+        } else if (locate) {
+          console.warn('perun-atlas: the engine on this environment has no locate control; skipping it.');
+        }
+
         // `prefix: false` drops Leaflet's own 'Leaflet' link: this is where a
         // deployment's credit and a tile provider's terms are satisfied, not an
         // advertisement for the mapping library.
         attributionRef.current = factory.control.attribution({ prefix: false }).addTo(Map);
         if (config.attribution) attributionRef.current.addAttribution(config.attribution);
+
+        // Leaflet's own distance bar rather than spatial's `ScaleControl`, which
+        // is a 1:N ratio dropdown reading `crs.options.distances` -- a CRS built
+        // from a bare EPSG code carries none, so on most deployments it mounts
+        // and renders nothing. The units are the deployment's own, from the
+        // setting that already answers this question everywhere else.
+        if (scale) {
+          const metric = config.units !== 'imperial';
+          scaleRef.current = factory.control
+            .scale({ position: scalePosition, metric, imperial: !metric, maxWidth: 140 })
+            .addTo(Map);
+        }
 
         // Where the pointer is, quoted in a system the reader chooses -- which is
         // not the system the map is projected in, and deliberately so: the map's
@@ -160,6 +209,26 @@ export const AtlasMap = ({
           coordinatesRef.current = control(ui.CoordinatesControl, {}, { position: coordinatesPosition });
         } else if (coordinates) {
           console.warn('perun-atlas: the engine on this environment has no coordinate readout; skipping it.');
+        }
+
+        // How far is this from that, how big is this piece of ground, what is
+        // the bearing along that boundary -- asked of whatever happens to be on
+        // screen, which is why it belongs to the map rather than to a screen's
+        // configuration. Added after the zoom so that Leaflet, which stacks a
+        // corner in the order controls arrive, puts it underneath.
+        //
+        // Guarded like the readout above, and for the same reason: this bundle
+        // and the engine deploy separately, so an environment on an older
+        // spatial has no such export and would otherwise take the map down at
+        // the moment the control was added.
+        if (measure && ui.MeasureControl) {
+          measureRef.current = control(
+            ui.MeasureControl,
+            measureTools ? { tools: measureTools } : {},
+            { position: measurePosition }
+          );
+        } else if (measure) {
+          console.warn('perun-atlas: the engine on this environment has no measurement control; skipping it.');
         }
 
         // Layers take the deployment's ceiling rather than a constant, so a
@@ -195,7 +264,8 @@ export const AtlasMap = ({
       mounted = false;
       // Controls are not layers, so `clearLayers` never sees them and the map
       // outlives this component. Each one that was added has to come off.
-      [switcherRef, zoomRef, coordinatesRef, attributionRef].forEach(ref => {
+      [switcherRef, zoomRef, coordinatesRef, measureRef,
+       fullscreenRef, locateRef, scaleRef, attributionRef].forEach(ref => {
         if (ref.current) {
           ref.current.remove();
           ref.current = null;

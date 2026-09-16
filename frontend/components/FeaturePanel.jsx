@@ -64,7 +64,10 @@ const { Icon } = elements
  *                                resolve itself, because it never reads them.
  * @param {Object} [map]        - Passed to `AtlasMap`: `layerSwitcher`,
  *                                `zoomControl`, `zoomPosition`, `coordinates`,
- *                                `coordinatesPosition`, `overrides`.
+ *                                `coordinatesPosition`, `measure`,
+ *                                `measurePosition`, `measureTools`, `fullscreen`,
+ *                                `fullscreenPosition`, `locate`, `locatePosition`,
+ *                                `scale`, `scalePosition`, `overrides`.
  * @param {Object|boolean} [exportable] - Offer the set as a file. Left out, it is
  *                                offered with the defaults; `false` withholds
  *                                the buttons; { geojson, csv, filename, fields,

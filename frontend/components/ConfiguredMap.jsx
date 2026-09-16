@@ -39,9 +39,14 @@ const { useMemo } = React;
  *   labels        the rest of the copy, as label codes -- every key is resolved,
  *                 so a new one needs a menu row and no code here
  *   title         a label code for the heading, when the caller passes no title
- *   map           { layerSwitcher, zoomControl, zoomPosition, coordinates,
- *                 coordinatesPosition }, passed to AtlasMap. The coordinate
- *                 readout is on unless a row says `"coordinates": false`
+ *   map           everything AtlasMap takes: { layerSwitcher, zoomControl,
+ *                 zoomPosition, coordinates, coordinatesPosition, measure,
+ *                 measurePosition, measureTools, fullscreen, fullscreenPosition,
+ *                 locate, locatePosition, scale, scalePosition, overrides }.
+ *                 All of the controls are on unless a row turns one off --
+ *                 `"measure": false`, `"locate": false` -- and each takes a
+ *                 Leaflet corner. `measureTools` narrows the measure control to
+ *                 a chosen few, for a screen with no use for a protractor
  *   export        false to withhold the file buttons, or { geojson, csv,
  *                 filename, fields, exclude } to choose the formats, name the
  *                 file, fix the CSV's columns, or drop more of them -- the
