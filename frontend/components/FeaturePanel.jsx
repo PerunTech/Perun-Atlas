@@ -6,7 +6,7 @@ import { LegendControl } from './LegendControl';
 import { identityOf, toCSV, toGeoJSON } from '../data';
 import { legendFrom } from '../style';
 import { download } from './lib/dom';
-import { rangeOf, today } from './lib/dates';
+import { rangeOf, sameWindow, today } from './lib/dates';
 import '../style/panel.css';
 const { useEffect, useMemo, useState } = React
 
@@ -185,19 +185,37 @@ export const FeaturePanel = ({
     return () => document.removeEventListener('keydown', onKey)
   }, [record])
 
-  const applyPreset = (months) => {
+  /**
+   * Move the date window, and clear what belonged to the old one.
+   *
+   * Only when it actually moves. `FeatureSet` refetches on a change to the
+   * bindings it is handed, and those carry the dates as strings, so a window
+   * resolving to the dates already in force produces no fetch at all -- that is
+   * the byte-identical-URL refetch `timeScoped` exists to avoid, working as
+   * intended.
+   *
+   * Clearing the set for a fetch that will not happen is what breaks: nothing
+   * arrives to put it back, so `set` stays null for the life of the screen. The
+   * map keeps the features it already drew, which is why it looks fine, while
+   * the export buttons and the empty-set notice -- both of which wait on a set
+   * having arrived -- are simply gone. Clicking the quick range that is already
+   * active is the easy way to see it, and the range picker can reach it too by
+   * choosing the dates already shown.
+   *
+   * `preset` is still set either way, since which button reads as pressed is a
+   * question about the control rather than about the data.
+   */
+  const applyWindow = (next, months) => {
     setPreset(months)
-    setRange(rangeOf(months))
-    setSet(null)
-    setRecord(null)
-  }
-
-  const onRangeChange = (next) => {
-    setPreset(null)
+    if (sameWindow(next, range)) return
     setRange(next)
     setSet(null)
     setRecord(null)
   }
+
+  const applyPreset = (months) => applyWindow(rangeOf(months), months)
+
+  const onRangeChange = (next) => applyWindow(next, null)
 
   /**
    * How this set is offered as a file, or nothing.

@@ -33,3 +33,6 @@ export const monthsAgo = (months) => {
 
 /** A quick range: that many months back, up to today. */
 export const rangeOf = (months) => ({ from: monthsAgo(months), to: today() })
+
+/** Whether two windows name the same span, which is whether a refetch is worth making. */
+export const sameWindow = (a, b) => a?.from === b?.from && a?.to === b?.to
