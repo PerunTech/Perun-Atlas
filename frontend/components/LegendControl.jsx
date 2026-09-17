@@ -26,13 +26,14 @@ const { useEffect, useState } = React;
  * @param {string} [title] - Heading, already resolved.
  * @param {boolean} [open] - Whether it starts expanded.
  * @param {string} [position] - Any corner spatial's `control` accepts. Defaults
- *        to the top right, which is the one corner AtlasMap does not already
- *        fill: attribution sits bottom right, the scale and the coordinate
- *        readout bottom left, and zoom, fullscreen, locate and measure top left.
- *        It shares the corner with the layer switcher, which is a collapsed
- *        button and which Leaflet stacks above rather than across.
+ *        to the bottom left, which is where a map key conventionally goes and
+ *        which holds only the scale bar now that the coordinate readout has its
+ *        own region underneath the map. The alternatives are all worse here:
+ *        bottom right is attribution, top left is already four buttons deep,
+ *        and top right made the collapsed layer switcher share a column with
+ *        the widest thing on the map.
  */
-export const LegendControl = ({ entries = [], title, open, position = 'topright' }) => {
+export const LegendControl = ({ entries = [], title, open, position = 'bottomleft' }) => {
   /**
    * The container the control is handed, made once and kept.
    *

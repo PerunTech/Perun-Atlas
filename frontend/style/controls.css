@@ -23,21 +23,35 @@
 /*
  * Controls in a shared corner, sized to themselves.
  *
- * A corner container shrink-wraps its widest control, and every other control
- * in that corner is a block child that stretches to match it. With one control
- * per corner that never shows. Put a legend beside a collapsed layer switcher
- * and the switcher becomes as wide as the legend.
+ * The other half of the same omission. Leaflet floats every control, which
+ * shrink-wraps it; spatial does not ship that stylesheet, so a control in one
+ * of its corners is an ordinary block and stretches to the corner's width. One
+ * control per corner hides it -- the corner is shrink-to-fit, so the two agree.
+ * Two do not: the narrower grows to the width of the wider, which is a
+ * collapsed layer switcher as wide as the legend beneath it.
  *
- * So size each control to its own content. On the right, keep it against the
- * edge as well: a narrow control in a container that is only wide because of
- * its neighbour would otherwise sit at the far side of it, detached from the
- * corner it was placed in.
+ * Keyed to spatial's corners rather than Leaflet's `.leaflet-top` and
+ * `.leaflet-right`. Those classes are never on anything here -- `_initControlPos`
+ * builds `control-topright` and the rest -- which is exactly why the rules in
+ * Leaflet's own stylesheet are not doing this already.
+ *
+ * On the right, keep each control against the edge as well: one narrower than
+ * its neighbour would otherwise sit at the far side of a container that is only
+ * that wide because of the neighbour.
+ *
+ * Duplicated in spatial's control.css, where it belongs and where it is now.
+ * This copy covers deployments whose engine has not caught up yet, and can go
+ * with the rest of this file once they have.
  */
-.leaflet-top .leaflet-control,
-.leaflet-bottom .leaflet-control {
+.control-topleft > .leaflet-control,
+.control-topright > .leaflet-control,
+.control-bottomleft > .leaflet-control,
+.control-bottomright > .leaflet-control,
+.control-bottomcenter > .leaflet-control {
   width: fit-content;
 }
 
-.leaflet-right .leaflet-control {
+.control-topright > .leaflet-control,
+.control-bottomright > .leaflet-control {
   margin-left: auto;
 }

@@ -89,9 +89,9 @@ const { Icon } = elements
  *                                a box saying so is a box over the map for
  *                                nothing. Built from what was drawn, so it needs
  *                                no configuration of its own. A string names the
- *                                corner it sits in instead of `topright`, which
- *                                is worth setting when a screen already puts
- *                                something there.
+ *                                corner it sits in instead of `bottomleft`,
+ *                                which is worth setting when a screen already
+ *                                puts something there.
  *
  * @param {Object} [tokens]     - CSS custom properties for the panel's root:
  *                                '--ap-accent' and friends. This is how a screen

@@ -18,6 +18,12 @@
  */
 
 .atlas-legend {
+  /* Its own offset from the corner. Leaflet's stylesheet is where a control's
+     margin normally comes from and spatial does not ship it, so every control
+     in a corner carries one -- `.measure-control` and `.locate-control` do the
+     same. Without it the legend is flush against the map edge and against the
+     layer switcher above it. */
+  margin: 10px;
   max-width: 15rem;
   background-color: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.2);
