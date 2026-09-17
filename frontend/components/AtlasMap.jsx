@@ -70,7 +70,7 @@ export const AtlasMap = ({
   zoomControl = true,
   zoomPosition = 'topleft',
   coordinates = true,
-  coordinatesPosition = 'bottomleft',
+  coordinatesPosition = 'bottomcenter',
   measure = true,
   measurePosition = 'topleft',
   measureTools,
@@ -206,7 +206,17 @@ export const AtlasMap = ({
         // spatial has no such export -- which would otherwise take the whole
         // map down at the moment the control was added.
         if (coordinates && ui.CoordinatesControl) {
-          coordinatesRef.current = control(ui.CoordinatesControl, {}, { position: coordinatesPosition });
+          // Centred under the map rather than tucked in a corner: it describes
+          // the map instead of acting on it, and it was sharing the bottom left
+          // with the scale, which describes it too. `bottomcenter` is spatial's
+          // own region and newer than the four corners, so an engine without it
+          // has no container to append to and `addTo` would throw -- fall back
+          // to the corner this used to occupy.
+          const corner = Map._controlCorners?.[coordinatesPosition]
+            ? coordinatesPosition
+            : 'bottomleft';
+
+          coordinatesRef.current = control(ui.CoordinatesControl, {}, { position: corner });
         } else if (coordinates) {
           console.warn('perun-atlas: the engine on this environment has no coordinate readout; skipping it.');
         }
