@@ -6,6 +6,7 @@ import { LegendControl } from './LegendControl';
 import { identityOf, toCSV, toGeoJSON } from '../data';
 import { legendFrom } from '../style';
 import { download } from './lib/dom';
+import { rangeOf, today } from './lib/dates';
 import '../style/panel.css';
 const { useEffect, useMemo, useState } = React
 
@@ -98,17 +99,6 @@ const { Icon } = elements
  *                                described entirely in configuration carries its
  *                                colours, with no stylesheet of its own.
  */
-
-/** ISO yyyy-mm-dd, which is both what <input type="date"> speaks and what LocalDate.parse expects. */
-const iso = (date) => date.toISOString().slice(0, 10)
-
-const monthsAgo = (months) => {
-  const date = new Date()
-  date.setMonth(date.getMonth() - months)
-  return iso(date)
-}
-
-const rangeOf = (months) => ({ from: monthsAgo(months), to: iso(new Date()) })
 
 export const FeaturePanel = ({
   session,
@@ -232,7 +222,7 @@ export const FeaturePanel = ({
    * the same screen do not land in a downloads folder as `features (3)`. The
    * stem is the caller's, because this file has no idea what the set is.
    */
-  const filename = [offer?.filename ?? 'features', timeScoped ? `${range.from}_${range.to}` : iso(new Date())].join('-')
+  const filename = [offer?.filename ?? 'features', timeScoped ? `${range.from}_${range.to}` : today()].join('-')
 
   const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(set), 'application/geo+json')
   const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
