@@ -1,10 +1,10 @@
 import { React } from 'perun-core';
-import { core } from '../spatial';
-import { descriptorOf, fetchGeometry } from '../data';
-import { detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../style';
-import { applyStyle, asNode } from './dom';
-import { popupElement, POPUP_OPTIONS } from './popup';
-import '../style/features.css';
+import { core } from '../../spatial';
+import { descriptorOf, fetchGeometry } from '../../data';
+import { detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../../style';
+import { applyStyle, asNode } from '../lib/dom';
+import { popupElement, POPUP_OPTIONS } from '../lib/popup';
+import '../../style/features.css';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;

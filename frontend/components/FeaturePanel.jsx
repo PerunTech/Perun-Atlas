@@ -1,11 +1,11 @@
 import { React, elements } from 'perun-core';
 import { AtlasMap } from './AtlasMap';
 import { DateRange } from './DateRange';
-import { FeatureSet } from './FeatureSet';
+import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
 import { identityOf, toCSV, toGeoJSON } from '../data';
 import { legendFrom } from '../style';
-import { download } from './dom';
+import { download } from './lib/dom';
 import '../style/panel.css';
 const { useEffect, useMemo, useState } = React
 

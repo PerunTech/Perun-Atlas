@@ -1,5 +1,5 @@
 import { React, PropTypes } from 'perun-core';
-import { applyStyle } from './dom';
+import { applyStyle } from './lib/dom';
 import '../style/legend.css';
 
 const { useEffect, useRef, useState } = React;

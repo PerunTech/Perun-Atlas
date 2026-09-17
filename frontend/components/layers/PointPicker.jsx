@@ -1,6 +1,6 @@
 import { React } from 'perun-core';
-import { core } from '../spatial';
-import '../style/picker.css';
+import { core } from '../../spatial';
+import '../../style/picker.css';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
