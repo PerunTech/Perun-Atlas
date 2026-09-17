@@ -3,11 +3,13 @@
  *
  * Remote parameters arrive as strings whatever their declared type, `window`
  * globals arrive as whatever a config.js author wrote, and defaults arrive
- * already typed. Everything funnels through here so the rest of the project can
- * assume a resolved value is the shape its schema entry promised.
+ * already typed. Everything funnels through here, so the rest of the project
+ * can assume a resolved value is the shape its schema entry promised.
  *
- * A coercion that cannot produce the declared type throws. Silent fallback is
- * what produces a plausible, wrong map — see the Moldova defaults in spatial.
+ * A coercion that cannot produce the declared type throws rather than falling
+ * back. A map is the one screen where a wrong value still draws: the tiles
+ * load, the controls work, and nothing reports that the view is somewhere it
+ * should not be. An exception at startup is the only thing that says so.
  */
 
 const fail = (key, value, expected) => {
@@ -32,7 +34,7 @@ const toLatLng = (key, raw) => {
   if (value && typeof value === 'object' && 'lat' in value && 'lng' in value) {
     return { lat: Number(value.lat), lng: Number(value.lng) };
   }
-  // Also accept "lat,lng", which is how a hand-edited parameter tends to be written.
+  // "lat,lng" as well, which is how a hand-edited parameter tends to be written.
   if (typeof value === 'string' && value.includes(',')) {
     const [lat, lng] = value.split(',').map(Number);
     if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
@@ -70,8 +72,8 @@ export const COERCE = {
   },
 
   /**
-   * A bare EPSG code, as svarog writes it: the number alone. `EPSG:4326` is
-   * accepted too, because that is how a hand-edited parameter tends to read.
+   * A bare EPSG code, the number alone, as svarog writes it. The `EPSG:` prefix
+   * is accepted and stripped, since that is how the code is usually quoted.
    */
   srid: (key, value) => {
     const s = String(value).trim().replace(/^EPSG:/i, '');
