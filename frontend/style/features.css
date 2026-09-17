@@ -19,6 +19,37 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
+/*
+ * A cluster badge, on the same argument as the marker above: it is a divIcon, so
+ * with no rules it is an invisible hole where a count should be.
+ *
+ * The chip is the span rather than the element around it. Leaflet builds that
+ * element and gives it only the class and the size, so it is the child that can
+ * be handed a colour by a menu row -- see `clusterBadge`. Sized from its parent
+ * so the band's pixel size stays the one place a badge's size is decided.
+ *
+ * Deliberately the marker's own colour rather than a scale of its own. A cluster
+ * is those markers, not a fourth kind of thing, and the count inside it is what
+ * says how many. `.atlas-cluster--sm`, `--md` and `--lg` are there for a
+ * deployment that disagrees.
+ */
+.atlas-cluster__count {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #4a5c66;
+  border: 3px solid #fff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
 .leaflet-tooltip.atlas-label {
   padding: 2px 7px;
   border: 0;

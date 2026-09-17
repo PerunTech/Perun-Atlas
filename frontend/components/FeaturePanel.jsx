@@ -65,6 +65,14 @@ const { Icon } = elements
  *                                straight to FeatureSet; descriptors are the one
  *                                part of the configuration this panel does not
  *                                resolve itself, because it never reads them.
+ * @param {boolean|number|Object} [cluster] - Collapse the points into counted
+ *                                badges rather than a marker each. `true`
+ *                                always, a number to cluster only from that many
+ *                                points up, or an object for the plugin's own
+ *                                options and the badge's look. Off unless asked
+ *                                for: it trades every label and every marker
+ *                                position for a count, which is the right trade
+ *                                only once there are too many of them to read.
  * @param {Object} [map]        - Passed to `AtlasMap`: `layerSwitcher`,
  *                                `zoomControl`, `zoomPosition`, `coordinates`,
  *                                `coordinatesPosition`, `measure`,
@@ -106,6 +114,7 @@ export const FeaturePanel = ({
   context,
   descriptors,
   labelResolver,
+  cluster,
   subject,
   presets = [],
   defaultMonths,
@@ -339,6 +348,7 @@ export const FeaturePanel = ({
               descriptors={descriptors}
               descriptorFor={descriptorFor}
               labelResolver={labelResolver}
+              cluster={cluster}
               onFeatureClick={(feature, details) => details && setRecord(details)}
               onLegend={setDrawn}
               onLoadStart={() => { setLoading(true); setRecord(null); setDrawn([]) }}

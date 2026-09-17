@@ -36,6 +36,12 @@ const { useMemo } = React;
  *                 in the key
  *   subject       { descriptor } drawn for the record the screen is about; its
  *                 id is the record's own
+ *   cluster       collapse the points into counted badges: `true`, a number to
+ *                 cluster only from that many points up, or { from, className,
+ *                 style, ...plugin options }. A threshold is usually the right
+ *                 answer, because one row serves every record on a screen and
+ *                 the records differ by orders of magnitude -- four features on
+ *                 one, thousands on the next
  *   presets       [{ months, label }], longest last; `label` is a label code
  *   defaultMonths which of them is selected when the panel opens
  *   labels        the rest of the copy, as label codes -- every key is resolved,
@@ -140,6 +146,7 @@ export const ConfiguredMap = (props, context) => {
       // Descriptors are handed over as configured, so the label codes their
       // popups carry are resolved where every other code on this panel is.
       labelResolver={getLabel}
+      cluster={objConfig?.cluster}
       subject={objConfig?.subject ? { ...objConfig.subject, id: objectId } : undefined}
       title={title ?? getLabel(objConfig?.title)}
       presets={presets}
