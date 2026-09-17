@@ -3,6 +3,8 @@ export { Choropleth } from './Choropleth';
 export { DateRange } from './DateRange';
 export { FeatureSet } from './FeatureSet';
 export { FeaturePanel } from './FeaturePanel';
+export { Legend } from './Legend';
+export { LegendControl } from './LegendControl';
 export { PointPicker } from './PointPicker';
 
 // The connected one is the public name: a consumer wants the screen that finds

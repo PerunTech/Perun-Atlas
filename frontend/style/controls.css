@@ -19,3 +19,25 @@
 .leaflet-control {
   pointer-events: auto;
 }
+
+/*
+ * Controls in a shared corner, sized to themselves.
+ *
+ * A corner container shrink-wraps its widest control, and every other control
+ * in that corner is a block child that stretches to match it. With one control
+ * per corner that never shows. Put a legend beside a collapsed layer switcher
+ * and the switcher becomes as wide as the legend.
+ *
+ * So size each control to its own content. On the right, keep it against the
+ * edge as well: a narrow control in a container that is only wide because of
+ * its neighbour would otherwise sit at the far side of it, detached from the
+ * corner it was placed in.
+ */
+.leaflet-top .leaflet-control,
+.leaflet-bottom .leaflet-control {
+  width: fit-content;
+}
+
+.leaflet-right .leaflet-control {
+  margin-left: auto;
+}

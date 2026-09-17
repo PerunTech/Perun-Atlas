@@ -2,7 +2,9 @@ import { React, elements } from 'perun-core';
 import { AtlasMap } from './AtlasMap';
 import { DateRange } from './DateRange';
 import { FeatureSet } from './FeatureSet';
+import { LegendControl } from './LegendControl';
 import { identityOf, toCSV, toGeoJSON } from '../data';
+import { legendFrom } from '../style';
 import { download } from './dom';
 import '../style/panel.css';
 const { useEffect, useMemo, useState } = React
@@ -81,6 +83,16 @@ const { Icon } = elements
  * resolved by `FeatureSet`, which owns the descriptors -- this renders rows and
  * still never reads one.
  *
+ * @param {boolean|string} [legend] - `false` withholds the key. On otherwise, and
+ *                                it shows itself only when a set drew more than
+ *                                one kind of thing -- one kind needs no key, and
+ *                                a box saying so is a box over the map for
+ *                                nothing. Built from what was drawn, so it needs
+ *                                no configuration of its own. A string names the
+ *                                corner it sits in instead of `topright`, which
+ *                                is worth setting when a screen already puts
+ *                                something there.
+ *
  * @param {Object} [tokens]     - CSS custom properties for the panel's root:
  *                                '--ap-accent' and friends. This is how a screen
  *                                described entirely in configuration carries its
@@ -110,6 +122,7 @@ export const FeaturePanel = ({
   labels = {},
   map,
   exportable,
+  legend = true,
   tokens,
   title,
   className = '',
@@ -122,6 +135,7 @@ export const FeaturePanel = ({
   const [loading, setLoading] = useState(true)
   const [labelled, setLabelled] = useState(true)
   const [record, setRecord] = useState(null)
+  const [drawn, setDrawn] = useState([])
 
   /**
    * Whether this map is scoped to a date window.
@@ -318,10 +332,25 @@ export const FeaturePanel = ({
               descriptorFor={descriptorFor}
               labelResolver={labelResolver}
               onFeatureClick={(feature, details) => details && setRecord(details)}
-              onLoadStart={() => { setLoading(true); setRecord(null) }}
+              onLegend={setDrawn}
+              onLoadStart={() => { setLoading(true); setRecord(null); setDrawn([]) }}
               onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
               onError={() => { setSet({ features: [] }); setLoading(false) }}
             />
+
+            {/* Inside the map, so it lives in the container that goes
+                fullscreen and comes off with it. Kept mounted across a reload
+                rather than gated on `loading`: `drawn` empties at the start of
+                every fetch, which takes the control off the map by itself, and
+                leaving the component up is what lets a reader who collapsed the
+                key find it still collapsed afterwards. */}
+            {legend !== false && (
+              <LegendControl
+                entries={legendFrom(drawn, labelResolver)}
+                title={labels.legend}
+                position={typeof legend === 'string' ? legend : undefined}
+              />
+            )}
           </AtlasMap>
         </div>
 

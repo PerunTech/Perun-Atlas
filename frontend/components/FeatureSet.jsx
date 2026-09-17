@@ -69,6 +69,13 @@ const reversed = (points) =>
  * @param {Function} [popup] - Per-feature popup content, replacing the descriptor's.
  *        Return an element for rich content, a string for plain text, or nothing
  *        for no popup. A returned string is rendered as text, never as markup.
+ * @param {Function} [onLegend] - Called once a set is drawn, with one entry per
+ *        distinct kind that actually reached the map:
+ *        `[{ name, value, descriptor, geometry }]`, where `value` is the variant
+ *        case when one matched. Reported from the draw rather than read back out
+ *        of `descriptors`, because a menu row routinely configures more kinds
+ *        than any one response carries and a key listing absent ones is worse
+ *        than no key. Shaped into something renderable by `legendFrom`.
  * @param {Function} [onFeatureClick] - Called with `(feature, details)`, where
  *        `details` is the feature's whole record as `detailsFor` resolved it, or
  *        null for a descriptor that declares none. Resolving it here rather than
@@ -86,6 +93,7 @@ export const FeatureSet = ({
   popup,
   labelResolver,
   onFeatureClick,
+  onLegend,
   onLoadStart,
   onLoad,
   onError
@@ -154,6 +162,44 @@ export const FeatureSet = ({
       }
     };
 
+    /**
+     * The distinct kinds this draw put on the map.
+     *
+     * Keyed by descriptor and variant case together, since one descriptor with
+     * two cases is two things a reader has to tell apart. Insertion order is the
+     * order the producer sent the features in, which is as much of an order as
+     * there is and is at least stable within a set.
+     *
+     * A null-prototype object rather than a `Map`, because `Map` in this file is
+     * the engine's map singleton destructured from `core` above -- `new Map()`
+     * here builds a Leaflet map, or throws. Null-prototype because the keys are
+     * built from response data and a feature named `constructor` should not
+     * collide with a member of `Object.prototype`.
+     */
+    const drawnKinds = Object.create(null);
+
+    const noteKind = (feature) => {
+      const name = nameOf(feature);
+      const configured = descriptors[name];
+      const by = configured?.variants?.by;
+      const raw = by ? feature?.properties?.[by] : undefined;
+
+      // Only a value with a case behind it distinguishes anything: a column
+      // carrying forty values and two cases splits the descriptor in two, not
+      // in forty.
+      const value = raw !== undefined && configured?.variants?.cases?.[raw] ? raw : undefined;
+
+      const key = `${name ?? ''}::${value ?? ''}`;
+      if (key in drawnKinds) return;
+
+      drawnKinds[key] = {
+        name,
+        value,
+        descriptor: entryFor(feature),
+        geometry: feature?.geometry?.type
+      };
+    };
+
     const draw = async () => {
       try {
         onLoadStart?.();
@@ -185,6 +231,8 @@ export const FeatureSet = ({
 
           onEachFeature: (feature, layer) => {
             const descriptor = entryFor(feature) ?? {};
+
+            noteKind(feature);
 
             const text = tooltip ? tooltip(feature) : labelFor(descriptor, feature);
             if (text) {
@@ -269,6 +317,8 @@ export const FeatureSet = ({
             }]
           }).addTo(group);
         });
+
+        onLegend?.(Object.values(drawnKinds));
 
         syncLabels();
         Map.on('zoomend', syncLabels);

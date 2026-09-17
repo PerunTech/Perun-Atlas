@@ -1,0 +1,115 @@
+/*
+ * The legend's structure, and nothing about its look.
+ *
+ * Same division as panel.css: what makes this a readable box rather than a stack
+ * of divs ships here, because a deployment serving no stylesheet must still get
+ * a legend. Colours, type and radii belong to the deployment's own sheet, which
+ * is later in the cascade and wins.
+ *
+ * It carries its own opaque ground because it sits over tiles. A translucent one
+ * lets whatever is underneath through, and a swatch read against moving imagery
+ * is not a swatch -- the colours are the content here, so they get a fixed white
+ * behind them rather than a tinted approximation of one.
+ *
+ * It places nothing. The legend is a Leaflet control, so its corner, its offset
+ * from the edge and its stacking all come from the map's own chrome -- which is
+ * what keeps it inside the element that goes fullscreen and out of a z-index
+ * argument with the frame drawn around it.
+ */
+
+.atlas-legend {
+  max-width: 15rem;
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  font-size: 12px;
+  line-height: 1.35;
+  color: #212529;
+}
+
+.atlas-legend__toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.atlas-legend__title {
+  flex: 1 1 auto;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6c757d;
+}
+
+.atlas-legend__chevron {
+  flex: 0 0 auto;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1;
+  color: #6c757d;
+}
+
+.atlas-legend__toggle:hover .atlas-legend__title,
+.atlas-legend__toggle:hover .atlas-legend__chevron {
+  color: #212529;
+}
+
+.atlas-legend__toggle:focus-visible {
+  outline: 2px solid #3399ff;
+  outline-offset: -2px;
+}
+
+.atlas-legend__list {
+  /* A long key scrolls rather than growing past the map it describes. */
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 8px 6px;
+  list-style: none;
+}
+
+.atlas-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+/* Fixed, so every label starts in the same column whatever its swatch draws. */
+.atlas-legend__swatch {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 12px;
+  overflow: visible;
+}
+
+.atlas-legend__point {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  margin: 0 6px;
+  border-radius: 50%;
+  background-color: #B8C6CC;
+}
+
+.atlas-legend__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* On a narrow map, room to be read matters more than the corner it sits in. */
+@media (max-width: 30rem) {
+  .atlas-legend {
+    max-width: calc(100vw - 4rem);
+  }
+}

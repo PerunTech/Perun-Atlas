@@ -29,9 +29,11 @@ const { useMemo } = React;
  *
  *   service       '/WsSomething/get/{session}/{objectId}/{from}/{to}'
  *   context       extra placeholder values, resolved per record
- *   descriptors   descriptor name to how it is drawn -- `marker`, `label` and
- *                 `popup`, including their `style` keys, which is how a look
- *                 reaches the screen with no stylesheet to name
+ *   descriptors   descriptor name to how it is drawn -- `marker`, `label`,
+ *                 `popup`, `details`, `arrow` and `variants`, including their
+ *                 `style` keys, which is how a look reaches the screen with no
+ *                 stylesheet to name. An optional `legend` code names the kind
+ *                 in the key
  *   subject       { descriptor } drawn for the record the screen is about; its
  *                 id is the record's own
  *   presets       [{ months, label }], longest last; `label` is a label code
@@ -53,6 +55,13 @@ const { useMemo } = React;
  *                 object model's own are out of both the file and the record
  *                 pane already. Absent means the set is offered as a file with
  *                 the defaults
+ *   legend        false to withhold the key. On otherwise, and it appears only
+ *                 when a set drew more than one kind of thing. It is built from
+ *                 what reached the map -- the descriptor names, the variant
+ *                 cases and their colours are already configured -- so it needs
+ *                 no configuration of its own. A descriptor or case may carry a
+ *                 `legend` label code where neither its name nor its case value
+ *                 reads well; `labels.legend` names the heading
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit
@@ -137,6 +146,7 @@ export const ConfiguredMap = (props, context) => {
       defaultMonths={objConfig?.defaultMonths}
       map={objConfig?.map}
       exportable={objConfig?.export}
+      legend={objConfig?.legend}
       tokens={objConfig?.tokens}
       labels={labels}
       className={className}
