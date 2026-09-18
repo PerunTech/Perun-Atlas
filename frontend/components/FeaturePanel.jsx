@@ -1,10 +1,11 @@
 import { React, elements } from 'perun-core';
 import { AtlasMap } from './AtlasMap';
 import { DateRange } from './DateRange';
+import { Choropleth } from './layers/Choropleth';
 import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
-import { matchesIdentity, toCSV, toGeoJSON } from '../data';
-import { legendFrom } from '../style';
+import { fetchRows, matchesIdentity, toCSV, toGeoJSON, valueAt } from '../data';
+import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../style';
 import { download } from './lib/dom';
 import { rangeOf, sameWindow, today } from './lib/dates';
 import '../style/panel.css';
@@ -110,6 +111,22 @@ const { Icon } = elements
  *                                '--ap-accent' and friends. This is how a screen
  *                                described entirely in configuration carries its
  *                                colours, with no stylesheet of its own.
+ * @param {Object} [choropleth] - Draw the set as areas filled by a category
+ *                                rather than as features drawn per descriptor:
+ *                                { descriptor, field, palette, fallback, join,
+ *                                status, tooltip, unknownLabel }. `descriptor`
+ *                                names an entry in `descriptors`; `status` is a
+ *                                second service path whose rows are joined onto
+ *                                the geometry by `join`; `tooltip` names the
+ *                                field to show on hover.
+ *
+ *                                It is one key rather than a mode because that is
+ *                                the honest shape: everything else on this panel
+ *                                -- the title, the record, the file buttons, the
+ *                                key, the empty state -- is the same either way,
+ *                                and only the layer under them differs. The date
+ *                                window disappears by itself, because a
+ *                                bbox-scoped path names no {from} or {to}.
  */
 
 export const FeaturePanel = ({
@@ -128,6 +145,7 @@ export const FeaturePanel = ({
   legend = true,
   tokens,
   title,
+  choropleth,
   className = '',
   onClose
 }) => {
@@ -138,7 +156,27 @@ export const FeaturePanel = ({
   const [loading, setLoading] = useState(true)
   const [labelled, setLabelled] = useState(true)
   const [record, setRecord] = useState(null)
-  const [drawn, setDrawn] = useState([])
+
+  /**
+   * Whether this screen colours areas by a category or draws features per
+   * descriptor. One question, asked once, because it decides three things: which
+   * layer is mounted, which key is built from what that layer reports, and
+   * whether the label switch is a control or a dead toggle.
+   */
+  const coloured = Boolean(choropleth)
+
+  /**
+   * What the layer last reported it drew, in that layer's own shape.
+   *
+   * `FeatureSet` reports a list of kinds; `Choropleth` reports
+   * `{ values, usedFallback }`. Kept as one piece of state rather than two
+   * because only one layer is ever mounted, and two would mean a stale half
+   * sitting beside the live one waiting to be read by mistake.
+   */
+  const noneDrawn = coloured ? { values: [], usedFallback: false } : []
+  const [drawn, setDrawn] = useState(noneDrawn)
+
+  const [rows, setRows] = useState(null)
 
   /**
    * Whether this map is scoped to a date window.
@@ -161,6 +199,49 @@ export const FeaturePanel = ({
     ...(context || {}),
     ...(timeScoped && { from: range.from, to: range.to })
   }), [context, timeScoped, range.from, range.to])
+
+  // Bindings are a small flat object rebuilt on every render, so the effect below
+  // compares them by value; by identity it would refetch on each one.
+  const bindingKey = JSON.stringify(bindings)
+
+  /**
+   * The rows a coloured map joins onto its geometry.
+   *
+   * Fetched here rather than by the layer because they are not scoped to the
+   * bounding box: the geometry service is asked again on every pause, and asking
+   * a whole code list again with it would be a second request per pan for an
+   * answer that did not change. It moves when the record or the window does,
+   * which is what the bindings say.
+   *
+   * The layer is not mounted until they arrive -- see below -- so there is no
+   * first draw in the fallback colour followed by a corrected one.
+   */
+  const statusPath = coloured ? choropleth.status : null
+
+  useEffect(() => {
+    if (!statusPath) return undefined
+
+    let cancelled = false
+    fetchRows(statusPath, bindings).then((next) => {
+      if (!cancelled) setRows(next)
+    })
+
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusPath, bindingKey])
+
+  /**
+   * A hover label for a coloured area, built from the field a row names.
+   *
+   * The layer takes a function because a caller may want anything; a menu row
+   * cannot write one, so it names a field and this is the function. `valueAt`
+   * rather than a property read, so a joined column reads like its own.
+   */
+  const colourTooltip = useMemo(() => {
+    const field = choropleth?.tooltip
+    if (!field) return undefined
+    return (feature) => valueAt(feature?.properties, field) ?? null
+  }, [choropleth])
 
   /**
    * The record on screen, drawn as itself.
@@ -307,17 +388,22 @@ export const FeaturePanel = ({
           </div>
         )}
 
-        <button
-          type='button'
-          className='atlas-panel__switch'
-          aria-pressed={labelled}
-          onClick={() => setLabelled(!labelled)}
-        >
-          <span className='atlas-panel__track'>
-            <span className='atlas-panel__knob' />
-          </span>
-          {labels.labels ?? 'Labels'}
-        </button>
+        {/* A control for permanent labels, which only one of the two layers
+            draws. A coloured map names its areas on hover instead, so the switch
+            would be a toggle with nothing on the other side of it. */}
+        {!coloured && (
+          <button
+            type='button'
+            className='atlas-panel__switch'
+            aria-pressed={labelled}
+            onClick={() => setLabelled(!labelled)}
+          >
+            <span className='atlas-panel__track'>
+              <span className='atlas-panel__knob' />
+            </span>
+            {labels.labels ?? 'Labels'}
+          </button>
+        )}
 
         {canExport && (
           <div className='atlas-panel__export'>
@@ -343,20 +429,46 @@ export const FeaturePanel = ({
           {/* Merged rather than defaulted: a caller setting one of AtlasMap's
               options should not silently lose the others. */}
           <AtlasMap session={session} {...{ layerSwitcher: true, ...map }}>
-            <FeatureSet
-              servicePath={servicePath}
-              context={bindings}
-              descriptors={descriptors}
-              descriptorFor={descriptorFor}
-              labelResolver={labelResolver}
-              cluster={cluster}
-              pinned={isPinnedFeature}
-              onFeatureClick={(feature, details) => details && setRecord(details)}
-              onLegend={setDrawn}
-              onLoadStart={() => { setLoading(true); setRecord(null); setDrawn([]) }}
-              onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
-              onError={() => { setSet({ features: [] }); setLoading(false) }}
-            />
+            {/* One layer or the other, never both. The callbacks are the same
+                pair of hands either way -- which is what let this be a branch
+                here rather than a second panel. A coloured map waits for its
+                rows before it is mounted at all, so an area is never drawn in
+                the unclassified colour and then corrected a moment later. */}
+            {coloured
+              ? (rows !== null || !statusPath) && (
+                <Choropleth
+                  servicePath={servicePath}
+                  statusRows={rows}
+                  join={choropleth.join}
+                  field={choropleth.field}
+                  palette={choropleth.palette}
+                  fallback={choropleth.fallback}
+                  descriptor={descriptors?.[choropleth.descriptor]}
+                  labelResolver={labelResolver}
+                  tooltip={colourTooltip}
+                  onFeatureClick={(feature, details) => details && setRecord(details)}
+                  onLegend={setDrawn}
+                  onLoadStart={() => { setLoading(true); setRecord(null); setDrawn(noneDrawn) }}
+                  onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
+                  onError={() => { setSet({ features: [] }); setLoading(false) }}
+                />
+              )
+              : (
+                <FeatureSet
+                  servicePath={servicePath}
+                  context={bindings}
+                  descriptors={descriptors}
+                  descriptorFor={descriptorFor}
+                  labelResolver={labelResolver}
+                  cluster={cluster}
+                  pinned={isPinnedFeature}
+                  onFeatureClick={(feature, details) => details && setRecord(details)}
+                  onLegend={setDrawn}
+                  onLoadStart={() => { setLoading(true); setRecord(null); setDrawn(noneDrawn) }}
+                  onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
+                  onError={() => { setSet({ features: [] }); setLoading(false) }}
+                />
+              )}
 
             {/* Inside the map, so it lives in the container that goes
                 fullscreen and comes off with it. Kept mounted across a reload
@@ -366,7 +478,14 @@ export const FeaturePanel = ({
                 key find it still collapsed afterwards. */}
             {legend !== false && (
               <LegendControl
-                entries={legendFrom(drawn, labelResolver)}
+                entries={coloured
+                  ? legendFromPalette({
+                    palette: choropleth.palette,
+                    fallback: choropleth.fallback ?? DEFAULT_PALETTE.__unknown,
+                    unknownLabel: choropleth.unknownLabel,
+                    ...drawn
+                  }, labelResolver)
+                  : legendFrom(drawn, labelResolver)}
                 title={labels.legend}
                 position={typeof legend === 'string' ? legend : undefined}
               />

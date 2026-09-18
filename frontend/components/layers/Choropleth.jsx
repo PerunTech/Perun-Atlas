@@ -54,6 +54,7 @@ export const Choropleth = ({
   join,
   field,
   palette,
+  fallback,
   descriptor,
   onFeatureClick,
   onLegend,
@@ -69,7 +70,9 @@ export const Choropleth = ({
 
   useEffect(() => {
     let cancelled = false;
-    const fill = colourBy({ field, palette });
+    // `fallback` reaches the key as well as the fill, so a deployment that
+    // chose its own unclassified colour sees that colour in both places.
+    const fill = colourBy({ field, palette, fallback });
 
     const draw = async () => {
       /**

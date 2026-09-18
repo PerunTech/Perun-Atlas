@@ -70,6 +70,18 @@ const { useMemo } = React;
  *                 no configuration of its own. A descriptor or case may carry a
  *                 `legend` label code where neither its name nor its case value
  *                 reads well; `labels.legend` names the heading
+ *   choropleth    draw the set as areas filled by a category instead of as
+ *                 features drawn per descriptor:
+ *                 { descriptor, field, palette, fallback, join, status,
+ *                   tooltip, unknownLabel }. `descriptor` names one of the
+ *                 entries above and carries the outline and the popup; `status`
+ *                 is a second service whose rows are joined onto the geometry by
+ *                 `join`, since the shapes and the thing colouring them come
+ *                 from different places; `field` is where the category is read,
+ *                 dotted through the join's `as` key when it lives on a row.
+ *                 The service path takes {map.bbox} and is asked again when the
+ *                 map stops moving. `legend` above works the same way and is
+ *                 built from the bands actually drawn
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit
@@ -154,6 +166,7 @@ export const ConfiguredMap = (props, context) => {
       presets={presets}
       defaultMonths={objConfig?.defaultMonths}
       map={objConfig?.map}
+      choropleth={objConfig?.choropleth}
       exportable={objConfig?.export}
       legend={objConfig?.legend}
       tokens={objConfig?.tokens}
