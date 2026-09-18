@@ -94,12 +94,32 @@ export const Choropleth = ({
       }
     };
 
+    /**
+     * One fetch per pause, not one per `moveend`.
+     *
+     * Leaflet fires `moveend` at the end of every drag and every zoom, and a
+     * reader finding an area does several in a row. Each one was a bbox request
+     * that went out, came back and was decoded in full before the guard above
+     * threw it away -- the guard keeps the map right, it does not keep the
+     * request from being made.
+     *
+     * Short enough not to feel like lag on a single pan, long enough that a
+     * burst collapses into one. The trailing edge is the one that matters: the
+     * bbox worth asking about is the one the reader stopped on.
+     */
+    let pending = null;
+    const later = () => {
+      clearTimeout(pending);
+      pending = setTimeout(draw, 250);
+    };
+
     draw();
-    Map.on('moveend', draw);
+    Map.on('moveend', later);
 
     return () => {
       cancelled = true;
-      Map.off('moveend', draw);
+      clearTimeout(pending);
+      Map.off('moveend', later);
       if (layerRef.current) {
         Map.removeLayer(layerRef.current);
         layerRef.current = null;

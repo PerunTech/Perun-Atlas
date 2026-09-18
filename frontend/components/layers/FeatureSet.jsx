@@ -138,7 +138,20 @@ export const FeatureSet = ({
      * arrow alike -- a colour that applied to the line but not to its arrow
      * heads would be the obvious way to get this half right.
      */
-    const entryFor = (feature) => variantOf(descriptors[nameOf(feature)], feature);
+    const entries = new WeakMap();
+    const entryFor = (feature) => {
+      // Every feature is asked this two or three times in one draw -- the
+      // marker or the path style, `onEachFeature`, and the arrow pass -- and
+      // `variantOf` builds six objects each time it merges a case. Three times
+      // six, per line, on a set large enough to want clustering, is work that
+      // produces the same answer every time. Keyed by the feature itself, so
+      // nothing has to be cleared and nothing is retained: the map is built per
+      // draw and holds its keys weakly.
+      if (entries.has(feature)) return entries.get(feature);
+      const entry = variantOf(descriptors[nameOf(feature)], feature);
+      entries.set(feature, entry);
+      return entry;
+    };
 
     /**
      * A feature's popup content, or nothing.
@@ -160,7 +173,26 @@ export const FeatureSet = ({
     const syncLabels = () => {
       const zoom = Map.getZoom();
       labelledRef.current.forEach(({ layer, descriptor }) => {
-        if (labelVisible(descriptor, zoom)) layer.openTooltip();
+        const wanted = labelVisible(descriptor, zoom);
+
+        /**
+         * Nothing to do when the label is already in the state it should be in.
+         *
+         * Worth checking rather than just calling: `Layer.openTooltip` runs
+         * `_prepareOpen` -- which walks the layer for a position -- *before*
+         * Leaflet's own "this tooltip is already on the map" guard, so the
+         * cheap case is only cheap if we take it ourselves. This runs on every
+         * `moveend` while a set is clustered, which is every pan.
+         *
+         * It stays correct through the cluster because a permanent tooltip
+         * closes itself with its marker (`remove: closeTooltip`) and reopens
+         * when the cluster hands the marker back (`add: _openTooltip`). So a
+         * marker returned at a zoom its band forbids reads as open here, which
+         * is exactly the state this has to correct.
+         */
+        if (wanted === layer.isTooltipOpen()) return;
+
+        if (wanted) layer.openTooltip();
         else layer.closeTooltip();
       });
     };
