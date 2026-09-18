@@ -125,7 +125,10 @@ export const legendFromPalette = (
   });
 
   const rows = values
-    .filter(value => palette[value])
+    // Own properties only, for the reason `isMapped` is written that way: a
+    // palette inherits `toString` like any object, and a band spelled that way
+    // would pass this filter and be drawn with a function for a colour.
+    .filter(value => Object.prototype.hasOwnProperty.call(Object(palette), value) && palette[value])
     .map(value => ({
       key: String(value),
       label: resolveLabel?.(String(value).toLowerCase()) || String(value),
