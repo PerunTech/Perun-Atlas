@@ -115,7 +115,12 @@ export const CirclePicker = ({
       hintlineStyle: { ...PREVIEW, fillOpacity: 0 },
       pathOptions: { ...STYLE, ...style },
       cursorMarker: true,
-      tooltips: true
+      // The engine's own tooltips, and they are its own label codes: an
+      // unregistered one renders as `perun.spatial.start_circle` on the cursor,
+      // which is worse than silence. The caller says what to do in its own
+      // words, in the bar above the map, and in a language this package is not
+      // choosing for it.
+      tooltips: false
     });
 
     return () => {
