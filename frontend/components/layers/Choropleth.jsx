@@ -1,7 +1,7 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { fetchGeometry } from '../../data';
-import { categoriesDrawn, colourBy, joinStatus, pathOptions, popupFor } from '../../style';
+import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions, popupFor } from '../../style';
 import { asNode } from '../lib/dom';
 import { popupElement, POPUP_OPTIONS } from '../lib/popup';
 
@@ -37,6 +37,16 @@ const { useEffect, useRef } = React;
  * Reported from the features drawn rather than read out of the palette, for the
  * reason `FeatureSet` reports its own kinds that way -- a deployment configures
  * more bands than any one bounding box contains.
+ *
+ * `onLoadStart`, `onLoad` and `onError` are `FeatureSet`'s, and mean the same
+ * here: the edges of a fetch, so a caller showing progress has the beginning as
+ * well as the result. They fire on every draw, because every pause on this map
+ * is another request -- a panel that showed a spinner once would be silent for
+ * the ones that matter, which are the ones the reader waits on.
+ *
+ * `onFeatureClick` is handed `(feature, details)` as `FeatureSet` hands it, with
+ * `details` resolved from this layer's own descriptor, so a caller can show a
+ * record beside the map without reading a descriptor itself.
  */
 export const Choropleth = ({
   servicePath,
@@ -47,6 +57,9 @@ export const Choropleth = ({
   descriptor,
   onFeatureClick,
   onLegend,
+  onLoadStart,
+  onLoad,
+  onError,
   tooltip,
   popup,
   labelResolver
@@ -72,6 +85,7 @@ export const Choropleth = ({
       const request = ++requestRef.current;
 
       try {
+        onLoadStart?.();
         const collection = await fetchGeometry(servicePath, { map: { bbox: Map.getBBox() } });
         if (cancelled || request !== requestRef.current) return;
 
@@ -96,15 +110,24 @@ export const Choropleth = ({
               : (rows ? popupElement(rows, descriptor?.popup) : null);
             if (content) layer.bindPopup(content, POPUP_OPTIONS);
 
-            if (onFeatureClick) layer.on('click', () => onFeatureClick(feature));
+            if (onFeatureClick) {
+              layer.on('click', () => onFeatureClick(feature, detailsFor(descriptor, feature, labelResolver)));
+            }
           }
         }).addTo(Map);
 
         // After the draw, and from what was drawn: the join runs first, so a
-        // category living on a joined record is there to be read by now.
+        // category living on a joined record is there to be read by now. The
+        // joined collection goes out too, since it is what is on the screen --
+        // a caller offering the set as a file should offer that one.
         onLegend?.(categoriesDrawn(joined?.features, { field, palette }));
+        onLoad?.(joined);
       } catch (err) {
         console.error('perun-atlas: choropleth failed to render', err);
+        // The guarded returns above leave early without ending the fetch, which
+        // is right: a superseded request did not fail, it stopped mattering, and
+        // the one that superseded it will end it. A throw is the other case.
+        if (!cancelled && request === requestRef.current) onError?.(err);
       }
     };
 
