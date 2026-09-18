@@ -134,18 +134,90 @@ export const pointIn = (latlng, srid) => {
  * @param {string|number} [srid]
  * @returns {number} Projected units per ground metre, or 1 where it cannot be measured.
  */
-export const unitsPerMetre = (latlng, srid) => {
-  // A thousandth of a degree: far enough that floating point noise is nothing
-  // beside it, near enough that the scale has not changed across it.
+export const unitsPerMetre = (latlng, srid) => scalesAt(latlng, srid).ew;
+
+/**
+ * The same ratio along both axes.
+ *
+ * East-west and north-south are the same number in a conformal projection and
+ * are not in a geographic one: a degree of longitude at 35° north is 91 km and a
+ * degree of latitude is 111. A shape drawn round on the map is an ellipse in
+ * degrees, and drawing it as a circle would make it 20% too wide.
+ *
+ * A thousandth of a degree in each direction: far enough that floating point
+ * noise is nothing beside it, near enough that the scale has not changed across
+ * it.
+ */
+const scalesAt = (latlng, srid) => {
   const step = 0.001;
   const here = factory.latLng(latlng);
-  const along = factory.latLng({ lat: here.lat, lng: here.lng + step });
-
-  const ground = Map.distance(here, along);
-  if (!ground) return 1;
+  const east = factory.latLng({ lat: here.lat, lng: here.lng + step });
+  const north = factory.latLng({ lat: here.lat + step, lng: here.lng });
 
   const a = pointIn(here, srid);
-  const b = pointIn(along, srid);
+  const eastGround = Map.distance(here, east);
+  const northGround = Map.distance(here, north);
 
-  return Math.abs(b.x - a.x) / ground;
+  return {
+    ew: eastGround ? Math.abs(pointIn(east, srid).x - a.x) / eastGround : 1,
+    ns: northGround ? Math.abs(pointIn(north, srid).y - a.y) / northGround : 1
+  };
+};
+
+/**
+ * How many decimals a coordinate is worth writing at.
+ *
+ * A thousandth of the shape's own size, which is finer than anything a reader
+ * placed by hand and coarser than the noise in the last digits of a double. The
+ * rule is derived from the shape rather than from the units, so it lands on six
+ * decimals for degrees -- which is what the screens in this system have always
+ * written, because that is Leaflet's own `formatNum` default -- and on one for
+ * metres, where six would be micrometres in a URL.
+ */
+const decimalsFor = (size) => {
+  if (!(size > 0)) return 6;
+  return Math.min(12, Math.max(0, 3 - Math.floor(Math.log10(size))));
+};
+
+const roundTo = (value, places) => {
+  const factor = 10 ** places;
+  return Math.round(value * factor) / factor;
+};
+
+/**
+ * A circle as a ring of points, in the projection a service stores.
+ *
+ * For the services that take a shape rather than a centre and a radius -- which
+ * is most of them, and the only honest option where a radius would have to be
+ * expressed in a projection's own units. A circle drawn at 720 m is 0.0065 of a
+ * degree, and a service reading an integer radius cannot be given that; the same
+ * circle as twenty-four points is exact and needs no unit at all.
+ *
+ * Round on the ground rather than round in the projection: the radius is applied
+ * through each axis's own scale, so the ring passes through the points the
+ * reader would measure at that distance in every direction. In a conformal
+ * projection the two scales are equal and this is a circle; in a geographic one
+ * it is the ellipse that a circle on the ground actually is.
+ *
+ * @param {{lat: number, lng: number}} centre
+ * @param {number} metres - Radius on the ground.
+ * @param {string|number} [srid]
+ * @param {number} [points] - How many vertices. The shape is not closed: the
+ *        services that take one close it themselves.
+ * @returns {Array<{x: number, y: number}>}
+ */
+export const ringIn = (centre, metres, srid, points = 24) => {
+  const { ew, ns } = scalesAt(centre, srid);
+  const { x, y } = pointIn(centre, srid);
+  const rx = metres * ew;
+  const ry = metres * ns;
+  const places = decimalsFor(Math.min(rx, ry));
+
+  return Array.from({ length: Math.max(3, points) }, (unused, i) => {
+    const angle = (2 * Math.PI * i) / Math.max(3, points);
+    return {
+      x: roundTo(x + rx * Math.cos(angle), places),
+      y: roundTo(y + ry * Math.sin(angle), places)
+    };
+  });
 };

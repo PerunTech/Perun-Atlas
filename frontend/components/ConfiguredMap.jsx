@@ -93,12 +93,19 @@ const { useMemo } = React;
  *                 while a shape is in progress in any case
  *   draw          let the reader draw a shape and send it somewhere:
  *                 { shape: "circle", radius: { min, max, step },
- *                   note: { required }, style,
+ *                   note: { required }, style, points,
+ *                   ring: { point, join },
  *                   save: { onSave, body, contentType, encoding, failure } }.
  *                 `onSave` takes the same placeholders every other path here
  *                 does, plus the shape's own under `{draw.*}` -- `x`, `y` and
  *                 `radius` in the projection this deployment stores geometry in,
- *                 and `lat`, `lng` and `metres` on the ground. `body` is a
+ *                 `lat`, `lng` and `metres` on the ground, and `ring`, the
+ *                 circle as vertices in that projection. The ring is what a
+ *                 service wants when its radius is an integer and the deployment
+ *                 stores degrees, where no circle smaller than a hundred
+ *                 kilometres can be described at all; `ring: { point, join }`
+ *                 spells one vertex and what goes between them, and `points`
+ *                 says how many there are. `body` is a
  *                 payload template whose strings resolve the same way, `{note}`
  *                 among them. `failure` is how a refusal reads on a service that
  *                 answers one with a 200 and a string. The words -- `draw`,

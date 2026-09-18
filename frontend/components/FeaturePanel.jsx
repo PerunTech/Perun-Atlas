@@ -6,7 +6,7 @@ import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
-import { fetchRows, fillBody, matchesIdentity, pointIn, postTo, toCSV, toGeoJSON, unitsPerMetre, valueAt } from '../data';
+import { bindPath, fetchRows, fillBody, matchesIdentity, pointIn, postTo, ringIn, toCSV, toGeoJSON, unitsPerMetre, valueAt } from '../data';
 import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../style';
 import { download } from './lib/dom';
 import { rangeOf, sameWindow, today } from './lib/dates';
@@ -138,10 +138,17 @@ const { Icon } = elements
  *                                path here does plus the shape's own, under
  *                                `{draw.*}`: `x`, `y` and `radius` in the
  *                                deployment's stored projection, `lat`, `lng`
- *                                and `metres` on the ground. `save.body` is a
- *                                payload template whose strings resolve the same
- *                                way. Nothing here knows what the shape means;
- *                                this panel draws a circle and posts numbers.
+ *                                and `metres` on the ground, and `ring` -- the
+ *                                circle as a ring of vertices in that
+ *                                projection, which is the only form a service
+ *                                reading an integer radius can take from a
+ *                                deployment that stores degrees. `ring: { point,
+ *                                join }` is how that ring is spelled, and
+ *                                `points` how many vertices it has.
+ *                                `save.body` is a payload template whose strings
+ *                                resolve the same way. Nothing here knows what
+ *                                the shape means; this panel draws a circle and
+ *                                posts numbers.
  *
  *                                It is one key rather than a mode because that is
  *                                the honest shape: everything else on this panel
@@ -427,19 +434,36 @@ export const FeaturePanel = ({
     const radius = Math.round(shape.radius * scale)
 
     /**
-     * A circle smaller than one unit of the projection it is stored in.
+     * The shape itself, as a ring in the projection the deployment stores.
      *
-     * Rounding is not optional -- more than one of these services parses its
-     * radius as an integer, and a decimal point is a rejected save. But a
-     * deployment storing degrees measures a 1.5 km circle as 0.016 of a unit,
-     * which rounds to nothing, and a radius of zero is a save that either fails
-     * somewhere deep or succeeds and stores a shape with no extent.
+     * Formatted by the row, because the syntax is the service's and the geometry
+     * is this panel's: `point` is a template for one vertex and `join` is what
+     * goes between them. The default is a WKT coordinate pair, which is the only
+     * spelling that is anybody's standard.
+     */
+    const ring = ringIn(centre, shape.radius, dataSrid, draw.points)
+      .map((vertex) => bindPath(draw.ring?.point ?? '{x} {y}', vertex))
+      .join(draw.ring?.join ?? ', ')
+
+    /**
+     * A radius smaller than one unit of the projection it would be sent in.
+     *
+     * Only when that is what is being sent. `{draw.radius}` is the shape's size
+     * in the stored projection, and rounding it is not optional -- more than one
+     * of these services parses a radius as an integer. But a deployment storing
+     * degrees measures a 720 m circle as 0.0065 of a unit, which rounds to
+     * nothing, and a radius of zero is a save that either fails somewhere deep
+     * or stores a shape with no extent. A row in that position wants
+     * `{draw.metres}` and the ring, neither of which has this problem.
      *
      * Said here, before the request, because this is the one place that knows
      * both numbers. The service cannot tell the difference, and the reader would
      * otherwise be told only that it refused.
      */
-    if (!(radius >= 1)) {
+    const sendsUnits = [draw.save.onSave, JSON.stringify(draw.save.body ?? null)]
+      .some((text) => String(text).includes('{draw.radius}'))
+
+    if (sendsUnits && !(radius >= 1)) {
       setSaving(false)
       setSaid({
         ok: false,
@@ -462,7 +486,8 @@ export const FeaturePanel = ({
         metres: Math.round(shape.radius),
         x,
         y,
-        radius
+        radius,
+        ring
       }
     }
 
