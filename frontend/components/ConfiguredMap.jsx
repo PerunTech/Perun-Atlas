@@ -34,8 +34,10 @@ const { useMemo } = React;
  *                 `style` keys, which is how a look reaches the screen with no
  *                 stylesheet to name. An optional `legend` code names the kind
  *                 in the key
- *   subject       { descriptor } drawn for the record the screen is about; its
- *                 id is the record's own
+ *   subject       { descriptor, match } drawn for the record the screen is
+ *                 about; its id is the record's own. `match: 'parent'` when the
+ *                 service returns the record's children rather than the record,
+ *                 so the id to compare is each feature's `parent_id`
  *   cluster       collapse the points into counted badges: `true`, a number to
  *                 cluster only from that many points up, or { from, className,
  *                 style, ...plugin options }. A threshold is usually the right

@@ -3,7 +3,7 @@ import { AtlasMap } from './AtlasMap';
 import { DateRange } from './DateRange';
 import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
-import { identityOf, toCSV, toGeoJSON } from '../data';
+import { matchesIdentity, toCSV, toGeoJSON } from '../data';
 import { legendFrom } from '../style';
 import { download } from './lib/dom';
 import { rangeOf, sameWindow, today } from './lib/dates';
@@ -50,10 +50,14 @@ const { Icon } = elements
  * @param {string} servicePath  - Path with {token} placeholders.
  * @param {Object} context      - Extra values those placeholders resolve against.
  * @param {Object} descriptors  - Descriptor name to how it is drawn. Caller-owned.
- * @param {Object} [subject]    - The record the screen is about: { id, descriptor }.
- *                                Its descriptor is drawn instead of the
- *                                producer's, so the record stands out among the
- *                                features it arrived with.
+ * @param {Object} [subject]    - The record the screen is about:
+ *                                { id, descriptor, match }. Its descriptor is
+ *                                drawn instead of the producer's, so the record
+ *                                stands out among the features it arrived with.
+ *                                `match: 'parent'` for a service that returns
+ *                                the record's children rather than the record --
+ *                                then the id worth comparing is the feature's
+ *                                `parent_id`. See `matchesIdentity`.
  * @param {Array}  [presets]    - Quick ranges, [{ months, label }], longest last.
  *                                Shown only when the service takes a window; see
  *                                `timeScoped` below.
@@ -167,15 +171,7 @@ export const FeaturePanel = ({
    * here: the feature whose identity is the record's gets the caller's
    * descriptor, every other one keeps the one it arrived with.
    */
-  const isSubject = (feature) => {
-    if (subject?.id === null || subject?.id === undefined) return false
-    const { id } = identityOf(feature)
-    if (id === null || id === undefined) return false
-    // Compared as text: an identity is a name, and the two sides reach here from
-    // different places -- one decoded from the wire, one out of a configuration
-    // -- so one of them being a number is not a difference.
-    return String(id) === String(subject.id)
-  }
+  const isSubject = (feature) => matchesIdentity(feature, subject?.id, subject?.match)
 
   const descriptorFor = (feature) => (subject?.descriptor && isSubject(feature) ? subject.descriptor : null)
 
