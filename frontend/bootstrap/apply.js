@@ -1,5 +1,5 @@
 import { config as engine, core } from '../spatial';
-import { crsFor } from '../data/bbox';
+import { crsFor } from '../data/project';
 
 const { Map, store } = core;
 

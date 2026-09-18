@@ -20,7 +20,9 @@
 
 export { AtlasMap } from './AtlasMap';
 export { Choropleth } from './layers/Choropleth';
+export { CirclePicker } from './layers/CirclePicker';
 export { DateRange } from './DateRange';
+export { DrawBar } from './DrawBar';
 export { FeatureSet } from './layers/FeatureSet';
 export { FeaturePanel } from './FeaturePanel';
 export { Legend } from './Legend';

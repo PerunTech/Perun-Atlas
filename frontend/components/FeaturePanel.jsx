@@ -1,14 +1,17 @@
 import { React, elements } from 'perun-core';
 import { AtlasMap } from './AtlasMap';
 import { DateRange } from './DateRange';
+import { DrawBar } from './DrawBar';
 import { Choropleth } from './layers/Choropleth';
+import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
-import { fetchRows, matchesIdentity, toCSV, toGeoJSON, valueAt } from '../data';
+import { fetchRows, fillBody, matchesIdentity, pointIn, postTo, toCSV, toGeoJSON, unitsPerMetre, valueAt } from '../data';
 import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../style';
 import { download } from './lib/dom';
 import { rangeOf, sameWindow, today } from './lib/dates';
 import '../style/panel.css';
+import '../style/draw.css';
 const { useEffect, useMemo, useState } = React
 
 /**
@@ -120,6 +123,18 @@ const { Icon } = elements
  *                                the geometry by `join`; `tooltip` names the
  *                                field to show on hover.
  *
+ * @param {Object} [draw]       - Let the reader draw a shape and send it to a
+ *                                service: { shape, radius, note, save, labels }.
+ *                                `save.onSave` is the path it is posted to, and
+ *                                it resolves the same placeholders every other
+ *                                path here does plus the shape's own, under
+ *                                `{draw.*}`: `x`, `y` and `radius` in the
+ *                                deployment's stored projection, `lat`, `lng`
+ *                                and `metres` on the ground. `save.body` is a
+ *                                payload template whose strings resolve the same
+ *                                way. Nothing here knows what the shape means;
+ *                                this panel draws a circle and posts numbers.
+ *
  *                                It is one key rather than a mode because that is
  *                                the honest shape: everything else on this panel
  *                                -- the title, the record, the file buttons, the
@@ -146,6 +161,7 @@ export const FeaturePanel = ({
   tokens,
   title,
   choropleth,
+  draw,
   className = '',
   onClose
 }) => {
@@ -195,6 +211,27 @@ export const FeaturePanel = ({
    * before a path is written; it is not something this can decide.
    */
   const [dataSrid, setDataSrid] = useState(null)
+
+  /**
+   * The shape being drawn, and everything that goes with sending it.
+   *
+   * `shape` is in ground terms -- a centre and a radius in metres -- because
+   * that is what was drawn and what the map draws back. The projection it is
+   * sent in is applied once, at the moment of saving, so that a shape drawn
+   * before the map reported its settings is not stored in the wrong one.
+   *
+   * `reload` is the one piece of state a save leaves behind. A write changes
+   * what the read would answer, and the layer below has no way of knowing that
+   * -- so it is told, by a number it refetches on. It is not a placeholder and
+   * never reaches a URL.
+   */
+  const drawable = Boolean(draw?.save?.onSave)
+  const [drawing, setDrawing] = useState(false)
+  const [shape, setShape] = useState(null)
+  const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [said, setSaid] = useState(null)
+  const [reload, setReload] = useState(0)
 
   /**
    * Whether this map is scoped to a date window.
@@ -273,6 +310,20 @@ export const FeaturePanel = ({
    */
   const isSubject = (feature) => matchesIdentity(feature, subject?.id, subject?.match)
 
+  /**
+   * A click on a feature opens its record -- unless a shape is being drawn.
+   *
+   * Leaflet passes a click on a vector layer up to the map as well, which is
+   * what lets a centre be placed on top of a holding rather than only on open
+   * ground. The record pane would open under the same click, covering the map
+   * the reader is drawing on, so while the tool is armed the click means one
+   * thing only.
+   */
+  const openRecord = (feature, details) => {
+    if (drawing) return
+    if (details) setRecord(details)
+  }
+
   const descriptorFor = (feature) => (subject?.descriptor && isSubject(feature) ? subject.descriptor : null)
 
   // The record the screen is about is never collapsed into a badge. It sits
@@ -326,6 +377,79 @@ export const FeaturePanel = ({
   const applyPreset = (months) => applyWindow(rangeOf(months), months)
 
   const onRangeChange = (next) => applyWindow(next, null)
+
+  /** Nothing drawn, nothing pending, and no answer left over from last time. */
+  const clearDrawing = () => {
+    setDrawing(false)
+    setShape(null)
+    setNote('')
+    setSaid(null)
+  }
+
+  /**
+   * Send the drawn shape to the service the row named.
+   *
+   * The shape is converted here and nowhere else. A radius is drawn in metres on
+   * the ground and stored in the units of whatever projection the deployment
+   * keeps geometry in, and the two are the same number only at the equator --
+   * at these latitudes a circle sent across unconverted is a fifth too small,
+   * silently, in a record nobody re-measures. `unitsPerMetre` asks the
+   * projection itself rather than carrying a formula for it.
+   *
+   * Rounded, because more than one of these services parses its radius as an
+   * integer and a decimal point is a rejected save rather than a rounded circle.
+   * The centre keeps its decimals: it is read as a pair of doubles everywhere.
+   *
+   * On success the shape goes away and the layer is told to fetch again, because
+   * what is now on the server is not what is on the screen. On failure it stays
+   * exactly where it was -- the reader is one button press from trying again,
+   * and throwing away a drawn shape to report a failure would be the second
+   * thing to go wrong.
+   */
+  const saveShape = async () => {
+    if (!shape || saving) return
+
+    setSaving(true)
+    setSaid(null)
+
+    const centre = { lat: shape.lat, lng: shape.lng }
+    const { x, y } = pointIn(centre, dataSrid)
+    const scale = unitsPerMetre(centre, dataSrid)
+
+    const context = {
+      ...bindings,
+      note,
+      draw: {
+        lat: shape.lat,
+        lng: shape.lng,
+        metres: Math.round(shape.radius),
+        x,
+        y,
+        radius: Math.round(shape.radius * scale)
+      }
+    }
+
+    const answer = await postTo(draw.save.onSave, context, {
+      body: draw.save.body === undefined ? undefined : fillBody(draw.save.body, context),
+      contentType: draw.save.contentType,
+      encoding: draw.save.encoding,
+      failure: draw.save.failure
+    })
+
+    setSaving(false)
+
+    if (answer.ok) {
+      clearDrawing()
+      setReload((n) => n + 1)
+      setSaid({ ok: true, text: labels.saved ?? 'Saved' })
+      return
+    }
+
+    setSaid({
+      ok: false,
+      text: [labels.saveFailed ?? 'Could not save', answer.message].filter(Boolean).join(': ')
+    })
+  }
 
   /**
    * How this set is offered as a file, or nothing.
@@ -424,6 +548,22 @@ export const FeaturePanel = ({
           </button>
         )}
 
+        {drawable && (
+          <DrawBar
+            shape={shape}
+            drawing={drawing}
+            busy={saving}
+            said={said}
+            limits={draw.radius}
+            note={draw.note ? { value: note, onChange: setNote, required: draw.note.required } : undefined}
+            labels={labels}
+            onStart={() => { setSaid(null); setDrawing(true) }}
+            onCancel={clearDrawing}
+            onRadius={(radius) => setShape((current) => (current ? { ...current, radius } : current))}
+            onSave={saveShape}
+          />
+        )}
+
         {canExport && (
           <div className='atlas-panel__export'>
             {offer.geojson !== false && (
@@ -467,6 +607,7 @@ export const FeaturePanel = ({
                   servicePath={servicePath}
                   context={bindings}
                   srid={dataSrid}
+                  reload={reload}
                   statusRows={rows}
                   join={choropleth.join}
                   field={choropleth.field}
@@ -475,7 +616,7 @@ export const FeaturePanel = ({
                   descriptor={descriptors?.[choropleth.descriptor]}
                   labelResolver={labelResolver}
                   tooltip={colourTooltip}
-                  onFeatureClick={(feature, details) => details && setRecord(details)}
+                  onFeatureClick={openRecord}
                   onLegend={setDrawn}
                   onLoadStart={() => { setLoading(true); setRecord(null); setDrawn(noneDrawn) }}
                   onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
@@ -486,18 +627,33 @@ export const FeaturePanel = ({
                 <FeatureSet
                   servicePath={servicePath}
                   context={bindings}
+                  reload={reload}
                   descriptors={descriptors}
                   descriptorFor={descriptorFor}
                   labelResolver={labelResolver}
                   cluster={cluster}
                   pinned={isPinnedFeature}
-                  onFeatureClick={(feature, details) => details && setRecord(details)}
+                  onFeatureClick={openRecord}
                   onLegend={setDrawn}
                   onLoadStart={() => { setLoading(true); setRecord(null); setDrawn(noneDrawn) }}
                   onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
                   onError={() => { setSet({ features: [] }); setLoading(false) }}
                 />
               )}
+
+            {/* The shape the reader is drawing, over everything the service
+                returned. `drawing` arms the map; once a shape exists the tool is
+                disarmed and the handles take over, so a second circle is drawn
+                by pressing the button again rather than by an unlucky click. */}
+            {drawable && (
+              <CirclePicker
+                value={shape}
+                drawing={drawing}
+                style={draw.style}
+                onChange={setShape}
+                onDrawn={() => setDrawing(false)}
+              />
+            )}
 
             {/* Inside the map, so it lives in the container that goes
                 fullscreen and comes off with it. Kept mounted across a reload

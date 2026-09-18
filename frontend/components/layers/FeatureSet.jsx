@@ -98,10 +98,16 @@ const reversed = (points) =>
  *        in the caller is what lets a panel show a record without reading a
  *        descriptor -- the one piece of its configuration a panel is not
  *        supposed to know the shape of.
+ *
+ * `reload` is a number a caller changes when it knows the service would answer
+ * differently now -- after a write, most of all. It reaches no URL and means
+ * nothing to this layer beyond "ask again": a set is fetched by path and
+ * context, and neither of those changes when a record is created behind them.
  */
 export const FeatureSet = ({
   servicePath,
   context,
+  reload,
   descriptors = {},
   descriptorFor,
   cluster,
@@ -671,7 +677,7 @@ export const FeatureSet = ({
       clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicePath, contextKey]);
+  }, [servicePath, contextKey, reload]);
 
   return null;
 };

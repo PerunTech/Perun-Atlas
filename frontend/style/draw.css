@@ -1,0 +1,107 @@
+/*
+ * Drawing a shape, and the controls that go with it.
+ *
+ * Structure only, like the rest of this package's stylesheets: a deployment's
+ * own sheet is later in the cascade and decides the colours. Everything here
+ * that has a colour takes it from the panel's tokens, so a screen described
+ * entirely in a menu row still gets handles that match its accent.
+ */
+
+.atlas-panel__draw {
+  /* Its own row in the toolbar rather than another item in it: the shape's
+     controls belong together, and the save button has to sit at the end of the
+     row it belongs to rather than at the end of whatever else the toolbar
+     happens to be carrying. */
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.atlas-panel__drawfield {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+  color: var(--ap-muted, #6b6f7a);
+  letter-spacing: 0.02em;
+}
+
+.atlas-panel__drawfield input {
+  width: 6.5em;
+  padding: 5px 8px;
+  border: 1px solid var(--ap-rule, #d8dde3);
+  border-radius: var(--ap-radius, 8px);
+  background: var(--ap-surface, #ffffff);
+  color: var(--ap-ink, #14161a);
+  font: var(--ap-value-font, 500 12px/1.4 system-ui, sans-serif);
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-panel__drawfield--wide input {
+  width: 16em;
+  font-variant-numeric: normal;
+}
+
+.atlas-panel__drawfield input:focus-visible {
+  outline: 2px solid var(--ap-accent, #4a6a85);
+  outline-offset: 1px;
+}
+
+.atlas-panel__drawunit {
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-panel__drawactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+
+/*
+ * What the save had to say.
+ *
+ * In the flow rather than over the map: it is the answer to a button that was
+ * pressed deliberately, and a toast that fades is the wrong place for the one
+ * message that says whether a record now exists.
+ */
+.atlas-panel__drawsaid {
+  flex-basis: 100%;
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+  color: var(--ap-muted, #6b6f7a);
+}
+
+.atlas-panel__drawsaid--failed {
+  color: var(--ap-danger, #b3261e);
+}
+
+/*
+ * The handles.
+ *
+ * Small, because they sit on top of the thing being measured, and square for the
+ * edge against round for the centre so the two are told apart at a glance
+ * rather than by trying one.
+ */
+.atlas-draw-handle {
+  background: var(--ap-surface, #ffffff);
+  border: 2px solid var(--ap-accent, #b3261e);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+}
+
+.atlas-draw-handle:active {
+  cursor: grabbing;
+}
+
+.atlas-draw-handle--centre {
+  border-radius: 50%;
+}
+
+.atlas-draw-handle--edge {
+  border-radius: 2px;
+}

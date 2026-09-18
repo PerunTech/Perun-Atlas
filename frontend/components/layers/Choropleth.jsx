@@ -60,10 +60,16 @@ const { useEffect, useRef } = React;
  * `onFeatureClick` is handed `(feature, details)` as `FeatureSet` hands it, with
  * `details` resolved from this layer's own descriptor, so a caller can show a
  * record beside the map without reading a descriptor itself.
+ *
+ * `reload` is a number a caller changes when it knows the service would answer
+ * differently now -- after a write, most of all. It reaches no URL and means
+ * nothing to this layer beyond "ask again": a set is fetched by path and
+ * context, and neither of those changes when a record is created behind them.
  */
 export const Choropleth = ({
   servicePath,
   context,
+  reload,
   srid,
   statusRows,
   join,
@@ -188,7 +194,7 @@ export const Choropleth = ({
     // Compared by value: the context is a small flat object rebuilt on every
     // render, so by identity this would refetch on each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicePath, field, srid, statusRows, JSON.stringify(context ?? {})]);
+  }, [servicePath, field, srid, reload, statusRows, JSON.stringify(context ?? {})]);
 
   return null;
 };

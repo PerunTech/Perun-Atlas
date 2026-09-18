@@ -86,6 +86,19 @@ const { useMemo } = React;
  *                 The service path takes {map.bbox} and is asked again when the
  *                 map stops moving. `legend` above works the same way and is
  *                 built from the bands actually drawn
+ *   draw          let the reader draw a shape and send it somewhere:
+ *                 { shape: "circle", radius: { min, max, step },
+ *                   note: { required }, style,
+ *                   save: { onSave, body, contentType, encoding, failure } }.
+ *                 `onSave` takes the same placeholders every other path here
+ *                 does, plus the shape's own under `{draw.*}` -- `x`, `y` and
+ *                 `radius` in the projection this deployment stores geometry in,
+ *                 and `lat`, `lng` and `metres` on the ground. `body` is a
+ *                 payload template whose strings resolve the same way, `{note}`
+ *                 among them. `failure` is how a refusal reads on a service that
+ *                 answers one with a 200 and a string. The words -- `draw`,
+ *                 `radius`, `save`, `saved`, `saveFailed` and the rest -- are
+ *                 label codes in `labels`, like every other word on the panel
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit
@@ -171,6 +184,7 @@ export const ConfiguredMap = (props, context) => {
       defaultMonths={objConfig?.defaultMonths}
       map={objConfig?.map}
       choropleth={objConfig?.choropleth}
+      draw={objConfig?.draw}
       exportable={objConfig?.export}
       legend={objConfig?.legend}
       tokens={objConfig?.tokens}
