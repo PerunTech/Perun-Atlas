@@ -1,6 +1,7 @@
 import { config as engine, core } from '../spatial';
+import { crsFor } from '../data/bbox';
 
-const { Map, factory, store } = core;
+const { Map, store } = core;
 
 /**
  * Hands the resolved configuration to the engine.
@@ -55,13 +56,6 @@ const verifyCrs = (declared) => {
   );
 };
 
-/** The conversions spatial's GeoJSON reader can perform. */
-const CONVERTIBLE = {
-  '3857': () => factory.CRS.EPSG3857,
-  '3395': () => factory.CRS.EPSG3395,
-  '4326': () => factory.CRS.EPSG4326
-};
-
 /**
  * Tells the engine which CRS incoming geometry is in.
  *
@@ -82,11 +76,14 @@ const applyDataCrs = (srid) => {
 
   store.addState('dbCRSCode', { dbCRS: srid });
 
-  const convert = CONVERTIBLE[srid];
-  if (convert) {
+  // `crsFor` is the same table the bounding box is built from, shared rather than
+  // copied: a deployment whose geometry the engine cannot read is one it cannot
+  // address a box to either, and the two should never be able to disagree.
+  const converted = crsFor(srid);
+  if (converted) {
     // Also kept for callers that serialise geometry back out, which need the CRS
     // object rather than the code.
-    store.addState('dbCRS', convert());
+    store.addState('dbCRS', converted);
     return;
   }
 

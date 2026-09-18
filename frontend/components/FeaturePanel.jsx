@@ -466,6 +466,7 @@ export const FeaturePanel = ({
                 <Choropleth
                   servicePath={servicePath}
                   context={bindings}
+                  srid={dataSrid}
                   statusRows={rows}
                   join={choropleth.join}
                   field={choropleth.field}

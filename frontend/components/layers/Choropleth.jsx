@@ -1,6 +1,6 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
-import { fetchGeometry } from '../../data';
+import { bboxIn, fetchGeometry } from '../../data';
 import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions, popupFor } from '../../style';
 import { asNode } from '../lib/dom';
 import { popupElement, POPUP_OPTIONS } from '../lib/popup';
@@ -17,6 +17,11 @@ const { useEffect, useRef } = React;
  * rather than requiring a bespoke endpoint per screen.
  *
  * Refetches when the map stops moving, because the service is bbox-scoped.
+ *
+ * `srid` is the projection the box is expressed in -- the deployment's
+ * `sys.gis.default_srid`, because a geometry service compares the box against
+ * stored coordinates rather than serving tiles. Left out, the map's own CRS is
+ * used, which is the same answer wherever the two agree. See `bboxIn`.
  *
  * `context` is what the path's placeholders resolve against, as `FeatureSet`
  * takes it, with `{map.bbox}` merged over it per request because that one
@@ -59,6 +64,7 @@ const { useEffect, useRef } = React;
 export const Choropleth = ({
   servicePath,
   context,
+  srid,
   statusRows,
   join,
   field,
@@ -102,7 +108,7 @@ export const Choropleth = ({
         // and a caller's `map` key is about the map's controls, not its extent.
         const collection = await fetchGeometry(servicePath, {
           ...(context || {}),
-          map: { ...(context?.map || {}), bbox: Map.getBBox() }
+          map: { ...(context?.map || {}), bbox: bboxIn(srid) }
         });
         if (cancelled || request !== requestRef.current) return;
 
@@ -182,7 +188,7 @@ export const Choropleth = ({
     // Compared by value: the context is a small flat object rebuilt on every
     // render, so by identity this would refetch on each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicePath, field, statusRows, JSON.stringify(context ?? {})]);
+  }, [servicePath, field, srid, statusRows, JSON.stringify(context ?? {})]);
 
   return null;
 };
