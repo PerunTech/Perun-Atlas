@@ -179,6 +179,11 @@ export const FeaturePanel = ({
 
   const descriptorFor = (feature) => (subject?.descriptor && isSubject(feature) ? subject.descriptor : null)
 
+  // The record the screen is about is never collapsed into a badge. It sits
+  // among its own partners, so it is the first thing a cluster swallows -- and
+  // the one point whose position every line on the screen is drawn from.
+  const isPinnedFeature = (feature) => isSubject(feature)
+
   /**
    * Escape closes the pane.
    *
@@ -349,6 +354,7 @@ export const FeaturePanel = ({
               descriptorFor={descriptorFor}
               labelResolver={labelResolver}
               cluster={cluster}
+              pinned={isPinnedFeature}
               onFeatureClick={(feature, details) => details && setRecord(details)}
               onLegend={setDrawn}
               onLoadStart={() => { setLoading(true); setRecord(null); setDrawn([]) }}

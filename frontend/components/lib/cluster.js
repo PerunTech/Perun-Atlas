@@ -15,6 +15,15 @@ import { applyStyle } from './dom';
  */
 
 /**
+ * How long a line takes to follow its end into a badge, in milliseconds.
+ *
+ * Close to Leaflet's own zoom animation, so the lines settle just after the
+ * markers they are chasing rather than far enough behind to read as a second
+ * event. `glide: false` turns it off; a number sets it.
+ */
+const GLIDE = 280;
+
+/**
  * What the plugin is asked for when a row does not say.
  *
  * `chunkedLoading` is the one that is not cosmetic. Adding ten thousand markers
@@ -65,22 +74,30 @@ const BANDS = [
  *   true      cluster, whatever the size of the set
  *   200       cluster from two hundred points up, and draw the small sets plainly
  *   { ... }   `from`, plus anything the plugin takes, plus `className` and
- *             `style` for the badge
+ *             `style` for the badge, and `glide` for how long a line takes to
+ *             follow its end into one
  *
  * The threshold is what makes the middle form worth having. Collapsing four
  * markers into a badge hides four labels and answers a question nobody asked;
  * the same row on the next record has to collapse them or draw nothing legible.
  *
  * @param {boolean|number|Object} [cluster] - The option as configured.
- * @returns {{ from: number, options: Object, badge: Object }|null}
+ * @returns {{ from: number, options: Object, badge: Object, glide: number|false }|null}
  */
 export const clusterSettings = (cluster) => {
   if (!cluster) return null;
-  if (cluster === true) return { from: 0, options: { ...DEFAULTS }, badge: {} };
-  if (typeof cluster === 'number') return { from: cluster, options: { ...DEFAULTS }, badge: {} };
+  if (cluster === true) return { from: 0, options: { ...DEFAULTS }, badge: {}, glide: GLIDE };
+  if (typeof cluster === 'number') return { from: cluster, options: { ...DEFAULTS }, badge: {}, glide: GLIDE };
 
-  const { from = 0, className, style, ...options } = cluster;
-  return { from, options: { ...DEFAULTS, ...options }, badge: { className, style } };
+  // `glide` comes out with the rest of ours: whatever is left is handed to the
+  // plugin, and a key it does not know would sit in its options unread.
+  const { from = 0, className, style, glide = GLIDE, ...options } = cluster;
+  return {
+    from,
+    options: { ...DEFAULTS, ...options },
+    badge: { className, style },
+    glide: glide === true ? GLIDE : glide
+  };
 };
 
 /**
