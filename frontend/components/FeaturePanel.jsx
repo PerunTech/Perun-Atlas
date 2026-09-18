@@ -471,9 +471,14 @@ export const FeaturePanel = ({
           ?? `This deployment stores geometry in EPSG:${dataSrid ?? '?'}, where ${Math.round(shape.radius)} m is less than one unit. Nothing was sent.`
       })
       console.error(
-        `perun-atlas: a radius of ${shape.radius} m is ${shape.radius * scale} units in EPSG:${dataSrid}, `
-        + 'which rounds to zero. A projection measured in degrees cannot carry an integer radius.'
+        `perun-atlas: a radius of ${Math.round(shape.radius)} m is ${shape.radius * scale} units in `
+        + `EPSG:${dataSrid}, which rounds to zero. A projection measured in degrees cannot carry an `
+        + 'integer radius: send {draw.metres} for the size and {draw.ring} for the shape instead.'
       )
+      // The path as it reached the browser, because that is the thing to change
+      // and the row it came from has already had its %TOKEN%s substituted --
+      // so this is the only place the two halves are visible together.
+      console.error('perun-atlas: the configured path is', draw.save.onSave)
       return
     }
 
