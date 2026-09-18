@@ -18,6 +18,14 @@ const { useEffect, useRef } = React;
  *
  * Refetches when the map stops moving, because the service is bbox-scoped.
  *
+ * `context` is what the path's placeholders resolve against, as `FeatureSet`
+ * takes it, with `{map.bbox}` merged over it per request because that one
+ * changes with the view. Without it only the bounding box resolved here, and a
+ * path wanting the session, the record or the deployment's SRID had to have them
+ * substituted server-side before the configuration reached the browser -- which
+ * works, and quietly makes half the placeholders in a menu row inert on this
+ * layer and live on the other.
+ *
  * `descriptor.popup` — `{ title, fields: [{ label, field }] }` — puts the detail
  * behind an area on a click, which is where a joined status belongs: the fill
  * says which band an area is in, and the popup says what it actually is. Name a
@@ -50,6 +58,7 @@ const { useEffect, useRef } = React;
  */
 export const Choropleth = ({
   servicePath,
+  context,
   statusRows,
   join,
   field,
@@ -89,7 +98,12 @@ export const Choropleth = ({
 
       try {
         onLoadStart?.();
-        const collection = await fetchGeometry(servicePath, { map: { bbox: Map.getBBox() } });
+        // The bounding box last, so it wins: it is the one value this layer owns,
+        // and a caller's `map` key is about the map's controls, not its extent.
+        const collection = await fetchGeometry(servicePath, {
+          ...(context || {}),
+          map: { ...(context?.map || {}), bbox: Map.getBBox() }
+        });
         if (cancelled || request !== requestRef.current) return;
 
         const joined = join && statusRows
@@ -165,8 +179,10 @@ export const Choropleth = ({
         layerRef.current = null;
       }
     };
+    // Compared by value: the context is a small flat object rebuilt on every
+    // render, so by identity this would refetch on each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicePath, field, statusRows]);
+  }, [servicePath, field, statusRows, JSON.stringify(context ?? {})]);
 
   return null;
 };

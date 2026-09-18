@@ -179,6 +179,24 @@ export const FeaturePanel = ({
   const [rows, setRows] = useState(null)
 
   /**
+   * The EPSG code this deployment stores geometry in, once the map has resolved
+   * its settings.
+   *
+   * Offered to a service path as `{srid}`, because a bbox-scoped service that
+   * asks which projection it is being sent needs an answer that is the
+   * deployment's rather than the screen's, and `sys.gis.default_srid` is where
+   * svarog already keeps it. `AtlasMap` resolves it before its children mount --
+   * it renders them only once it is ready -- so a path naming it is never sent
+   * with the placeholder still in it.
+   *
+   * Not the same question as which projection the bounding box is *in*: that is
+   * the map's CRS, and where the two disagree the engine converts incoming
+   * geometry and nothing converts the box going out. That is worth knowing
+   * before a path is written; it is not something this can decide.
+   */
+  const [dataSrid, setDataSrid] = useState(null)
+
+  /**
    * Whether this map is scoped to a date window.
    *
    * The service path is the honest signal, because the placeholders are the only
@@ -197,8 +215,9 @@ export const FeaturePanel = ({
 
   const bindings = useMemo(() => ({
     ...(context || {}),
-    ...(timeScoped && { from: range.from, to: range.to })
-  }), [context, timeScoped, range.from, range.to])
+    ...(timeScoped && { from: range.from, to: range.to }),
+    ...(dataSrid && { srid: dataSrid })
+  }), [context, timeScoped, range.from, range.to, dataSrid])
 
   // Bindings are a small flat object rebuilt on every render, so the effect below
   // compares them by value; by identity it would refetch on each one.
@@ -428,7 +447,15 @@ export const FeaturePanel = ({
         <div className='atlas-panel__map'>
           {/* Merged rather than defaulted: a caller setting one of AtlasMap's
               options should not silently lose the others. */}
-          <AtlasMap session={session} {...{ layerSwitcher: true, ...map }}>
+          {/* `onReady` after the spread on purpose: `map` comes from a menu row,
+              which is JSON and cannot carry a function, so nothing there can be
+              shadowing this -- and if a caller ever passes one in code, losing
+              the panel's own settings silently would be the worse failure. */}
+          <AtlasMap
+            session={session}
+            {...{ layerSwitcher: true, ...map }}
+            onReady={({ config }) => setDataSrid(config?.dataSrid ?? null)}
+          >
             {/* One layer or the other, never both. The callbacks are the same
                 pair of hands either way -- which is what let this be a branch
                 here rather than a second panel. A coloured map waits for its
@@ -438,6 +465,7 @@ export const FeaturePanel = ({
               ? (rows !== null || !statusPath) && (
                 <Choropleth
                   servicePath={servicePath}
+                  context={bindings}
                   statusRows={rows}
                   join={choropleth.join}
                   field={choropleth.field}

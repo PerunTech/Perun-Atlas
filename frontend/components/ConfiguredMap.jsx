@@ -28,7 +28,11 @@ const { useMemo } = React;
  * The shape it reads, all of it optional but `service`:
  *
  *   service       '/WsSomething/get/{session}/{objectId}/{from}/{to}'
- *   context       extra placeholder values, resolved per record
+ *   context       extra placeholder values, resolved per record. `{session}`,
+ *                 `{objectId}` and the date window's `{from}` and `{to}` are
+ *                 there already, as is `{srid}` -- the EPSG code this deployment
+ *                 stores geometry in, for a service that asks. A bbox-scoped
+ *                 path also takes `{map.bbox}`, re-resolved on every pause
  *   descriptors   descriptor name to how it is drawn -- `marker`, `label`,
  *                 `popup`, `details`, `arrow` and `variants`, including their
  *                 `style` keys, which is how a look reaches the screen with no
