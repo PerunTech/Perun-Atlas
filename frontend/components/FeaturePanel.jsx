@@ -424,6 +424,34 @@ export const FeaturePanel = ({
     const centre = { lat: shape.lat, lng: shape.lng }
     const { x, y } = pointIn(centre, dataSrid)
     const scale = unitsPerMetre(centre, dataSrid)
+    const radius = Math.round(shape.radius * scale)
+
+    /**
+     * A circle smaller than one unit of the projection it is stored in.
+     *
+     * Rounding is not optional -- more than one of these services parses its
+     * radius as an integer, and a decimal point is a rejected save. But a
+     * deployment storing degrees measures a 1.5 km circle as 0.016 of a unit,
+     * which rounds to nothing, and a radius of zero is a save that either fails
+     * somewhere deep or succeeds and stores a shape with no extent.
+     *
+     * Said here, before the request, because this is the one place that knows
+     * both numbers. The service cannot tell the difference, and the reader would
+     * otherwise be told only that it refused.
+     */
+    if (!(radius >= 1)) {
+      setSaving(false)
+      setSaid({
+        ok: false,
+        text: labels.saveTooSmall
+          ?? `This deployment stores geometry in EPSG:${dataSrid ?? '?'}, where ${Math.round(shape.radius)} m is less than one unit. Nothing was sent.`
+      })
+      console.error(
+        `perun-atlas: a radius of ${shape.radius} m is ${shape.radius * scale} units in EPSG:${dataSrid}, `
+        + 'which rounds to zero. A projection measured in degrees cannot carry an integer radius.'
+      )
+      return
+    }
 
     const context = {
       ...bindings,
@@ -434,7 +462,7 @@ export const FeaturePanel = ({
         metres: Math.round(shape.radius),
         x,
         y,
-        radius: Math.round(shape.radius * scale)
+        radius
       }
     }
 

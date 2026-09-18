@@ -142,7 +142,14 @@ export const postTo = async (servicePath, context = {}, options = {}) => {
     });
 
     const verdict = verdictOf(response?.data, failure);
-    if (!verdict.ok) console.error(`perun-atlas: ${url} refused the save`, response?.data);
+    if (!verdict.ok) {
+      // The URL and the payload together, because a refusal is usually about
+      // one of the two and the service that refused rarely says which. A
+      // service answering with a bare code keeps its reason in its own log,
+      // which is the next place to look and not a place this can reach.
+      console.error(`perun-atlas: ${url} refused the save`, response?.data);
+      console.error('perun-atlas: the payload was', body);
+    }
 
     return { ...verdict, data: response?.data };
   } catch (err) {
