@@ -86,6 +86,11 @@ const { useMemo } = React;
  *                 The service path takes {map.bbox} and is asked again when the
  *                 map stops moving. `legend` above works the same way and is
  *                 built from the bands actually drawn
+ *   notice        false withholds the card that says a set came back empty. It
+ *                 is the right call on a screen whose empty state is its
+ *                 ordinary one -- a map opened to draw something new has nothing
+ *                 on it until it is drawn. A screen that draws withholds it
+ *                 while a shape is in progress in any case
  *   draw          let the reader draw a shape and send it somewhere:
  *                 { shape: "circle", radius: { min, max, step },
  *                   note: { required }, style,
@@ -187,6 +192,7 @@ export const ConfiguredMap = (props, context) => {
       draw={objConfig?.draw}
       exportable={objConfig?.export}
       legend={objConfig?.legend}
+      notice={objConfig?.notice}
       tokens={objConfig?.tokens}
       labels={labels}
       className={className}

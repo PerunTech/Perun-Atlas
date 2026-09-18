@@ -110,6 +110,14 @@ const { Icon } = elements
  *                                which is worth setting when a screen already
  *                                puts something there.
  *
+ * @param {boolean} [notice]    - `false` withholds the card that says a set came
+ *                                back empty. On otherwise, and worth turning off
+ *                                for a screen whose empty state is its ordinary
+ *                                one -- a map opened to draw something new has
+ *                                nothing on it yet by definition, and a card
+ *                                explaining that sits over the middle of the map
+ *                                it is about to be drawn on.
+ *
  * @param {Object} [tokens]     - CSS custom properties for the panel's root:
  *                                '--ap-accent' and friends. This is how a screen
  *                                described entirely in configuration carries its
@@ -158,6 +166,7 @@ export const FeaturePanel = ({
   map,
   exportable,
   legend = true,
+  notice = true,
   tokens,
   title,
   choropleth,
@@ -479,10 +488,21 @@ export const FeaturePanel = ({
   const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(set), 'application/geo+json')
   const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
 
-  // Not while a fetch is out: an empty set from the previous range is not news
-  // about the one being fetched, and the two messages would flicker past each
-  // other on every change.
-  const empty = !loading && set !== null && (set.features?.length ?? 0) === 0
+  /**
+   * Whether to say that nothing came back.
+   *
+   * Not while a fetch is out: an empty set from the previous range is not news
+   * about the one being fetched, and the two messages would flicker past each
+   * other on every change.
+   *
+   * And not while a shape is being drawn, whatever the row asked for. The card
+   * is the one thing on this panel that takes pointer events in the middle of
+   * the map, which is exactly where a centre gets placed -- so a reader drawing
+   * on an empty map would click the explanation instead of the map. A screen
+   * that draws is a screen whose empty state is its ordinary one anyway.
+   */
+  const nothingFound = !loading && set !== null && (set.features?.length ?? 0) === 0
+  const empty = nothingFound && notice !== false && !drawing && !shape
 
   /** Offering the longest range is only an offer while the range is shorter than it. */
   const longest = presets[presets.length - 1]
