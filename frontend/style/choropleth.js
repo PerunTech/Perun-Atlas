@@ -15,6 +15,34 @@ export const DEFAULT_PALETTE = {
 };
 
 /**
+ * A reader for one dotted field, with the path split once.
+ *
+ * `valueAt` in `data/export` answers the same question and splits the path on
+ * every call, which is right where it lives -- a file is written once -- and
+ * wrong here. This runs per feature per draw, and a set can be ten thousand of
+ * them. Shared between the two things in this file that read a category, so the
+ * hoisting is stated in one place rather than repeated.
+ *
+ * @param {string} field - Property name, or a dotted path into a joined record.
+ * @returns {Function} feature -> the value at that path.
+ */
+const reader = (field) => {
+  const path = String(field).split('.');
+  return (feature) =>
+    path.reduce((acc, part) => (acc == null ? acc : acc[part]), feature?.properties);
+};
+
+/**
+ * Whether the palette has a colour for this value.
+ *
+ * One line, and shared, because two things ask it: the fill, and the key drawn
+ * beside it. A key that disagreed with the map about which values are known
+ * would be worse than no key at all, and two copies of a predicate agreeing
+ * today is how that disagreement arrives later.
+ */
+const isMapped = (palette, value) => Boolean(palette[value]);
+
+/**
  * Builds a lookup from feature to fill colour.
  *
  * @param {Object} options
@@ -24,19 +52,16 @@ export const DEFAULT_PALETTE = {
  */
 export const colourBy = ({ field, palette = DEFAULT_PALETTE, fallback = DEFAULT_PALETTE.__unknown }) => {
   const seenUnmapped = new Set();
-  const path = String(field).split('.');
 
-  // Dotted paths so a category can live on a joined record, e.g. "status.AREA_STATUS",
-  // rather than forcing callers to flatten before colouring.
-  const read = (feature) =>
-    path.reduce((acc, part) => (acc == null ? acc : acc[part]), feature?.properties);
+  // Dotted, so a category can live on a joined record rather than forcing
+  // callers to flatten before colouring.
+  const read = reader(field);
 
   return (feature) => {
     const value = read(feature);
     if (value === undefined || value === null) return fallback;
 
-    const colour = palette[value];
-    if (colour) return colour;
+    if (isMapped(palette, value)) return palette[value];
 
     // Say it once per category rather than once per feature — a missing palette
     // entry is a configuration gap worth noticing, not worth flooding the console.
@@ -46,6 +71,50 @@ export const colourBy = ({ field, palette = DEFAULT_PALETTE, fallback = DEFAULT_
     }
     return fallback;
   };
+};
+
+/**
+ * Which categories a set actually drew, and whether anything fell through.
+ *
+ * A key built from the palette lists what a deployment configured. A key built
+ * from this lists what is on the screen -- and on a bbox-scoped map those differ
+ * with every pan. The second is the one worth reading: a key naming six bands
+ * when two are drawn is a key nobody checks a third time.
+ *
+ * The fallback rule is `colourBy`'s -- the same `isMapped`, not a second copy of
+ * it. A value that is absent and a value the palette does not know are both
+ * drawn in the fallback colour, so both count here as having used it.
+ *
+ * Every value seen is reported, mapped or not, in the order the features first
+ * mention them. `legendFromPalette` decides which of them the palette can draw a
+ * swatch for; deciding it twice, in two files, is the same drift by another
+ * route.
+ *
+ * @param {Array} features - The features as drawn, after any join.
+ * @param {Object} options - `field` and `palette`, as `colourBy` was given them.
+ * @returns {{ values: Array, usedFallback: boolean }} Shaped for `legendFromPalette`.
+ */
+export const categoriesDrawn = (features = [], { field, palette = DEFAULT_PALETTE } = {}) => {
+  const read = reader(field);
+  const seen = new Set();
+  const values = [];
+  let usedFallback = false;
+
+  features.forEach((feature) => {
+    const value = read(feature);
+
+    if (value === undefined || value === null) {
+      usedFallback = true;
+      return;
+    }
+    if (!isMapped(palette, value)) usedFallback = true;
+
+    if (seen.has(value)) return;
+    seen.add(value);
+    values.push(value);
+  });
+
+  return { values, usedFallback };
 };
 
 /**

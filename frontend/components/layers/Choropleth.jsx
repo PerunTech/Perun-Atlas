@@ -1,7 +1,7 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { fetchGeometry } from '../../data';
-import { colourBy, joinStatus, pathOptions, popupFor } from '../../style';
+import { categoriesDrawn, colourBy, joinStatus, pathOptions, popupFor } from '../../style';
 import { asNode } from '../lib/dom';
 import { popupElement, POPUP_OPTIONS } from '../lib/popup';
 
@@ -28,6 +28,15 @@ const { useEffect, useRef } = React;
  * that arrive from configuration carrying label codes rather than words, and the
  * popup's `style`, `titleStyle`, `labelStyle` and `valueStyle` carry its look the
  * way `marker` and `label` carry theirs elsewhere.
+ *
+ * `onLegend` reports what each draw actually coloured --
+ * `{ values, usedFallback }`, which is `legendFromPalette`'s own argument. It
+ * fires on every draw rather than once, because this layer refetches as the map
+ * moves and the categories on screen move with it: a key naming a band that
+ * scrolled off is the same wrong answer as a key missing one that scrolled on.
+ * Reported from the features drawn rather than read out of the palette, for the
+ * reason `FeatureSet` reports its own kinds that way -- a deployment configures
+ * more bands than any one bounding box contains.
  */
 export const Choropleth = ({
   servicePath,
@@ -37,6 +46,7 @@ export const Choropleth = ({
   palette,
   descriptor,
   onFeatureClick,
+  onLegend,
   tooltip,
   popup,
   labelResolver
@@ -89,6 +99,10 @@ export const Choropleth = ({
             if (onFeatureClick) layer.on('click', () => onFeatureClick(feature));
           }
         }).addTo(Map);
+
+        // After the draw, and from what was drawn: the join runs first, so a
+        // category living on a joined record is there to be read by now.
+        onLegend?.(categoriesDrawn(joined?.features, { field, palette }));
       } catch (err) {
         console.error('perun-atlas: choropleth failed to render', err);
       }
