@@ -122,9 +122,11 @@ const { useMemo } = React;
  *                 `"application/json"` sends it as JSON, and the default is the
  *                 form convention these registries mostly use. `failure` is how
  *                 a refusal reads on a service that answers one with a 200 and a
- *                 string. The words -- `draw`, `radius`, `save`, `saved`,
- *                 `saveFailed` and the rest -- are label codes in `labels`, like
- *                 every other word on the panel
+ *                 string -- which decides what becomes of the drawn shape, not
+ *                 what the reader is shown: the answer itself goes to
+ *                 `alertUserResponse` as it arrived. The words -- `draw`,
+ *                 `radius`, `save`, `saveTooSmall` and the rest -- are label
+ *                 codes in `labels`, like every other word on the panel
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit

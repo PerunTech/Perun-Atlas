@@ -23,7 +23,22 @@ const { useEffect, useMemo, useState } = React
  * it fails, so every button here keeps a text label beside the icon rather than
  * relying on one.
  */
-const { Icon } = elements
+const { Icon, alertUserResponse } = elements
+
+/**
+ * Which icon an answer gets, when the answer cannot say for itself.
+ *
+ * `alertUserResponse` reads `type` off a response envelope and shows the
+ * matching face. Not every service here sends one: several answer a write with
+ * a bare label code -- a string, with no envelope around it -- and the helper
+ * reads a body with no HTTP status on it as a failure, so a save that worked
+ * would be announced as one that did not.
+ *
+ * So the verdict fills in, and only then. A service that sent its own `type`
+ * keeps it, because `WARNING` is a thing this cannot work out from a body it
+ * does not read and a status it was not given.
+ */
+const alertType = (data, ok) => (data?.type ? undefined : (ok ? 'success' : 'error'))
 
 /**
  * A geometry set, with a date window over it when the service takes one.
@@ -252,7 +267,6 @@ export const FeaturePanel = ({
   const [shape, setShape] = useState(null)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
-  const [said, setSaid] = useState(null)
   const [reload, setReload] = useState(0)
 
   /**
@@ -426,12 +440,11 @@ export const FeaturePanel = ({
     setDrawn(noneDrawn)
   }
 
-  /** Nothing drawn, nothing pending, and no answer left over from last time. */
+  /** Nothing drawn and nothing pending. */
   const clearDrawing = () => {
     setDrawing(false)
     setShape(null)
     setNote('')
-    setSaid(null)
   }
 
   /**
@@ -453,12 +466,19 @@ export const FeaturePanel = ({
    * exactly where it was -- the reader is one button press from trying again,
    * and throwing away a drawn shape to report a failure would be the second
    * thing to go wrong.
+   *
+   * Either way the reader is told by `alertUserResponse`, which is how every
+   * other write in this shell reports itself and the reason nothing here parses
+   * what came back. These services are mid-migration from a bare label code to
+   * an envelope, and that helper already reads both -- so the day a service
+   * starts sending a title and a message, they appear, and this file does not
+   * change. `postTo`'s verdict is still read, because it decides what happens to
+   * the drawn shape, which is not the same question as what to put on screen.
    */
   const saveShape = async () => {
     if (!shape || saving) return
 
     setSaving(true)
-    setSaid(null)
 
     const centre = { lat: shape.lat, lng: shape.lng }
     const { x, y } = pointIn(centre, dataSrid)
@@ -518,9 +538,9 @@ export const FeaturePanel = ({
 
     if (sendsUnits && !(radius >= 1)) {
       setSaving(false)
-      setSaid({
-        ok: false,
-        text: labels.saveTooSmall
+      alertUserResponse({
+        type: 'error',
+        response: labels.saveTooSmall
           ?? `This deployment stores geometry in EPSG:${dataSrid ?? '?'}, where ${Math.round(shape.radius)} m is less than one unit. Nothing was sent.`
       })
       console.error(
@@ -562,13 +582,14 @@ export const FeaturePanel = ({
     if (answer.ok) {
       clearDrawing()
       setReload((n) => n + 1)
-      setSaid({ ok: true, text: labels.saved ?? 'Saved' })
-      return
     }
 
-    setSaid({
-      ok: false,
-      text: [labels.saveFailed ?? 'Could not save', answer.message].filter(Boolean).join(': ')
+    // The body as it arrived, or the transport's own words when there is no body
+    // to show -- a request that never reached the service has nothing to say for
+    // itself, and an empty answer put on screen reads as nothing having happened.
+    alertUserResponse({
+      response: answer.data || answer.message,
+      type: alertType(answer.data, answer.ok)
     })
   }
 
@@ -695,7 +716,7 @@ export const FeaturePanel = ({
                 drawing={drawing}
                 busy={saving}
                 labels={labels}
-                onStart={() => { setSaid(null); setDrawing(true) }}
+                onStart={() => setDrawing(true)}
                 onCancel={clearDrawing}
               />
             )}
@@ -717,16 +738,14 @@ export const FeaturePanel = ({
         )}
 
         {/* The tool's own row, under everything else, and only while it has
-            something to say: what to click, then the shape's radius and note,
-            then what the save answered. A row that is always there is a row of
-            empty space on every screen that draws, which is every screen this
-            panel renders. */}
-        {drawable && (drawing || shape || said) && (
+            something to say: what to click, then the shape's radius and note.
+            A row that is always there is a row of empty space on every screen
+            that draws, which is every screen this panel renders. */}
+        {drawable && (drawing || shape) && (
           <DrawBar
             shape={shape}
             drawing={drawing}
             busy={saving}
-            said={said}
             limits={draw.radius}
             note={draw.note ? { value: note, onChange: setNote, required: draw.note.required } : undefined}
             labels={labels}

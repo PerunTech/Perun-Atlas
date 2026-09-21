@@ -53,11 +53,12 @@ export const DrawTool = ({ drawing, busy, onStart, onCancel, labels = {} }) => (
 /**
  * The row under the toolbar, while a shape is being made.
  *
- * Three states, and the row says which one it is in by what it offers. Armed
- * with nothing drawn: the instruction, which is what the button above stopped
- * saying when it moved into the actions. A shape on the map: its radius,
- * whatever note the row asked for, and the two buttons that end it. Neither,
- * but a save just answered: the answer, until the next press clears it.
+ * Two states, and the row says which one it is in by what it offers. Armed with
+ * nothing drawn: the instruction, which is what the button above stopped saying
+ * when it moved into the actions. A shape on the map: its radius, whatever note
+ * the row asked for, and the two buttons that end it. What the save answered is
+ * not here -- it goes to `alertUserResponse` with every other write in this
+ * shell, so the row closes when the shape does.
  *
  * The radius is a number in metres because that is what was measured on the
  * ground. Typing into it is the half of this that direct manipulation is bad at
@@ -69,7 +70,6 @@ export const DrawTool = ({ drawing, busy, onStart, onCancel, labels = {} }) => (
  * @param {boolean} busy         - a save is in flight
  * @param {Object} [note]        - { value, onChange, required } for the free-text field
  * @param {Object} [limits]      - { min, max, step } for the radius
- * @param {Object} [said]        - { ok, text }: what the last save answered
  * @param {Object} labels
  */
 export const DrawBar = ({
@@ -81,7 +81,6 @@ export const DrawBar = ({
   onSave,
   note,
   limits = {},
-  said,
   labels = {}
 }) => {
   const { min = 50, max = 500000, step = 50 } = limits;
@@ -130,16 +129,6 @@ export const DrawBar = ({
             onChange={(event) => note.onChange(event.target.value)}
           />
         </label>
-      )}
-
-      {said && (
-        <div
-          className={`atlas-panel__drawsaid${said.ok ? '' : ' atlas-panel__drawsaid--failed'}`}
-          role='status'
-          aria-live='polite'
-        >
-          {said.text}
-        </div>
       )}
 
       {hasShape && (

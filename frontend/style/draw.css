@@ -77,23 +77,6 @@
 }
 
 /*
- * What the save had to say.
- *
- * In the flow rather than over the map: it is the answer to a button that was
- * pressed deliberately, and a toast that fades is the wrong place for the one
- * message that says whether a record now exists.
- */
-.atlas-panel__drawsaid {
-  flex-basis: 100%;
-  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
-  color: var(--ap-muted, #6b6f7a);
-}
-
-.atlas-panel__drawsaid--failed {
-  color: var(--ap-danger, #b3261e);
-}
-
-/*
  * The handles.
  *
  * Small, because they sit on top of the thing being measured, and square for the
