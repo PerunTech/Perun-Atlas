@@ -6,13 +6,11 @@ import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
-import { bindPath, fetchRows, fillBody, matchesIdentity, pointIn, postTo, ringIn, toCSV, toGeoJSON, unitsPerMetre, valueAt } from '../data';
 import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../style';
-import { download } from './lib/dom';
-import { rangeOf, sameWindow, today } from './lib/dates';
+import { useChoropleth, useDateWindow, useDrawnShape, useExport, useRecord } from '../hooks';
 import '../style/panel.css';
 import '../style/draw.css';
-const { useEffect, useMemo, useState } = React
+const { useMemo, useState } = React
 
 /**
  * Tabler, through perun-core rather than as a dependency of this package.
@@ -23,22 +21,7 @@ const { useEffect, useMemo, useState } = React
  * it fails, so every button here keeps a text label beside the icon rather than
  * relying on one.
  */
-const { Icon, alertUserResponse } = elements
-
-/**
- * Which icon an answer gets, when the answer cannot say for itself.
- *
- * `alertUserResponse` reads `type` off a response envelope and shows the
- * matching face. Not every service here sends one: several answer a write with
- * a bare label code -- a string, with no envelope around it -- and the helper
- * reads a body with no HTTP status on it as a failure, so a save that worked
- * would be announced as one that did not.
- *
- * So the verdict fills in, and only then. A service that sent its own `type`
- * keeps it, because `WARNING` is a thing this cannot work out from a body it
- * does not read and a status it was not given.
- */
-const alertType = (data, ok) => (data?.type ? undefined : (ok ? 'success' : 'error'))
+const { Icon } = elements
 
 /**
  * A geometry set, with a date window over it when the service takes one.
@@ -202,34 +185,9 @@ export const FeaturePanel = ({
   className = '',
   onClose
 }) => {
-  const initial = defaultMonths ?? presets[presets.length - 1]?.months ?? 12
-  const [preset, setPreset] = useState(initial)
-  const [range, setRange] = useState(() => rangeOf(initial))
   const [set, setSet] = useState(null)
   const [loading, setLoading] = useState(true)
   const [labelled, setLabelled] = useState(true)
-  const [record, setRecord] = useState(null)
-
-  /**
-   * Whether this screen colours areas by a category or draws features per
-   * descriptor. One question, asked once, because it decides three things: which
-   * layer is mounted, which key is built from what that layer reports, and
-   * whether the label switch is a control or a dead toggle.
-   */
-  const coloured = Boolean(choropleth)
-
-  /**
-   * What the layer last reported it drew, in that layer's own shape.
-   *
-   * `FeatureSet` reports a list of kinds; `Choropleth` reports
-   * `{ values, usedFallback }`. Kept as one piece of state rather than two
-   * because only one layer is ever mounted, and two would mean a stale half
-   * sitting beside the live one waiting to be read by mistake.
-   */
-  const noneDrawn = coloured ? { values: [], usedFallback: false } : []
-  const [drawn, setDrawn] = useState(noneDrawn)
-
-  const [rows, setRows] = useState(null)
 
   /**
    * The EPSG code this deployment stores geometry in, once the map has resolved
@@ -250,41 +208,21 @@ export const FeaturePanel = ({
   const [dataSrid, setDataSrid] = useState(null)
 
   /**
-   * The shape being drawn, and everything that goes with sending it.
+   * The panel's own state, in the pieces it is made of.
    *
-   * `shape` is in ground terms -- a centre and a radius in metres -- because
-   * that is what was drawn and what the map draws back. The projection it is
-   * sent in is applied once, at the moment of saving, so that a shape drawn
-   * before the map reported its settings is not stored in the wrong one.
-   *
-   * `reload` is the one piece of state a save leaves behind. A write changes
-   * what the read would answer, and the layer below has no way of knowing that
-   * -- so it is told, by a number it refetches on. It is not a placeholder and
-   * never reaches a URL.
+   * Ordered by what each piece needs from the one above: the window feeds the
+   * bindings, the bindings feed the rows and the save, and the record pane needs
+   * to know whether the draw tool is armed. The one backward reference is
+   * `onMoved` naming `closeRecord`, and it is a closure rather than a call --
+   * created here, run from an event handler, by which time the record hook has
+   * been declared.
    */
-  const drawable = Boolean(draw?.save?.onSave)
-  const [drawing, setDrawing] = useState(false)
-  const [shape, setShape] = useState(null)
-  const [note, setNote] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [reload, setReload] = useState(0)
-
-  /**
-   * Whether this map is scoped to a date window.
-   *
-   * The service path is the honest signal, because the placeholders are the only
-   * thing the window actually feeds: a path that names neither takes no window,
-   * so offering one is offering a control that cannot change the answer. Derived
-   * rather than configured for the same reason -- it is already written down,
-   * and a second place to say it is a second place to say it differently.
-   *
-   * Not only cosmetic. `bindPath` leaves an unmatched placeholder alone and
-   * ignores a value nothing names, so the URL would be right either way -- but
-   * the dates reach `FeatureSet` through its context, and changing them changes
-   * the key its effect depends on. On a path with no window that is a refetch of
-   * a byte-identical URL, with the count blanked while it is in flight.
-   */
-  const timeScoped = /\{(from|to)\}/.test(servicePath ?? '')
+  const { timeScoped, preset, range, initial, longest, applyPreset, onRangeChange } = useDateWindow({
+    presets,
+    defaultMonths,
+    servicePath,
+    onMoved: () => { setSet(null); closeRecord() }
+  })
 
   const bindings = useMemo(() => ({
     ...(context || {}),
@@ -292,127 +230,35 @@ export const FeaturePanel = ({
     ...(dataSrid && { srid: dataSrid })
   }), [context, timeScoped, range.from, range.to, dataSrid])
 
-  // Bindings are a small flat object rebuilt on every render, so the effect below
-  // compares them by value; by identity it would refetch on each one.
+  // Bindings are a small flat object rebuilt on every render, so the effects that
+  // depend on them compare them by value; by identity they would refetch on each
+  // one. Handed down beside the bindings themselves, because the hook that reads
+  // them cannot tell a rebuilt object from a changed one either.
   const bindingKey = JSON.stringify(bindings)
 
-  /**
-   * The rows a coloured map joins onto its geometry.
-   *
-   * Fetched here rather than by the layer because they are not scoped to the
-   * bounding box: the geometry service is asked again on every pause, and asking
-   * a whole code list again with it would be a second request per pan for an
-   * answer that did not change. It moves when the record or the window does,
-   * which is what the bindings say.
-   *
-   * The layer is not mounted until they arrive -- see below -- so there is no
-   * first draw in the fallback colour followed by a corrected one.
-   */
-  const statusPath = coloured ? choropleth.status : null
-
-  useEffect(() => {
-    if (!statusPath) return undefined
-
-    let cancelled = false
-    fetchRows(statusPath, bindings).then((next) => {
-      if (!cancelled) setRows(next)
-    })
-
-    return () => { cancelled = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusPath, bindingKey])
+  const { coloured, statusPath, rows, tooltip: colourTooltip } = useChoropleth({
+    choropleth,
+    bindings,
+    bindingKey
+  })
 
   /**
-   * A hover label for a coloured area, built from the field a row names.
+   * What the layer last reported it drew, in that layer's own shape.
    *
-   * The layer takes a function because a caller may want anything; a menu row
-   * cannot write one, so it names a field and this is the function. `valueAt`
-   * rather than a property read, so a joined column reads like its own.
+   * `FeatureSet` reports a list of kinds; `Choropleth` reports
+   * `{ values, usedFallback }`. Kept as one piece of state rather than two
+   * because only one layer is ever mounted, and two would mean a stale half
+   * sitting beside the live one waiting to be read by mistake.
    */
-  const colourTooltip = useMemo(() => {
-    const field = choropleth?.tooltip
-    if (!field) return undefined
-    return (feature) => valueAt(feature?.properties, field) ?? null
-  }, [choropleth])
+  const noneDrawn = coloured ? { values: [], usedFallback: false } : []
+  const [drawn, setDrawn] = useState(noneDrawn)
 
-  /**
-   * The record on screen, drawn as itself.
-   *
-   * A service returns the record and whatever it relates to as one kind of
-   * thing, because to the service that is what they are. Which of them the user
-   * came from is the screen's knowledge, not the service's, so it is applied
-   * here: the feature whose identity is the record's gets the caller's
-   * descriptor, every other one keeps the one it arrived with.
-   */
-  const isSubject = (feature) => matchesIdentity(feature, subject?.id, subject?.match)
+  const {
+    drawable, drawing, shape, note, saving, reload,
+    setShape, setNote, startDrawing, finishDrawing, clearDrawing, saveShape
+  } = useDrawnShape({ draw, dataSrid, bindings, labels })
 
-  /**
-   * A click on a feature opens its record -- unless a shape is being drawn.
-   *
-   * Leaflet passes a click on a vector layer up to the map as well, which is
-   * what lets a centre be placed on top of a holding rather than only on open
-   * ground. The record pane would open under the same click, covering the map
-   * the reader is drawing on, so while the tool is armed the click means one
-   * thing only.
-   */
-  const openRecord = (feature, details) => {
-    if (drawing) return
-    if (details) setRecord(details)
-  }
-
-  const descriptorFor = (feature) => (subject?.descriptor && isSubject(feature) ? subject.descriptor : null)
-
-  // The record the screen is about is never collapsed into a badge. It sits
-  // among its own partners, so it is the first thing a cluster swallows -- and
-  // the one point whose position every line on the screen is drawn from.
-  const isPinnedFeature = (feature) => isSubject(feature)
-
-  /**
-   * Escape closes the pane.
-   *
-   * It is the one control on this panel that covers something, so it is the one
-   * that needs a way out that is not a mouse -- and the map underneath keeps its
-   * own keyboard handling, since this listens on the document rather than
-   * trapping focus.
-   */
-  useEffect(() => {
-    if (!record) return undefined
-    const onKey = (event) => { if (event.key === 'Escape') setRecord(null) }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [record])
-
-  /**
-   * Move the date window, and clear what belonged to the old one.
-   *
-   * Only when it actually moves. `FeatureSet` refetches on a change to the
-   * bindings it is handed, and those carry the dates as strings, so a window
-   * resolving to the dates already in force produces no fetch at all -- that is
-   * the byte-identical-URL refetch `timeScoped` exists to avoid, working as
-   * intended.
-   *
-   * Clearing the set for a fetch that will not happen is what breaks: nothing
-   * arrives to put it back, so `set` stays null for the life of the screen. The
-   * map keeps the features it already drew, which is why it looks fine, while
-   * the export buttons and the empty-set notice -- both of which wait on a set
-   * having arrived -- are simply gone. Clicking the quick range that is already
-   * active is the easy way to see it, and the range picker can reach it too by
-   * choosing the dates already shown.
-   *
-   * `preset` is still set either way, since which button reads as pressed is a
-   * question about the control rather than about the data.
-   */
-  const applyWindow = (next, months) => {
-    setPreset(months)
-    if (sameWindow(next, range)) return
-    setRange(next)
-    setSet(null)
-    setRecord(null)
-  }
-
-  const applyPreset = (months) => applyWindow(rangeOf(months), months)
-
-  const onRangeChange = (next) => applyWindow(next, null)
+  const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing })
 
   /**
    * A fetch is starting.
@@ -440,186 +286,13 @@ export const FeaturePanel = ({
     setDrawn(noneDrawn)
   }
 
-  /** Nothing drawn and nothing pending. */
-  const clearDrawing = () => {
-    setDrawing(false)
-    setShape(null)
-    setNote('')
-  }
-
-  /**
-   * Send the drawn shape to the service the row named.
-   *
-   * The shape is converted here and nowhere else. A radius is drawn in metres on
-   * the ground and stored in the units of whatever projection the deployment
-   * keeps geometry in, and the two are the same number only at the equator --
-   * at these latitudes a circle sent across unconverted is a fifth too small,
-   * silently, in a record nobody re-measures. `unitsPerMetre` asks the
-   * projection itself rather than carrying a formula for it.
-   *
-   * Rounded, because more than one of these services parses its radius as an
-   * integer and a decimal point is a rejected save rather than a rounded circle.
-   * The centre keeps its decimals: it is read as a pair of doubles everywhere.
-   *
-   * On success the shape goes away and the layer is told to fetch again, because
-   * what is now on the server is not what is on the screen. On failure it stays
-   * exactly where it was -- the reader is one button press from trying again,
-   * and throwing away a drawn shape to report a failure would be the second
-   * thing to go wrong.
-   *
-   * Either way the reader is told by `alertUserResponse`, which is how every
-   * other write in this shell reports itself and the reason nothing here parses
-   * what came back. These services are mid-migration from a bare label code to
-   * an envelope, and that helper already reads both -- so the day a service
-   * starts sending a title and a message, they appear, and this file does not
-   * change. `postTo`'s verdict is still read, because it decides what happens to
-   * the drawn shape, which is not the same question as what to put on screen.
-   */
-  const saveShape = async () => {
-    if (!shape || saving) return
-
-    setSaving(true)
-
-    const centre = { lat: shape.lat, lng: shape.lng }
-    const { x, y } = pointIn(centre, dataSrid)
-    const scale = unitsPerMetre(centre, dataSrid)
-    const radius = Math.round(shape.radius * scale)
-
-    const vertices = ringIn(centre, shape.radius, dataSrid, draw.points)
-
-    /**
-     * The shape itself, as a ring in the projection the deployment stores.
-     *
-     * Formatted by the row, because the syntax is the service's and the geometry
-     * is this panel's: `point` is a template for one vertex and `join` is what
-     * goes between them. The default is a WKT coordinate pair, which is the only
-     * spelling that is anybody's standard.
-     */
-    const ring = vertices
-      .map((vertex) => bindPath(draw.ring?.point ?? '{x} {y}', vertex))
-      .join(draw.ring?.join ?? ', ')
-
-    /**
-     * The same shape, as GeoJSON.
-     *
-     * Offered beside the ring rather than instead of it: a service that parses
-     * the geometry out of a path segment needs the string, and one that reads a
-     * body needs this, and which of the two a deployment has is not this panel's
-     * to know. A row asking for `{draw.geojson}` gets the object itself, because
-     * `fillBody` hands over a sole placeholder unconverted.
-     *
-     * Closed, unlike the ring: GeoJSON says a linear ring repeats its first
-     * position as its last, and the readers that take it enforce that. The ring
-     * is left open because the services that parse one close it themselves, and
-     * a ring that arrived closed would be closed twice.
-     */
-    const geojson = {
-      type: 'Polygon',
-      coordinates: [[...vertices, vertices[0]].map((vertex) => [vertex.x, vertex.y])]
-    }
-
-    /**
-     * A radius smaller than one unit of the projection it would be sent in.
-     *
-     * Only when that is what is being sent. `{draw.radius}` is the shape's size
-     * in the stored projection, and rounding it is not optional -- more than one
-     * of these services parses a radius as an integer. But a deployment storing
-     * degrees measures a 720 m circle as 0.0065 of a unit, which rounds to
-     * nothing, and a radius of zero is a save that either fails somewhere deep
-     * or stores a shape with no extent. A row in that position wants
-     * `{draw.metres}` and the ring, neither of which has this problem.
-     *
-     * Said here, before the request, because this is the one place that knows
-     * both numbers. The service cannot tell the difference, and the reader would
-     * otherwise be told only that it refused.
-     */
-    const sendsUnits = [draw.save.onSave, JSON.stringify(draw.save.body ?? null)]
-      .some((text) => String(text).includes('{draw.radius}'))
-
-    if (sendsUnits && !(radius >= 1)) {
-      setSaving(false)
-      alertUserResponse({
-        type: 'error',
-        response: labels.saveTooSmall
-          ?? `This deployment stores geometry in EPSG:${dataSrid ?? '?'}, where ${Math.round(shape.radius)} m is less than one unit. Nothing was sent.`
-      })
-      console.error(
-        `perun-atlas: a radius of ${Math.round(shape.radius)} m is ${shape.radius * scale} units in `
-        + `EPSG:${dataSrid}, which rounds to zero. A projection measured in degrees cannot carry an `
-        + 'integer radius: send {draw.metres} for the size and {draw.ring} for the shape instead.'
-      )
-      // The path as it reached the browser, because that is the thing to change
-      // and the row it came from has already had its %TOKEN%s substituted --
-      // so this is the only place the two halves are visible together.
-      console.error('perun-atlas: the configured path is', draw.save.onSave)
-      return
-    }
-
-    const context = {
-      ...bindings,
-      note,
-      draw: {
-        lat: shape.lat,
-        lng: shape.lng,
-        metres: Math.round(shape.radius),
-        x,
-        y,
-        radius,
-        ring,
-        geojson
-      }
-    }
-
-    const answer = await postTo(draw.save.onSave, context, {
-      body: draw.save.body === undefined ? undefined : fillBody(draw.save.body, context),
-      contentType: draw.save.contentType,
-      encoding: draw.save.encoding,
-      failure: draw.save.failure
-    })
-
-    setSaving(false)
-
-    if (answer.ok) {
-      clearDrawing()
-      setReload((n) => n + 1)
-    }
-
-    // The body as it arrived, or the transport's own words when there is no body
-    // to show -- a request that never reached the service has nothing to say for
-    // itself, and an empty answer put on screen reads as nothing having happened.
-    alertUserResponse({
-      response: answer.data || answer.message,
-      type: alertType(answer.data, answer.ok)
-    })
-  }
-
-  /**
-   * How this set is offered as a file, or nothing.
-   *
-   * On unless a menu row says otherwise. The set is already on screen and
-   * already in the browser -- `PERUN_ATLAS_LAST` holds the whole response --
-   * so withholding the buttons withholds the convenience rather than the data,
-   * and every screen that wanted them would have to remember to ask. `false`
-   * turns them off for a screen where saving the set is the wrong offer.
-   *
-   * Only offered once a set has actually arrived and has something in it -- a
-   * button that writes an empty file is worse than no button, because it looks
-   * like the export worked.
-   */
-  const offer = exportable === false ? null : (exportable && exportable !== true ? exportable : {})
-  const canExport = offer && set && (set.features?.length ?? 0) > 0
-
-  /**
-   * What the file is called.
-   *
-   * The range when there is one, the day when there is not, so two exports of
-   * the same screen do not land in a downloads folder as `features (3)`. The
-   * stem is the caller's, because this file has no idea what the set is.
-   */
-  const filename = [offer?.filename ?? 'features', timeScoped ? `${range.from}_${range.to}` : today()].join('-')
-
-  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(set), 'application/geo+json')
-  const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
+  const { offer, canExport, saveGeoJSON, saveCSV } = useExport({
+    set,
+    exportable,
+    labelResolver,
+    timeScoped,
+    range
+  })
 
   /**
    * Whether to say that nothing came back.
@@ -636,9 +309,6 @@ export const FeaturePanel = ({
    */
   const nothingFound = !loading && set !== null && (set.features?.length ?? 0) === 0
   const empty = nothingFound && notice !== false && !drawing && !shape
-
-  /** Offering the longest range is only an offer while the range is shorter than it. */
-  const longest = presets[presets.length - 1]
 
   return (
     <div
@@ -716,7 +386,7 @@ export const FeaturePanel = ({
                 drawing={drawing}
                 busy={saving}
                 labels={labels}
-                onStart={() => setDrawing(true)}
+                onStart={startDrawing}
                 onCancel={clearDrawing}
               />
             )}
@@ -825,7 +495,7 @@ export const FeaturePanel = ({
                 drawing={drawing}
                 style={draw.style}
                 onChange={setShape}
-                onDrawn={() => setDrawing(false)}
+                onDrawn={finishDrawing}
               />
             )}
 
@@ -910,7 +580,7 @@ export const FeaturePanel = ({
               type='button'
               className='atlas-panel__close'
               aria-label={labels.close ?? 'Close'}
-              onClick={() => setRecord(null)}
+              onClick={closeRecord}
             >
               ×
             </button>

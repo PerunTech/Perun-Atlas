@@ -23,6 +23,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/data/` | Geometry fetching and geobuf decoding; the GEO_LAYER_TYPE catalogue. |
 | `frontend/style/` | Descriptors and choropleth colouring. Engine-free, unit-testable without a map. |
 | `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put features on the map through Leaflet; `lib/` is private to this directory and exported from nowhere. |
+| `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape and its save, the export, the record pane. Private, like `lib/`. |
 | `test/` | The unit suite, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
 
