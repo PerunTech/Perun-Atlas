@@ -53,6 +53,19 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /* Said, not inherited. These registries serve a bare
+     `label { display: block; margin-bottom: 3px; padding-left: 15px;
+     text-indent: -15px }` for their forms, and a deployment's sheet is later
+     in the cascade than this package's. The class wins the display, but the
+     rest went on applying -- and `text-indent` inherits, so it reached the
+     unit inside the field and pulled `m` fifteen pixels left, over the number
+     it measures, taking the span's width to nothing on the way: a flex base
+     size of `max-content - 15px` clamps at zero.
+     These two labels are the package's own and are not part of that form
+     convention, so they say what they are. */
+  margin: 0;
+  padding: 0;
+  text-indent: 0;
   font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
   color: var(--ap-muted, #6b6f7a);
   letter-spacing: 0.02em;
