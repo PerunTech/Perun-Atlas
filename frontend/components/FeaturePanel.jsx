@@ -852,11 +852,25 @@ export const FeaturePanel = ({
           </AtlasMap>
         </div>
 
-        {loading && (
+        {/* A request is out, and which kind it is only changes the word. A
+            write says so rather than inheriting `loading`, because the two do
+            not mean the same thing to a reader waiting on one: a fetch will
+            redraw the map, a save will have changed the server. `saving` wins
+            the word where both could be true, being the more specific event.
+
+            Not the button, which said `Saving…` in place of `Save` until now.
+            That put the report in the corner the reader had just pressed and
+            looked away from, and it said the button was busy when what is busy
+            is the service. */}
+        {(loading || saving) && (
           <div className='atlas-panel__loading' role='status' aria-live='polite'>
             <div className='atlas-panel__loadingcard'>
               <div className='atlas-panel__spinner' aria-hidden='true' />
-              <span>{labels.loading ?? 'Loading\u2026'}</span>
+              <span>
+                {saving
+                  ? (labels.saving ?? 'Saving\u2026')
+                  : (labels.loading ?? 'Loading\u2026')}
+              </span>
             </div>
           </div>
         )}

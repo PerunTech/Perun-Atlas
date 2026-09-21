@@ -278,8 +278,10 @@
  * time a map panel changed its date range.
  *
  * Non-blocking on purpose. `pointer-events: none` leaves the map underneath
- * usable while a fetch is out, so a slow service feels like a map still loading
- * rather than a screen that has seized. The chip is a report, not a modal.
+ * usable while a request is out, so a slow service feels like a map still
+ * loading rather than a screen that has seized. The chip is a report, not a
+ * modal -- and it reports a write the same way, because the controls a write
+ * must not be pressed twice from are disabled for its duration anyway.
  *
  * Same overlay-and-card shape as the empty state, and the same z-index, because
  * they are the same slot: one is what waiting looks like and the other is what

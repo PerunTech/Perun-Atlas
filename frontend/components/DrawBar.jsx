@@ -140,7 +140,7 @@ export const DrawBar = ({
             disabled={blocked}
           >
             <Icon name='IconDeviceFloppy' size={16} stroke={1.75} aria-hidden='true' />
-            {busy ? (labels.saving ?? 'Saving…') : (labels.save ?? 'Save')}
+            {labels.save ?? 'Save'}
           </button>
           <button
             type='button'
