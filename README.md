@@ -17,15 +17,35 @@ component API is not finished — that is the signal, not the workaround.
 
 | Path | Contents |
 |---|---|
+| `frontend/index.js` | The whole public surface — see below. |
+| `frontend/client.js` | Registers the package with perun-core's plugin manager. The webpack entry. |
 | `frontend/spatial.js` | The single point of contact with the map engine. |
 | `frontend/config/` | `SCHEMA` — every environment setting declared once. |
 | `frontend/bootstrap/` | Resolves configuration: overrides → SVAROG_SYS_PARAMS → `window` (deprecated) → defaults. Throws, loudly, on a missing required value. |
-| `frontend/data/` | Geometry fetching and geobuf decoding; the GEO_LAYER_TYPE catalogue. |
-| `frontend/style/` | Descriptors and choropleth colouring. Engine-free, unit-testable without a map. |
-| `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put features on the map through Leaflet; `lib/` is private to this directory and exported from nowhere. |
-| `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape and its save, the export, the record pane. Private, like `lib/`. |
+| `frontend/data/` | Everything that crosses the wire or the projection: geometry fetching and geobuf decoding, bounding boxes and rings, rows, writes, exports, the GEO_LAYER_TYPE catalogue. |
+| `frontend/appearance/` | What a feature looks like and what it says, decided from a descriptor. Plain data — no DOM, no engine — which is what makes it the half of the package the suite can test. |
+| `frontend/style/` | The stylesheets, and only those. A deployment overrides them; read `frontend/style/README.md` before debugging one. |
+| `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. |
+| `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape and its save, the export, the record pane. |
+| `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `frontend/lib/README.md` lists them. |
+| `build/` | The webpack hook that injects this package's CSS at `head.firstChild`. `frontend/style/README.md` says why that matters. |
 | `test/` | The unit suite, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
+
+`hooks/` and `lib/` are the two directories nothing exports. That is what makes
+them free to change shape without the change being a breaking one.
+
+## What a consumer gets
+
+```js
+import { ConfiguredMap, FeaturePanel, AtlasMap, PointPicker } from 'perun-atlas';
+import * as atlas from 'perun-atlas';   // atlas.appearance, .bootstrap, .config, .data
+```
+
+Twelve components, and four namespaces beside them. `ConfiguredMap` is the one
+most screens want: it reads a menu row and builds the rest.
+
+`appearance` was called `style` until the stylesheets took that name back.
 
 ## Tests
 
@@ -50,6 +70,21 @@ grep that directory for coordinate literals, which is most of what a test for
 
 A component or a hook is not covered. That wants a DOM and a React renderer,
 and neither is installed.
+
+## Styling
+
+Structure ships here; the look is the deployment's. Every colour in
+`frontend/style/` comes from a token, and the deployment sets the tokens — on
+these registries that is `aims-assets/assets/styles/atlas-panel.css`, which also
+has to be listed in `assets/js/stylesheets.js` or the panel draws unstyled.
+
+The cascade runs the deployment's way on purpose: webpack injects this package's
+CSS at `document.head.firstChild`, so every one of the deployment's stylesheets
+loads after it and wins on equal specificity. That has a sharp edge — a bare
+element selector over there reaches in here, and an inherited property carries
+further than the element it was written for. `frontend/style/README.md` has the
+case that cost a day, the rule that follows from it, and how to reproduce a bug
+that only appears in the running app.
 
 ## Configuration
 
