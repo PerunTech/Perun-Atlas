@@ -1,8 +1,8 @@
 /**
  * Everything this package offers a consumer, and where each kind lives.
  *
- * The directory has two subdivisions, and both are drawn on something real
- * rather than on how the files sort.
+ * The directory has one subdivision, and it is drawn on something real rather
+ * than on how the files sort.
  *
  * `layers/` is the components that render nothing. They return null and put
  * their features on the map imperatively, through Leaflet, which makes them
@@ -10,12 +10,12 @@
  * reading one, because none of the usual reasoning about what a component
  * returns applies to them.
  *
- * `lib/` is what no consumer imports. Nothing under it is exported here, so it
- * is free to change shape without that being a breaking change, which is not
- * true of anything in this file.
- *
  * Everything else sits at the top level: the map, the screen around it, and the
  * chrome on it.
+ *
+ * What these are built out of is not here: `frontend/lib/` holds the small
+ * shared pieces and `frontend/hooks/` the panel's state, and neither is
+ * exported from the package.
  */
 
 export { AtlasMap } from './AtlasMap';

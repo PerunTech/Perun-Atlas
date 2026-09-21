@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { iso, monthsAgo, rangeOf, sameWindow, today } from '../frontend/components/lib/dates';
+import { iso, monthsAgo, rangeOf, sameWindow, today } from '../frontend/lib/dates';
 
 describe('the date window', () => {
   beforeEach(() => {

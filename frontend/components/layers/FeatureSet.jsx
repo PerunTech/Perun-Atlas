@@ -2,10 +2,10 @@ import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { descriptorOf, fetchGeometry } from '../../data';
 import { detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../../style';
-import { clusterBadge, clusterSettings } from '../lib/cluster';
-import { applyStyle, asNode } from '../lib/dom';
-import { popupElement, POPUP_OPTIONS } from '../lib/popup';
-import { between, easeInOut, placeKey, routeEnds } from '../lib/route';
+import { clusterBadge, clusterSettings } from '../../lib/cluster';
+import { applyStyle, asNode } from '../../lib/dom';
+import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
+import { between, easeInOut, placeKey, routeEnds } from '../../lib/route';
 import '../../style/features.css';
 
 const { Map, factory } = core;

@@ -2,8 +2,8 @@ import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { bboxIn, fetchGeometry } from '../../data';
 import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions, popupFor } from '../../style';
-import { asNode } from '../lib/dom';
-import { popupElement, POPUP_OPTIONS } from '../lib/popup';
+import { asNode } from '../../lib/dom';
+import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;

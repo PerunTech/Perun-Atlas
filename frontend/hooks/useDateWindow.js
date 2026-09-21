@@ -1,5 +1,5 @@
 import { React } from 'perun-core';
-import { rangeOf, sameWindow } from '../components/lib/dates';
+import { rangeOf, sameWindow } from '../lib/dates';
 
 const { useState } = React
 

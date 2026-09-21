@@ -1,6 +1,6 @@
 import { toCSV, toGeoJSON } from '../data';
-import { download } from '../components/lib/dom';
-import { today } from '../components/lib/dates';
+import { download } from '../lib/dom';
+import { today } from '../lib/dates';
 
 /**
  * Offering the set on screen as a file.
