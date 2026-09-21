@@ -11,12 +11,28 @@
   /* Its own row in the toolbar rather than another item in it: the shape's
      controls belong together, and the save button has to sit at the end of the
      row it belongs to rather than at the end of whatever else the toolbar
-     happens to be carrying. */
+     happens to be carrying. The button that arms the map is not here -- it is in
+     the panel's actions, with the file buttons -- so this row exists only while
+     there is something to put in it. */
   flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+
+/*
+ * What to click, while the map is armed and nothing is drawn yet.
+ *
+ * The instruction the button used to carry. Here it is a sentence in a row
+ * instead of a sentence in a button, which is the difference between text that
+ * reflows a toolbar and text that reads.
+ */
+.atlas-panel__drawhint {
+  flex-basis: 100%;
+  margin: 0;
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+  color: var(--ap-muted, #6b6f7a);
 }
 
 .atlas-panel__drawfield {

@@ -4,7 +4,7 @@ import * as bootstrap from './bootstrap';
 import * as config from './config';
 import * as data from './data';
 import * as style from './style';
-import { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, FeaturePanel, FeatureSet, Legend, LegendControl, PointPicker } from './components';
+import { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, DrawTool, FeaturePanel, FeatureSet, Legend, LegendControl, PointPicker } from './components';
 
 /**
  * perun-atlas — the shared map layer.
@@ -19,5 +19,5 @@ import { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, 
 export const name = pkg.name;
 export const version = pkg.version;
 
-export { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, FeaturePanel, FeatureSet, Legend, LegendControl, PointPicker };
+export { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, DrawTool, FeaturePanel, FeatureSet, Legend, LegendControl, PointPicker };
 export { bootstrap, config, data, style };

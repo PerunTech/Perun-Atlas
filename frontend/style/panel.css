@@ -233,15 +233,24 @@
 }
 
 /*
- * The export buttons.
+ * What there is to do here: the tools, and the file buttons.
  *
- * Pushed to the far end of the toolbar, away from the controls that change what
- * is on screen: these do not change the view, they take a copy of it. `margin-
- * inline-start: auto` rather than a spacer element, so the group still wraps
- * onto its own line at a narrow width instead of being held out by a gap.
+ * One group at the far end of the toolbar, away from the controls that change
+ * what is on screen -- the date window, the label switch -- because these are
+ * the other kind of control: a tool changes what is on the server, a file button
+ * takes a copy of what is on screen, and both are things the reader does rather
+ * than ways of looking. Two groups made that one distinction into two, and the
+ * two ends drifted apart as the row wrapped.
+ *
+ * `margin-inline-start: auto` rather than a spacer element, so the group still
+ * wraps onto its own line at a narrow width instead of being held out by a gap.
+ * It wraps within itself as well: a third tool takes the row it needs rather
+ * than pushing the file buttons off the end.
  */
-.atlas-panel__export {
+.atlas-panel__actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-inline-start: auto;
 }
@@ -254,7 +263,7 @@
  * this owns the arrangement of the two things inside it, which it cannot know
  * about. An icon that fails to load leaves the label where it was.
  */
-.atlas-panel__export .atlas-panel__btn {
+.atlas-panel__actions .atlas-panel__btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;

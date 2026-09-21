@@ -3,16 +3,61 @@ import { React, elements } from 'perun-core';
 const { Icon } = elements;
 
 /**
- * The controls for drawing one shape and sending it somewhere.
+ * Drawing one shape and sending it somewhere, in two pieces.
  *
- * Presentational: it owns nothing, decides nothing, and names nothing. The panel
- * holds the shape and does the saving; this is the row of controls that sits
- * over the map while that is happening, and every word in it arrives as a label.
+ * Two exports rather than one, because the two halves belong in different places
+ * on the screen. `DrawTool` is the button that arms the map, and it sits in the
+ * panel's actions — beside the file buttons — because that is the one place a
+ * reader looks for something to press. `DrawBar` is everything the shape needs
+ * once there is one, and it wants a row of its own: a radius, a note and the two
+ * buttons that end it are not a one-word button and do not belong in a cluster
+ * of them.
  *
- * Three states, and the row says which one it is in by what it offers. Nothing
- * drawn yet: one button, which arms the map. Drawing: the same button, pressed,
- * and a way out. A shape on the map: its radius, whatever note the row asked
- * for, and the two buttons that end it.
+ * That split is also what leaves room for a second tool. Whatever arrives next —
+ * a rectangle, a corridor, a point — is another button in the same cluster and
+ * another row under it, rather than another thing competing for the same corner
+ * of the toolbar.
+ *
+ * Both are presentational: they own nothing, decide nothing and name nothing.
+ * The panel holds the shape and does the saving; every word here arrives as a
+ * label.
+ */
+
+/**
+ * The button that arms the map.
+ *
+ * A toggle, and it says so the way a toggle does — `aria-pressed`, and the
+ * accent fill the panel gives a pressed button — rather than by rewriting its
+ * own label. The instruction is a sentence, and a sentence inside a button that
+ * sits between `GeoJSON` and `CSV` would reflow the whole cluster the moment it
+ * was pressed. It reads one row down instead, where `DrawBar` puts it and where
+ * the shape's own controls are about to appear.
+ *
+ * @param {boolean} drawing - whether the map is armed
+ * @param {boolean} busy    - a save is in flight
+ * @param {Object} labels
+ */
+export const DrawTool = ({ drawing, busy, onStart, onCancel, labels = {} }) => (
+  <button
+    type='button'
+    className={`atlas-panel__btn ${drawing ? 'atlas-panel__btn--primary' : 'atlas-panel__btn--ghost'}`}
+    aria-pressed={drawing}
+    onClick={drawing ? onCancel : onStart}
+    disabled={busy}
+  >
+    <Icon name='IconCircleDashed' size={16} stroke={1.75} aria-hidden='true' />
+    {labels.draw ?? 'Draw an area'}
+  </button>
+);
+
+/**
+ * The row under the toolbar, while a shape is being made.
+ *
+ * Three states, and the row says which one it is in by what it offers. Armed
+ * with nothing drawn: the instruction, which is what the button above stopped
+ * saying when it moved into the actions. A shape on the map: its radius,
+ * whatever note the row asked for, and the two buttons that end it. Neither,
+ * but a save just answered: the answer, until the next press clears it.
  *
  * The radius is a number in metres because that is what was measured on the
  * ground. Typing into it is the half of this that direct manipulation is bad at
@@ -31,7 +76,6 @@ export const DrawBar = ({
   shape,
   drawing,
   busy,
-  onStart,
   onCancel,
   onRadius,
   onSave,
@@ -46,16 +90,11 @@ export const DrawBar = ({
 
   return (
     <div className='atlas-panel__draw' role='group' aria-label={labels.draw ?? 'Draw'}>
-      <button
-        type='button'
-        className={`atlas-panel__btn ${drawing ? 'atlas-panel__btn--primary' : 'atlas-panel__btn--ghost'}`}
-        aria-pressed={drawing}
-        onClick={drawing ? onCancel : onStart}
-        disabled={busy}
-      >
-        <Icon name='IconCircleDashed' size={16} stroke={1.75} aria-hidden='true' />
-        {drawing ? (labels.drawing ?? 'Click a centre, then an edge') : (labels.draw ?? 'Draw an area')}
-      </button>
+      {drawing && !hasShape && (
+        <p className='atlas-panel__drawhint'>
+          {labels.drawing ?? 'Click a centre, then an edge'}
+        </p>
+      )}
 
       {hasShape && (
         <label className='atlas-panel__drawfield'>

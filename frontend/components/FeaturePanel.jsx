@@ -1,7 +1,7 @@
 import { React, elements } from 'perun-core';
 import { AtlasMap } from './AtlasMap';
 import { DateRange } from './DateRange';
-import { DrawBar } from './DrawBar';
+import { DrawBar, DrawTool } from './DrawBar';
 import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
@@ -654,7 +654,48 @@ export const FeaturePanel = ({
           </button>
         )}
 
-        {drawable && (
+        {/* Everything the reader presses, in one group at the far end of the
+            row. A tool that draws and a button that writes a file are different
+            kinds of thing -- one changes what is on the server, the other takes
+            a copy of what is on screen -- but they are alike in the way that
+            decides where they go: they are what there is to do here, as against
+            the date window and the label switch, which change what is shown.
+            Two clusters said otherwise and lined up differently as the toolbar
+            wrapped. A second tool is another button in here. */}
+        {(drawable || canExport) && (
+          <div className='atlas-panel__actions'>
+            {drawable && (
+              <DrawTool
+                drawing={drawing}
+                busy={saving}
+                labels={labels}
+                onStart={() => { setSaid(null); setDrawing(true) }}
+                onCancel={clearDrawing}
+              />
+            )}
+
+            {canExport && offer.geojson !== false && (
+              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveGeoJSON}>
+                <Icon name='IconJson' size={16} stroke={1.75} aria-hidden='true' />
+                {labels.exportGeoJSON ?? 'GeoJSON'}
+              </button>
+            )}
+
+            {canExport && offer.csv !== false && (
+              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveCSV}>
+                <Icon name='IconFileTypeCsv' size={16} stroke={1.75} aria-hidden='true' />
+                {labels.exportCsv ?? 'CSV'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* The tool's own row, under everything else, and only while it has
+            something to say: what to click, then the shape's radius and note,
+            then what the save answered. A row that is always there is a row of
+            empty space on every screen that draws, which is every screen this
+            panel renders. */}
+        {drawable && (drawing || shape || said) && (
           <DrawBar
             shape={shape}
             drawing={drawing}
@@ -663,28 +704,10 @@ export const FeaturePanel = ({
             limits={draw.radius}
             note={draw.note ? { value: note, onChange: setNote, required: draw.note.required } : undefined}
             labels={labels}
-            onStart={() => { setSaid(null); setDrawing(true) }}
             onCancel={clearDrawing}
             onRadius={(radius) => setShape((current) => (current ? { ...current, radius } : current))}
             onSave={saveShape}
           />
-        )}
-
-        {canExport && (
-          <div className='atlas-panel__export'>
-            {offer.geojson !== false && (
-              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveGeoJSON}>
-                <Icon name='IconJson' size={16} stroke={1.75} aria-hidden='true' />
-                {labels.exportGeoJSON ?? 'GeoJSON'}
-              </button>
-            )}
-            {offer.csv !== false && (
-              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveCSV}>
-                <Icon name='IconFileTypeCsv' size={16} stroke={1.75} aria-hidden='true' />
-                {labels.exportCsv ?? 'CSV'}
-              </button>
-            )}
-          </div>
         )}
       </div>
 
