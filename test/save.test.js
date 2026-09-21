@@ -56,13 +56,32 @@ describe('fillBody', () => {
 });
 
 describe('postTo', () => {
+  /**
+   * `postTo` prints the URL and the payload whenever a service refuses, because
+   * a refusal is usually about one of the two and the service that refused
+   * rarely says which. That is deliberate, so it is asserted rather than
+   * silenced -- a run where those lines stopped appearing would be a run where
+   * a failed save had gone quiet.
+   *
+   * Captured rather than left to stderr for the ordinary reason: a suite that
+   * prints a stack trace on a passing test has taught its reader to skim the
+   * output, which is where a real one then hides.
+   */
+  let logged;
+
   beforeEach(() => {
     globalThis.window = { server: 'https://host/services' };
     axios.mockReset();
+    logged = vi.spyOn(console, 'error').mockImplementation(() => {});
   });
-  afterEach(() => { delete globalThis.window; });
+
+  afterEach(() => {
+    logged.mockRestore();
+    delete globalThis.window;
+  });
 
   const sent = () => axios.mock.calls[0][0];
+  const said = () => logged.mock.calls.flat().join(' ');
 
   it('binds the path and prefixes the shell\'s server', async () => {
     axios.mockResolvedValue({ data: 'x.success.saved' });
@@ -95,9 +114,12 @@ describe('postTo', () => {
 
   it('reads a refusal out of an envelope that came back with a 200', async () => {
     axios.mockResolvedValue({ data: { type: 'ERROR', title: 'No', message: 'because' } });
-    const answer = await postTo('/Ws', {});
+    const answer = await postTo('/Ws', {}, { body: { A: 1 } });
     expect(answer.ok).toBe(false);
     expect(answer.message).toBe('No — because');
+    // Both halves, because a refusal is about one of them and rarely says which.
+    expect(said()).toContain('https://host/services/Ws');
+    expect(logged.mock.calls.some(call => call.includes('perun-atlas: the payload was'))).toBe(true);
   });
 
   it('reads the same envelope when it arrives as a string', async () => {
@@ -116,9 +138,10 @@ describe('postTo', () => {
     expect((await postTo('/Ws', {}, { failure: 'error' })).ok).toBe(false);
   });
 
-  it('calls a success a success', async () => {
+  it('calls a success a success, and says nothing about it', async () => {
     axios.mockResolvedValue({ data: 'epi.success.save_quarantine_via_map' });
     expect((await postTo('/Ws', {}, { failure: 'error' })).ok).toBe(true);
+    expect(logged).not.toHaveBeenCalled();
   });
 
   /**
@@ -129,5 +152,6 @@ describe('postTo', () => {
   it('answers a transport failure in the same shape as every other outcome', async () => {
     axios.mockRejectedValue(new Error('Network Error'));
     expect(await postTo('/Ws', {})).toEqual({ ok: false, message: 'Network Error', data: null });
+    expect(said()).toContain('save to https://host/services/Ws failed');
   });
 });
