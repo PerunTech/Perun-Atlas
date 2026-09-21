@@ -257,8 +257,25 @@ export const AtlasMap = ({
         }
 
         Map.invalidateSize();
-        setReady(true);
+
+        // `onReady` before `setReady`, and the order carries weight on React 16.
+        //
+        // These two calls sit in a promise continuation rather than in an event
+        // handler, and React 16 batches only the latter -- so `setReady(true)`
+        // flushes by itself and mounts the children before a parent listening on
+        // `onReady` has re-rendered with anything it learned here. A layer that
+        // reads the deployment's geometry SRID off this callback therefore made
+        // its first request with the value its parent held at mount, which is
+        // none, and a second one the moment the real value landed. The first of
+        // those asks a geometry service for a box in the map's own projection,
+        // which is the wrong question wherever the two projections differ.
+        //
+        // Calling the parent first puts its state in place before the children
+        // exist. Harmless if React ever batches these: both updates then flush
+        // together and the children mount with the parent already correct, which
+        // is exactly what this is arranging by hand.
         onReady?.({ map: Map, config, basemap, overlays });
+        setReady(true);
       } catch (err) {
         if (cancelled) return;
         console.error(err);

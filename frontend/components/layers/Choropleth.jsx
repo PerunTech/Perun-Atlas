@@ -16,7 +16,9 @@ const { useEffect, useRef } = React;
  * category — so `statusRows` and `join` exist to marry them in the browser
  * rather than requiring a bespoke endpoint per screen.
  *
- * Refetches when the map stops moving, because the service is bbox-scoped.
+ * Refetches when the map stops moving, because the service is bbox-scoped --
+ * except when the view only got smaller, which is a resized container rather
+ * than a move and is already answered by what is on screen. See `shrunk`.
  *
  * `srid` is the projection the box is expressed in -- the deployment's
  * `sys.gis.default_srid`, because a geometry service compares the box against
@@ -108,6 +110,10 @@ export const Choropleth = ({
        */
       const request = ++requestRef.current;
 
+      // The view this answer will be for, kept so that a later `moveend` can be
+      // measured against it. See `shrunk`.
+      fetched = { zoom: Map.getZoom(), bounds: Map.getBounds() };
+
       try {
         onLoadStart?.();
         // The bounding box last, so it wins: it is the one value this layer owns,
@@ -174,9 +180,36 @@ export const Choropleth = ({
      * bbox worth asking about is the one the reader stopped on.
      */
     let pending = null;
+
+    /**
+     * The view the last fetch was made for, and whether this one is inside it.
+     *
+     * Not every `moveend` is a move. Leaflet fires it from `invalidateSize` as
+     * well as from a drag, and `invalidateSize` is what `AtlasMap` calls when its
+     * container changes size -- which happens every time the record pane opens,
+     * because the map is the thing that gives way to it. So a click on an area
+     * was answering itself with a request: open the pane, narrow the map, fire
+     * `moveend`, fetch. Neither `options.pan` nor `debounceMoveend` suppresses
+     * that event; the layer has to decide.
+     *
+     * The test is the honest one rather than a flag. At an unchanged zoom, a new
+     * view that lies inside the one already fetched can only mean the container
+     * got smaller: a pan always uncovers ground on the side it came from, and a
+     * zoom moves the zoom. What is on screen is therefore already a superset of
+     * what the request would answer, so there is nothing to ask for.
+     *
+     * A container that grows fails the containment test and is fetched, which is
+     * what fills the strip the pane was covering when it closes. Every real move
+     * fails it too, which is the whole of what this layer is for.
+     */
+    let fetched = null;
+    const shrunk = () => Boolean(fetched)
+      && Map.getZoom() === fetched.zoom
+      && fetched.bounds.contains(Map.getBounds());
+
     const later = () => {
       clearTimeout(pending);
-      pending = setTimeout(draw, 250);
+      pending = setTimeout(() => { if (!shrunk()) draw(); }, 250);
     };
 
     draw();

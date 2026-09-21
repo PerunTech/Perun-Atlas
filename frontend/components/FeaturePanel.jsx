@@ -400,6 +400,32 @@ export const FeaturePanel = ({
 
   const onRangeChange = (next) => applyWindow(next, null)
 
+  /**
+   * A fetch is starting.
+   *
+   * The open record deliberately survives it. What the pane holds is a resolved
+   * copy of one feature's rows, not a live view of the layer, so nothing about
+   * it goes stale when the set is redrawn -- and clearing it here closed the
+   * pane a click had just opened. The sequence was its own cause: a click opens
+   * the pane, the pane is what makes the map narrower, a narrower map is an
+   * `invalidateSize`, and `invalidateSize` fires `moveend`, which a bbox-scoped
+   * layer answers with a fetch. The pane then closed itself a quarter of a
+   * second after opening, widening the map and starting a second fetch on the
+   * way out.
+   *
+   * It also closed the pane on every ordinary pan, which is the same fault
+   * without the self-inflicted part: a reader who opens a record and nudges the
+   * map loses what they were reading.
+   *
+   * The clears that mean something stay where they are. `applyWindow` empties
+   * the record when the date window moves, because that is a different set
+   * rather than the same one fetched again.
+   */
+  const onFetchStart = () => {
+    setLoading(true)
+    setDrawn(noneDrawn)
+  }
+
   /** Nothing drawn, nothing pending, and no answer left over from last time. */
   const clearDrawing = () => {
     setDrawing(false)
@@ -747,7 +773,7 @@ export const FeaturePanel = ({
                   tooltip={colourTooltip}
                   onFeatureClick={openRecord}
                   onLegend={setDrawn}
-                  onLoadStart={() => { setLoading(true); setRecord(null); setDrawn(noneDrawn) }}
+                  onLoadStart={onFetchStart}
                   onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
                   onError={() => { setSet({ features: [] }); setLoading(false) }}
                 />
@@ -764,7 +790,7 @@ export const FeaturePanel = ({
                   pinned={isPinnedFeature}
                   onFeatureClick={openRecord}
                   onLegend={setDrawn}
-                  onLoadStart={() => { setLoading(true); setRecord(null); setDrawn(noneDrawn) }}
+                  onLoadStart={onFetchStart}
                   onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
                   onError={() => { setSet({ features: [] }); setLoading(false) }}
                 />
