@@ -1,5 +1,5 @@
 import { axios } from 'perun-core';
-import { bindPath } from './geometry';
+import { bindPath, valueIn } from './geometry';
 
 /**
  * Sending something back.
@@ -93,6 +93,22 @@ const tryParse = (text) => {
 };
 
 /**
+ * A string that is one placeholder and nothing else.
+ *
+ * `bindPath` answers with text, which is what a path wants and what a sentence
+ * wants. A body is the case where the placeholder *is* the value: a service
+ * expecting a number reads `"5439"` and rejects it, and one expecting a shape
+ * reads that shape's JSON as a quoted string. So a template that is exactly one
+ * placeholder resolves to what it names -- an object, an array, a number -- and
+ * a placeholder with anything either side of it is interpolated as before.
+ *
+ * Deliberately strict about the braces: `"{a}{b}"` and `" {a}"` are text with
+ * substitutions in them, and a body that turned either into a value would be
+ * guessing at what the row meant.
+ */
+const SOLE_PLACEHOLDER = /^\{([^{}]+)\}$/;
+
+/**
  * A configured payload, with its placeholders resolved.
  *
  * The same `{token}` substitution the paths take, applied through a body of any
@@ -102,10 +118,18 @@ const tryParse = (text) => {
  * An unmatched placeholder is left standing, as `bindPath` leaves one. In a path
  * that produces a request that fails loudly; in a body it produces a record with
  * `{note}` written in a field, which is worse to read and better than a record
- * saved with a value silently dropped.
+ * saved with a value silently dropped. A sole placeholder that resolves to
+ * nothing is left standing as its own text for the same reason.
  */
 export const fillBody = (template, context) => {
-  if (typeof template === 'string') return bindPath(template, context);
+  if (typeof template === 'string') {
+    const sole = template.match(SOLE_PLACEHOLDER);
+    if (sole) {
+      const value = valueIn(sole[1], context);
+      return value === undefined || value === null ? template : value;
+    }
+    return bindPath(template, context);
+  }
   if (Array.isArray(template)) return template.map((item) => fillBody(item, context));
   if (template && typeof template === 'object') {
     return Object.fromEntries(Object.entries(template).map(([key, value]) => [key, fillBody(value, context)]));

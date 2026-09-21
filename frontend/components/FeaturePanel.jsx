@@ -138,17 +138,23 @@ const { Icon } = elements
  *                                path here does plus the shape's own, under
  *                                `{draw.*}`: `x`, `y` and `radius` in the
  *                                deployment's stored projection, `lat`, `lng`
- *                                and `metres` on the ground, and `ring` -- the
+ *                                and `metres` on the ground, `ring` -- the
  *                                circle as a ring of vertices in that
  *                                projection, which is the only form a service
  *                                reading an integer radius can take from a
- *                                deployment that stores degrees. `ring: { point,
- *                                join }` is how that ring is spelled, and
- *                                `points` how many vertices it has.
+ *                                deployment that stores degrees -- and `geojson`,
+ *                                the same circle as a closed GeoJSON polygon.
+ *                                `ring: { point, join }` is how the ring is
+ *                                spelled, and `points` how many vertices either
+ *                                form has.
  *                                `save.body` is a payload template whose strings
- *                                resolve the same way. Nothing here knows what
- *                                the shape means; this panel draws a circle and
- *                                posts numbers.
+ *                                resolve the same way, except that a string
+ *                                which is nothing but one placeholder resolves
+ *                                to the value rather than to a printing of it --
+ *                                which is what lets `"{draw.geojson}"` carry a
+ *                                shape and `"{draw.metres}"` carry a number.
+ *                                Nothing here knows what the shape means; this
+ *                                panel draws a circle and posts numbers.
  *
  *                                It is one key rather than a mode because that is
  *                                the honest shape: everything else on this panel
@@ -433,6 +439,8 @@ export const FeaturePanel = ({
     const scale = unitsPerMetre(centre, dataSrid)
     const radius = Math.round(shape.radius * scale)
 
+    const vertices = ringIn(centre, shape.radius, dataSrid, draw.points)
+
     /**
      * The shape itself, as a ring in the projection the deployment stores.
      *
@@ -441,9 +449,28 @@ export const FeaturePanel = ({
      * goes between them. The default is a WKT coordinate pair, which is the only
      * spelling that is anybody's standard.
      */
-    const ring = ringIn(centre, shape.radius, dataSrid, draw.points)
+    const ring = vertices
       .map((vertex) => bindPath(draw.ring?.point ?? '{x} {y}', vertex))
       .join(draw.ring?.join ?? ', ')
+
+    /**
+     * The same shape, as GeoJSON.
+     *
+     * Offered beside the ring rather than instead of it: a service that parses
+     * the geometry out of a path segment needs the string, and one that reads a
+     * body needs this, and which of the two a deployment has is not this panel's
+     * to know. A row asking for `{draw.geojson}` gets the object itself, because
+     * `fillBody` hands over a sole placeholder unconverted.
+     *
+     * Closed, unlike the ring: GeoJSON says a linear ring repeats its first
+     * position as its last, and the readers that take it enforce that. The ring
+     * is left open because the services that parse one close it themselves, and
+     * a ring that arrived closed would be closed twice.
+     */
+    const geojson = {
+      type: 'Polygon',
+      coordinates: [[...vertices, vertices[0]].map((vertex) => [vertex.x, vertex.y])]
+    }
 
     /**
      * A radius smaller than one unit of the projection it would be sent in.
@@ -492,7 +519,8 @@ export const FeaturePanel = ({
         x,
         y,
         radius,
-        ring
+        ring,
+        geojson
       }
     }
 

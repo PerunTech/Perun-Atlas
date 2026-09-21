@@ -22,11 +22,20 @@ const { geobuf, Pbf } = spatialData;
  */
 export const bindPath = (path, context) =>
   path.replace(/\{([^}]+)\}/g, (match, expression) => {
-    const value = expression
-      .split('.')
-      .reduce((acc, part) => (acc == null ? acc : acc[part]), context);
+    const value = valueIn(expression, context);
     return value === undefined || value === null ? match : String(value);
   });
+
+/**
+ * What a dotted placeholder names, unconverted.
+ *
+ * Shared with `bindPath` so a placeholder resolves to the same thing whether it
+ * is being written into a sentence or handed over whole. This file only ever
+ * wants the text; it is exported for `fillBody`, which sometimes wants the shape
+ * a placeholder names rather than a printing of it.
+ */
+export const valueIn = (expression, context) =>
+  expression.split('.').reduce((acc, part) => (acc == null ? acc : acc[part]), context);
 
 /**
  * What came back, as the decoder saw it.

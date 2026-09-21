@@ -99,18 +99,32 @@ const { useMemo } = React;
  *                 `onSave` takes the same placeholders every other path here
  *                 does, plus the shape's own under `{draw.*}` -- `x`, `y` and
  *                 `radius` in the projection this deployment stores geometry in,
- *                 `lat`, `lng` and `metres` on the ground, and `ring`, the
- *                 circle as vertices in that projection. The ring is what a
- *                 service wants when its radius is an integer and the deployment
- *                 stores degrees, where no circle smaller than a hundred
- *                 kilometres can be described at all; `ring: { point, join }`
- *                 spells one vertex and what goes between them, and `points`
- *                 says how many there are. `body` is a
- *                 payload template whose strings resolve the same way, `{note}`
- *                 among them. `failure` is how a refusal reads on a service that
- *                 answers one with a 200 and a string. The words -- `draw`,
- *                 `radius`, `save`, `saved`, `saveFailed` and the rest -- are
- *                 label codes in `labels`, like every other word on the panel
+ *                 `lat`, `lng` and `metres` on the ground, and two spellings of
+ *                 the circle itself: `ring` and `geojson`.
+ *
+ *                 `ring` is the one a service wants when it parses the geometry
+ *                 out of the path -- vertices in the stored projection, which is
+ *                 the only form that works when the radius is an integer and the
+ *                 deployment stores degrees, where no circle smaller than a
+ *                 hundred kilometres can be described at all. `ring: { point,
+ *                 join }` spells one vertex and what goes between them.
+ *                 `geojson` is the same circle as a closed GeoJSON polygon, for
+ *                 a service that reads its geometry from the body; `points` says
+ *                 how many vertices either one has, and only the path form is
+ *                 bounded by how long a URL may be.
+ *
+ *                 `body` is a payload template whose strings resolve the same
+ *                 way, `{note}` among them -- except that a string which is
+ *                 nothing but one placeholder resolves to what it names rather
+ *                 than to a printing of it, so `"{draw.geojson}"` carries the
+ *                 shape and `"{draw.metres}"` carries a number rather than
+ *                 `"5439"`. `contentType` and `encoding` say how it travels:
+ *                 `"application/json"` sends it as JSON, and the default is the
+ *                 form convention these registries mostly use. `failure` is how
+ *                 a refusal reads on a service that answers one with a 200 and a
+ *                 string. The words -- `draw`, `radius`, `save`, `saved`,
+ *                 `saveFailed` and the rest -- are label codes in `labels`, like
+ *                 every other word on the panel
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit
