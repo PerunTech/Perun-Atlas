@@ -22,7 +22,7 @@ const { useEffect, useState } = React;
  * portal: entries update as props, and the collapsed state survives a reload
  * because nothing unmounts when the rows change.
  *
- * @param {Array} entries - As `style/legend.js` builds them.
+ * @param {Array} entries - As `appearance/legend.js` builds them.
  * @param {string} [title] - Heading, already resolved.
  * @param {boolean} [open] - Whether it starts expanded.
  * @param {string} [position] - Any corner spatial's `control` accepts. Defaults

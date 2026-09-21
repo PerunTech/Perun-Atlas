@@ -101,7 +101,7 @@ Swatch.propTypes = { entry: PropTypes.object.isRequired };
 /**
  * What the colours on this map mean.
  *
- * Takes entries already shaped and already labelled -- see `style/legend.js`,
+ * Takes entries already shaped and already labelled -- see `appearance/legend.js`,
  * which builds them from what was drawn rather than from what was configured.
  * This renders them and knows nothing about descriptors, palettes or geometry.
  *

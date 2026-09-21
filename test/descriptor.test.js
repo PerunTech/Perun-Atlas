@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BASE_STYLE, detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf
-} from '../frontend/style/descriptor';
+} from '../frontend/appearance/descriptor';
 
 const feature = (properties) => ({ type: 'Feature', properties });
 

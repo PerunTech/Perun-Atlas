@@ -3,7 +3,7 @@ import { applyStyle } from './dom';
 /**
  * Turning popup rows into elements.
  *
- * The split is deliberate: `popupFor` in `style/` decides *what* a popup says and
+ * The split is deliberate: `popupFor` in `appearance/` decides *what* a popup says and
  * is plain data with no DOM in it, and this decides how that is built and how it
  * looks. Both FeatureSet and Choropleth draw popups, so this is here rather than
  * in either.

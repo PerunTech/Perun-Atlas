@@ -6,7 +6,7 @@ import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
-import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../style';
+import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../appearance';
 import { useChoropleth, useDateWindow, useDrawnShape, useExport, useRecord } from '../hooks';
 import '../style/panel.css';
 import '../style/draw.css';

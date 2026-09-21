@@ -1,7 +1,7 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { bboxIn, fetchGeometry } from '../../data';
-import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions, popupFor } from '../../style';
+import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions, popupFor } from '../../appearance';
 import { asNode } from '../../lib/dom';
 import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
 

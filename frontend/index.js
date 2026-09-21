@@ -1,9 +1,9 @@
 import pkg from '../package.json';
 
+import * as appearance from './appearance';
 import * as bootstrap from './bootstrap';
 import * as config from './config';
 import * as data from './data';
-import * as style from './style';
 import { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, DrawTool, FeaturePanel, FeatureSet, Legend, LegendControl, PointPicker } from './components';
 
 /**
@@ -20,4 +20,4 @@ export const name = pkg.name;
 export const version = pkg.version;
 
 export { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, DrawTool, FeaturePanel, FeatureSet, Legend, LegendControl, PointPicker };
-export { bootstrap, config, data, style };
+export { appearance, bootstrap, config, data };

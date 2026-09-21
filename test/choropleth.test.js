@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { categoriesDrawn, colourBy, DEFAULT_PALETTE, joinStatus } from '../frontend/style/choropleth';
+import { categoriesDrawn, colourBy, DEFAULT_PALETTE, joinStatus } from '../frontend/appearance/choropleth';
 
 const feature = (properties) => ({ type: 'Feature', properties });
 const PALETTE = { 0: '#2e7d32', 1: '#f9a825', 2: '#c62828' };
