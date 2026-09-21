@@ -35,6 +35,20 @@
   color: var(--ap-muted, #6b6f7a);
 }
 
+/*
+ * A field: a word, and a box holding the control it names.
+ *
+ * The border and the ground belong to the box rather than to the input,
+ * because the radius is a number and a unit and those are one measurement. On
+ * the input, the border stopped after the number and left `m` outside it --
+ * a fourth loose item in a row of four, where the row actually holds two
+ * fields. Inside, the number is the thing being edited and the unit is the
+ * thing it is measured in, which is what they are.
+ *
+ * Focus moves to the box with it. `:focus-within` draws the ring the input
+ * used to draw and the input's own outline is suppressed, so a keyboard reader
+ * gets one ring around the control rather than one inside it.
+ */
 .atlas-panel__drawfield {
   display: inline-flex;
   align-items: center;
@@ -44,29 +58,90 @@
   letter-spacing: 0.02em;
 }
 
-.atlas-panel__drawfield input {
-  width: 6.5em;
+.atlas-panel__drawbox {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
   padding: 5px 8px;
   border: 1px solid var(--ap-rule, #d8dde3);
   border-radius: var(--ap-radius, 8px);
   background: var(--ap-surface, #ffffff);
-  color: var(--ap-ink, #14161a);
-  font: var(--ap-value-font, 500 12px/1.4 system-ui, sans-serif);
-  font-variant-numeric: tabular-nums;
 }
 
-.atlas-panel__drawfield--wide input {
-  width: 16em;
-  font-variant-numeric: normal;
-}
-
-.atlas-panel__drawfield input:focus-visible {
+.atlas-panel__drawbox:focus-within {
   outline: 2px solid var(--ap-accent, #4a6a85);
   outline-offset: 1px;
 }
 
-.atlas-panel__drawunit {
+/* Disabled is drawn here because there is nothing left on the input to draw
+   it on -- see `box` in DrawBar. */
+.atlas-panel__drawbox--off {
+  opacity: 0.55;
+}
+
+.atlas-panel__drawbox input {
+  width: 4.5em;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ap-ink, #14161a);
+  font: var(--ap-value-font, 500 12px/1.4 system-ui, sans-serif);
   font-variant-numeric: tabular-nums;
+  /* Against the unit, so the two read as one measurement however many digits
+     the reader dragged their way to. */
+  text-align: end;
+}
+
+.atlas-panel__drawbox input:focus,
+.atlas-panel__drawbox input:focus-visible {
+  outline: none;
+}
+
+/*
+ * No steppers.
+ *
+ * They sit where the unit now is, they are the one control in this row a
+ * deployment's stylesheet cannot reach, and at a step of 100 they move a
+ * radius the reader dragged to 6663 in jumps that lose it. Arrow keys still
+ * step by `step`, so a keyboard keeps everything the arrows offered.
+ */
+.atlas-panel__drawbox input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.atlas-panel__drawbox input::-webkit-outer-spin-button,
+.atlas-panel__drawbox input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.atlas-panel__drawunit {
+  color: var(--ap-muted, #6b6f7a);
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+}
+
+/*
+ * The note, which is a sentence and takes what is left of the row.
+ *
+ * A fixed width was wrong in both directions: too narrow to read a sentence
+ * back on a wide panel, and wide enough to push the buttons onto their own
+ * line on a narrow one. Growing from a floor does both jobs, and it is the
+ * floor rather than the width that decides when the row wraps.
+ */
+.atlas-panel__drawfield--wide {
+  flex: 1 1 18em;
+  min-width: 12em;
+}
+
+.atlas-panel__drawfield--wide .atlas-panel__drawbox {
+  flex: 1;
+}
+
+.atlas-panel__drawfield--wide input {
+  width: 100%;
+  text-align: start;
+  font-variant-numeric: normal;
 }
 
 .atlas-panel__drawactions {

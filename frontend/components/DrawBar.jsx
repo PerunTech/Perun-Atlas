@@ -51,6 +51,17 @@ export const DrawTool = ({ drawing, busy, onStart, onCancel, labels = {} }) => (
 );
 
 /**
+ * The box a field's control sits in.
+ *
+ * Said in the markup rather than in the stylesheet because the stylesheet
+ * cannot see it: the border and the ground moved off the input and onto this
+ * box, so the browser's own rendering of a disabled input -- which is a grey
+ * ground and a faded border -- now has nothing to render on. Without this the
+ * fields would look live for as long as a save is out.
+ */
+const box = (busy) => `atlas-panel__drawbox${busy ? ' atlas-panel__drawbox--off' : ''}`;
+
+/**
  * The row under the toolbar, while a shape is being made.
  *
  * Two states, and the row says which one it is in by what it offers. Armed with
@@ -98,36 +109,44 @@ export const DrawBar = ({
       {hasShape && (
         <label className='atlas-panel__drawfield'>
           <span>{labels.radius ?? 'Radius'}</span>
-          <input
-            type='number'
-            inputMode='numeric'
-            value={Math.round(shape.radius)}
-            min={min}
-            max={max}
-            step={step}
-            disabled={busy}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              // An empty field is a number in the middle of being typed, not a
-              // circle of no size: leaving the shape alone keeps the one on the
-              // map where it was until there is a value to move it to.
-              if (Number.isFinite(next) && next > 0) onRadius(next);
-            }}
-          />
-          <span className='atlas-panel__drawunit'>{labels.metres ?? 'm'}</span>
+          {/* The unit goes inside the box with the number it belongs to.
+              Outside it, it was a fourth loose item in this row, reading as a
+              word between two fields rather than as the thing that says what
+              the number is. */}
+          <span className={box(busy)}>
+            <input
+              type='number'
+              inputMode='numeric'
+              value={Math.round(shape.radius)}
+              min={min}
+              max={max}
+              step={step}
+              disabled={busy}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                // An empty field is a number in the middle of being typed, not a
+                // circle of no size: leaving the shape alone keeps the one on the
+                // map where it was until there is a value to move it to.
+                if (Number.isFinite(next) && next > 0) onRadius(next);
+              }}
+            />
+            <span className='atlas-panel__drawunit'>{labels.metres ?? 'm'}</span>
+          </span>
         </label>
       )}
 
       {hasShape && note && (
         <label className='atlas-panel__drawfield atlas-panel__drawfield--wide'>
           <span>{labels.note ?? 'Note'}</span>
-          <input
-            type='text'
-            value={note.value ?? ''}
-            disabled={busy}
-            placeholder={labels.notePlaceholder ?? ''}
-            onChange={(event) => note.onChange(event.target.value)}
-          />
+          <span className={box(busy)}>
+            <input
+              type='text'
+              value={note.value ?? ''}
+              disabled={busy}
+              placeholder={labels.notePlaceholder ?? ''}
+              onChange={(event) => note.onChange(event.target.value)}
+            />
+          </span>
         </label>
       )}
 
