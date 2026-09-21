@@ -56,4 +56,20 @@ export default [
             }],
         },
     },
+    {
+        // The test suite and its two stubs. Node rather than a browser: these
+        // run under vitest, outside a page, and the block above deliberately
+        // matches `frontend/` only so that what ships and what checks it are
+        // held to their own environments. Vitest's own names are imported by
+        // each file rather than declared global, which is why none are listed
+        // here -- a test that forgot the import should say so.
+        files: ['test/**/*.js', 'vitest.config.mjs'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: {
+                ...globals.node,
+            },
+        },
+    },
 ]

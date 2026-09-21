@@ -22,8 +22,33 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/bootstrap/` | Resolves configuration: overrides → SVAROG_SYS_PARAMS → `window` (deprecated) → defaults. Throws, loudly, on a missing required value. |
 | `frontend/data/` | Geometry fetching and geobuf decoding; the GEO_LAYER_TYPE catalogue. |
 | `frontend/style/` | Descriptors and choropleth colouring. Engine-free, unit-testable without a map. |
-| `frontend/components/` | `AtlasMap`, `Choropleth`. |
+| `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put features on the map through Leaflet; `lib/` is private to this directory and exported from nowhere. |
+| `test/` | The unit suite, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
+
+## Tests
+
+```
+pnpm test          # once
+pnpm run test:watch
+pnpm run lint      # what CI asks; lint:fix repairs your working tree instead
+```
+
+Vitest, no DOM. Everything under test is the half of this package that does not
+need a map: projections and rings, descriptors and palettes, the join, the CSV,
+the save body and its verdict.
+
+Two things make that possible. `perun-core` and `spatial` are the shell's and
+are `externals` in a production build, so a run points those two bare specifiers
+at `test/stubs/`; the spatial stub carries Leaflet's own projection and distance
+formulas rather than invented ones, because `unitsPerMetre` measures a
+projection by using it and a stub with made-up arithmetic would only test
+itself. And the suite lives outside `frontend/` because the pipeline's guards
+grep that directory for coordinate literals, which is most of what a test for
+`ringIn` is.
+
+A component or a hook is not covered. That wants a DOM and a React renderer,
+and neither is installed.
 
 ## Configuration
 
