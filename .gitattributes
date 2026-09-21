@@ -1,0 +1,12 @@
+# The built bundle is committed, because consumers install this package from git
+# and resolve package.json's `main` out of the checkout -- see the note on
+# 1_perun-atlas-generate-js in .gitlab-ci.yml. It is still a build artifact, and
+# every frontend change rewrites all of it as one minified line: a two-file diff
+# came to 300 KB, which is a review nobody reads and a merge nobody can resolve.
+#
+# `-diff` makes git treat it as binary, so a diff says the file changed and
+# stops. `linguist-generated` keeps it out of language stats and collapses it in
+# GitLab's own diff view. Neither changes what is committed or served.
+backend/www/perun-atlas.js       -diff linguist-generated
+backend/www/perun-atlas.js.map   -diff linguist-generated
+backend/www/perun-atlas.js.LICENSE.txt -diff linguist-generated
