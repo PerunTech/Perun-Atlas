@@ -41,12 +41,17 @@ const PREVIEW = { ...STYLE, dashArray: '5 4', fillOpacity: 0.06 };
  * typing a radius into whatever the caller renders, is how they say *exactly
  * 3 km*. Both end in the same `{ lat, lng, radius }`.
  *
- * The drawing itself is the engine's: `tools.draw.circle` is Geoman's, with the
- * live preview, the hint line and the cursor tooltip already built. It is armed
- * while `drawing` is true and disarmed the moment a shape is finished, and the
- * layer it leaves behind is removed — what stays on the map is the controlled
- * circle below, drawn from `value`, so there is never a moment with two circles
- * on screen disagreeing about where the shape is.
+ * The drawing itself is the engine's: `tools.draw.circle`, a port of leaflet.pm
+ * carrying the live preview, the hint line and the cursor tooltip already. It is
+ * armed while `drawing` is true and disarmed the moment a shape is finished, and
+ * the layer it leaves behind is removed — what stays on the map is the
+ * controlled circle below, drawn from `value`, so there is never a moment with
+ * two circles on screen disagreeing about where the shape is.
+ *
+ * Snapping to whatever else is already drawn is the engine's own default, which
+ * is why nothing here asks for it. The options below are the ones this panel
+ * needs to differ on: its colours, and silence instead of the engine's tooltips,
+ * whose label codes belong to a domain this package does not register.
  *
  * The radius travels in metres on the ground, which is what Leaflet sizes a
  * circle by and what a reader measured. A service storing a projected CRS wants

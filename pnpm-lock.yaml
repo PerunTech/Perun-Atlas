@@ -18,7 +18,7 @@ importers:
         version: git+https://git@gitlab.prtech.mk/svarog4/perun-core#147cdc505016e0ce8db6c1389852469195938bfb(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
       spatial:
         specifier: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#dev
-        version: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#eaf12e79c2607772e4a1c1e02cfc56c3e4ee4b2d(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
+        version: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.23.9
@@ -2721,6 +2721,11 @@ packages:
     version: 0.2.0
     engines: {node: '>=18.12.0'}
 
+  perun-core@git+https://git@gitlab.prtech.mk/svarog4/perun-core#8b04de1a80ad91955d6dbff4093487f19d813899:
+    resolution: {commit: 8b04de1a80ad91955d6dbff4093487f19d813899, repo: https://git@gitlab.prtech.mk/svarog4/perun-core, type: git}
+    version: 0.2.0
+    engines: {node: '>=18.12.0'}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -3264,8 +3269,8 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
 
-  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#eaf12e79c2607772e4a1c1e02cfc56c3e4ee4b2d:
-    resolution: {commit: eaf12e79c2607772e4a1c1e02cfc56c3e4ee4b2d, repo: https://git@gitlab.prtech.mk/svarog4/svarog-spatial, type: git}
+  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d:
+    resolution: {commit: 7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d, repo: https://git@gitlab.prtech.mk/svarog4/svarog-spatial, type: git}
     version: 5.0.0
 
   spdy-transport@3.0.0:
@@ -6843,6 +6848,60 @@ snapshots:
       - supports-color
       - typescript
 
+  perun-core@git+https://git@gitlab.prtech.mk/svarog4/perun-core#8b04de1a80ad91955d6dbff4093487f19d813899(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1):
+    dependencies:
+      '@json2csv/plainjs': 7.0.8
+      '@monaco-editor/react': 4.7.0(monaco-editor@0.56.0)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      '@rjsf/core': 5.24.13(@rjsf/utils@5.24.13(react@16.14.0))(react@16.14.0)
+      '@rjsf/utils': 5.24.13(react@16.14.0)
+      '@rjsf/validator-ajv8': 5.24.13(@rjsf/utils@5.24.13(react@16.14.0))
+      '@tabler/icons-react': 3.46.0(react@16.14.0)
+      axios: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+      axios-retry: 4.5.0(axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1))
+      dompurify: 3.4.15
+      history: 4.10.1
+      marked: 18.0.12
+      md5: 2.3.0
+      pdfmake: 0.3.11
+      prop-types: 15.8.1
+      react: 16.14.0
+      react-bootstrap: 2.10.10(@types/react@18.3.31)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      react-data-grid: 5.0.5(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      react-data-grid-addons: 4.0.8(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      react-dom: 16.14.0(react@16.14.0)
+      react-draggable: 4.7.1(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      react-ga: 3.3.1(prop-types@15.8.1)(react@16.14.0)
+      react-google-recaptcha: 3.1.0(react@16.14.0)
+      react-intl: 6.8.9(react@16.14.0)
+      react-intl-redux: 2.4.1(@babel/runtime@7.29.7)(prop-types@15.8.1)(react-intl@6.8.9(react@16.14.0))(react-redux@8.1.3(@types/react@18.3.31)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(redux@4.2.1))(react@16.14.0)
+      react-json-view: 1.21.3(@types/react@18.3.31)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      react-redux: 8.1.3(@types/react@18.3.31)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)(redux@4.2.1)
+      react-router-dom: 5.3.4(react@16.14.0)
+      react-select: 1.2.1(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      react-select-fast-filter-options: 0.2.3(react-select@1.2.1(react-dom@16.14.0(react@16.14.0))(react@16.14.0))(react@16.14.0)
+      react-tooltip: 5.30.1(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
+      redux: 4.2.1
+      redux-logger: 3.0.6
+      redux-magic-async-middleware: 0.1.0(redux-updeep@0.1.1)
+      redux-persist: 4.10.2(react@16.14.0)
+      redux-promise-middleware: 6.2.0(redux@4.2.1)
+      redux-thunk: 2.4.2(redux@4.2.1)
+      redux-updeep: 0.1.1
+      sweetalert: 2.1.2
+      sweetalert2: 11.26.25
+      validator: 13.15.35
+      xlsx-js-style: 1.2.0
+    transitivePeerDependencies:
+      - '@babel/runtime'
+      - '@types/react'
+      - '@types/react-dom'
+      - debug
+      - encoding
+      - monaco-editor
+      - react-native
+      - supports-color
+      - typescript
+
   picocolors@1.1.1: {}
 
   picomatch@2.3.2: {}
@@ -7502,13 +7561,13 @@ snapshots:
 
   source-map@0.6.1: {}
 
-  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#eaf12e79c2607772e4a1c1e02cfc56c3e4ee4b2d(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1):
+  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1):
     dependencies:
       leaflet: 1.5.1
       leaflet-polylinedecorator: 1.6.0
       leaflet.fullscreen: 3.0.2
       leaflet.markercluster: 1.5.3(leaflet@1.5.1)
-      perun-core: git+https://git@gitlab.prtech.mk/svarog4/perun-core#147cdc505016e0ce8db6c1389852469195938bfb(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
+      perun-core: git+https://git@gitlab.prtech.mk/svarog4/perun-core#8b04de1a80ad91955d6dbff4093487f19d813899(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
       proj4: 2.10.0
     transitivePeerDependencies:
       - '@babel/runtime'
