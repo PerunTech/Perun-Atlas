@@ -369,19 +369,24 @@
   border: 0;
 }
 
-/* A group's name, before the fields it names rather than above them. */
+/*
+ * No titles on a toolbar.
+ *
+ * RJSF renders a schema's title as a `<legend>`, and so a form built from a
+ * table brings one for the table and one for every grouppath in it. A legend is
+ * also never a flex item: the browser takes a fieldset's first legend out of
+ * flow and lays the rest of the children out in an anonymous box below it. So
+ * each one costs a line of a row that has one -- to say "Basic Info" above two
+ * fields that already say which dates they are.
+ *
+ * Hidden rather than styled small, because there is no size at which a section
+ * heading belongs in a strip of controls. The fields keep their own labels,
+ * which is what a reader needs and what a screen reader reads; what goes is the
+ * heading over them, and with it anything a row writes in `ui:title`.
+ */
 .atlas-date-range .rjsf legend,
 .atlas-panel__drawform .rjsf legend {
-  flex: 0 0 auto;
-  /* Said, not inherited. Bootstrap makes a legend a full-width block, which on
-     a row turns every group into a line of its own with its fields underneath
-     -- the shape this rule exists to prevent. */
-  width: auto;
-  margin: 0;
-  padding: 0 4px;
-  border: 0;
-  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
-  color: var(--ap-muted, #6b6f7a);
+  display: none;
 }
 
 /*

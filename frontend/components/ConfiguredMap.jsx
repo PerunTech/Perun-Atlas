@@ -164,9 +164,12 @@ const { useMemo } = React;
  *                 field inside a group as `"a.b.FIELD"`, a whole group by
  *                 naming the group -- and `required` is narrowed with them, at
  *                 both levels. The table's own title is dropped, because three
- *                 of its fields are not that table; `ui:title` in `uiSchema`
- *                 puts a heading back. A name the schema does not have is said
- *                 in the console and left off the form.
+ *                 of its fields are not that table -- and no title shows in
+ *                 this row in any case: RJSF draws one as a `legend`, a legend
+ *                 always takes a line of its own, and a heading over two fields
+ *                 that already say what they are is not worth a line of a
+ *                 toolbar. A name the schema does not have is said in the
+ *                 console and left off the form.
  *
  *                 `uiSchema` takes a path too, and at the far end it is a
  *                 second service: a deployment keeps a field's widget

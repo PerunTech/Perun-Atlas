@@ -160,9 +160,10 @@ export const pickFields = (schema, pick) => {
   const out = { ...schema, properties };
 
   // The table's title, dropped: three of its fields are not that table, and a
-  // narrowed form headed with the whole table's name says something untrue in
-  // the largest text on the row. A row wanting a heading writes one in
-  // `uiSchema` under `ui:title`.
+  // narrowed form carrying the whole table's name says something untrue about
+  // itself to anything that reads the schema rather than the screen. On the
+  // screen it shows nowhere in any case -- the draw row hides the legends RJSF
+  // draws a title as, because each one costs a line of a toolbar.
   delete out.title;
 
   const mandatory = (schema.required ?? []).filter((name) => name in properties);

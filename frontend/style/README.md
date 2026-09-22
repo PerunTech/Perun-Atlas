@@ -63,17 +63,19 @@ The rules are in `panel.css` under `.atlas-panel__drawform`. Two things about
 them are worth keeping in mind before adding more.
 
 **`!important` is the only thing that reaches `!important`,** and it is spent in
-exactly one place: the bottom border. A blue legend is the deployment's colour
-choice arriving somewhere it was not aimed, and it is legible, so it stays; a
-green line along one edge of a four-sided box is not a colour choice about
-anything, and the box is this package's.
+exactly one place: the bottom border. A green line along one edge of a
+four-sided box is not a colour choice about anything, and the box is this
+package's. The blue legend needed nothing in the end — a title has no place in a
+strip of controls, so the titles are hidden and the rule painting them has
+nothing left to paint.
 
-**A `<legend>` is never a flex item.** The browser takes a fieldset's first
-legend out of flow and lays the rest of the fieldset's children out in an
-anonymous box, so `flex`, `order` and `align-self` on a legend do nothing —
-`width: auto` is what stops it being a full-width bar. A group therefore costs a
-line. A row that would rather have the space says so in its own `uiSchema`, with
-`"ui:title": ""` on the group.
+**A `<legend>` is never a flex item,** which is why the titles are hidden rather
+than made small. The browser takes a fieldset's first legend out of flow and
+lays the rest of the fieldset's children out in an anonymous box, so `flex`,
+`order` and `align-self` on a legend do nothing, and every title costs a line of
+the row. RJSF renders a schema's title as a legend, so a form built from a table
+brings one for the table and one per grouppath — and `ui:title` in a row's own
+`uiSchema` is a legend too, and goes with them.
 
 **The date filter is deliberately not in those selectors.** It is the older form
 on this panel, `aims-assets/assets/styles/atlas-panel.css` styles it field by
