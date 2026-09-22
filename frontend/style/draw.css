@@ -157,6 +157,40 @@
   font-variant-numeric: normal;
 }
 
+/*
+ * What the shape covers.
+ *
+ * Beside the radius that decides it rather than under the map, because the two
+ * are one control: the number being typed and the answer to typing it. It reads
+ * as a count and a scale -- the caught figure carries the weight, the set it was
+ * taken from sits behind it -- so that a reader sees `12` first and `/ 340` only
+ * if they want to know what 12 is out of.
+ *
+ * `tabular-nums` because it changes under the reader's eye while a radius is
+ * being typed, and digits that shift the width as they change read as movement
+ * rather than as counting.
+ */
+.atlas-panel__drawcount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+  font-variant-numeric: tabular-nums;
+  color: var(--ap-muted, #6b6f7a);
+}
+
+.atlas-panel__drawcount b {
+  font: var(--ap-value-font, 500 12px/1.4 system-ui, sans-serif);
+  font-variant-numeric: tabular-nums;
+  color: var(--ap-ink, #14161a);
+}
+
+.atlas-panel__drawtotal {
+  color: var(--ap-muted, #6b6f7a);
+  opacity: 0.8;
+}
+
 .atlas-panel__drawactions {
   display: inline-flex;
   align-items: center;

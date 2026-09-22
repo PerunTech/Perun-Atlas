@@ -156,6 +156,19 @@ const { Icon } = elements
  *                                Nothing here knows what the shape means; this
  *                                panel draws a circle and posts numbers.
  *
+ *                                `select` asks the other question a shape
+ *                                answers: which features on screen it covers.
+ *                                `true`, or `{ mode, id, join, export }`. The
+ *                                count sits beside the radius, the file buttons
+ *                                follow it, and the save body gains
+ *                                `{draw.selected.*}`. See `useSelection` for
+ *                                what that answer is over -- the set the layer
+ *                                fetched, which is not the same as the database
+ *                                -- and `ConfiguredMap` for how a row spells it.
+ *                                A `draw` block carrying `select` and no `save`
+ *                                is a screen that draws to look rather than to
+ *                                write.
+ *
  *                                It is one key rather than a mode because that is
  *                                the honest shape: everything else on this panel
  *                                -- the title, the record, the file buttons, the
@@ -256,9 +269,9 @@ export const FeaturePanel = ({
   const [drawn, setDrawn] = useState(noneDrawn)
 
   const {
-    drawable, drawing, shape, note, saving, reload,
+    drawable, drawing, shape, selection, note, saving, reload,
     setShape, setNote, startDrawing, finishDrawing, clearDrawing, saveShape
-  } = useDrawnShape({ draw, dataSrid, bindings, labels })
+  } = useDrawnShape({ draw, dataSrid, set, bindings, labels })
 
   const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing })
 
@@ -290,6 +303,7 @@ export const FeaturePanel = ({
 
   const { offer, canExport, saveGeoJSON, saveCSV } = useExport({
     set,
+    selection,
     exportable,
     labelResolver,
     timeScoped,
@@ -419,6 +433,10 @@ export const FeaturePanel = ({
             drawing={drawing}
             busy={saving}
             limits={draw.radius}
+            // Only what a row asked to see. `selecting` is false unless
+            // `draw.select` is set, and the row then shows nothing extra.
+            caught={selection.selecting ? { count: selection.count, total: selection.total } : undefined}
+            savable={Boolean(draw.save?.onSave)}
             note={draw.note ? { value: note, onChange: setNote, required: draw.note.required } : undefined}
             labels={labels}
             onCancel={clearDrawing}

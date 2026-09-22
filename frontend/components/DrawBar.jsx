@@ -81,6 +81,11 @@ const box = (busy) => `atlas-panel__drawbox${busy ? ' atlas-panel__drawbox--off'
  * @param {boolean} busy         - a save is in flight
  * @param {Object} [note]        - { value, onChange, required } for the free-text field
  * @param {Object} [limits]      - { min, max, step } for the radius
+ * @param {Object} [caught]      - { count, total } the shape covers, for a row
+ *        that asked what is inside it. Left out, the row says nothing about it.
+ * @param {boolean} [savable]    - whether there is anywhere to send the shape.
+ *        A screen may draw a radius only to see what falls inside it, and a Save
+ *        button on that screen is a button with nothing behind it.
  * @param {Object} labels
  */
 export const DrawBar = ({
@@ -91,6 +96,8 @@ export const DrawBar = ({
   onRadius,
   onSave,
   note,
+  caught,
+  savable = true,
   limits = {},
   labels = {}
 }) => {
@@ -150,8 +157,23 @@ export const DrawBar = ({
         </label>
       )}
 
+      {/* What the shape covers, beside the number that decides it.
+          `aria-live` because this is the one thing on the row that changes
+          without being touched: a reader typing a radius is looking at the
+          field, and the count moving underneath is the answer to what they are
+          typing. `polite` so it waits for a pause rather than interrupting
+          every keystroke. */}
+      {hasShape && caught && (
+        <p className='atlas-panel__drawcount' aria-live='polite'>
+          <b>{caught.count}</b>
+          <span>{labels.caught ?? 'inside'}</span>
+          <span className='atlas-panel__drawtotal'>{`/ ${caught.total}`}</span>
+        </p>
+      )}
+
       {hasShape && (
         <div className='atlas-panel__drawactions'>
+          {savable && (
           <button
             type='button'
             className='atlas-panel__btn atlas-panel__btn--primary'
@@ -161,6 +183,7 @@ export const DrawBar = ({
             <Icon name='IconDeviceFloppy' size={16} stroke={1.75} aria-hidden='true' />
             {labels.save ?? 'Save'}
           </button>
+          )}
           <button
             type='button'
             className='atlas-panel__btn atlas-panel__btn--ghost'

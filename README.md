@@ -22,11 +22,11 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/spatial.js` | The single point of contact with the map engine. |
 | `frontend/config/` | `SCHEMA` — every environment setting declared once. |
 | `frontend/bootstrap/` | Resolves configuration: overrides → SVAROG_SYS_PARAMS → `window` (deprecated) → defaults. Throws, loudly, on a missing required value. |
-| `frontend/data/` | Everything that crosses the wire or the projection: geometry fetching and geobuf decoding, bounding boxes and rings, rows, writes, exports, the GEO_LAYER_TYPE catalogue. |
+| `frontend/data/` | Everything that crosses the wire or the projection: geometry fetching and geobuf decoding, bounding boxes and rings, rows, writes, exports, which features a drawn shape covers, the GEO_LAYER_TYPE catalogue. |
 | `frontend/appearance/` | What a feature looks like and what it says, decided from a descriptor. Plain data — no DOM, no engine — which is what makes it the half of the package the suite can test. |
 | `frontend/style/` | The stylesheets, and only those. A deployment overrides them; read `frontend/style/README.md` before debugging one. |
 | `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. |
-| `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape and its save, the export, the record pane. |
+| `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape with its save and what it caught, the export, the record pane. |
 | `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `frontend/lib/README.md` lists them. |
 | `build/` | The webpack hook that injects this package's CSS at `head.firstChild`. `frontend/style/README.md` says why that matters. |
 | `test/` | The unit suite, and the two stubs standing in for the shell. |

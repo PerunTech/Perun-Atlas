@@ -9,6 +9,13 @@
  * arithmetic would test itself; carrying Leaflet's, the numbers a test asserts
  * are the numbers the browser produces.
  *
+ * Both directions of each projection, because the package now uses both:
+ * `pointIn` sends a coordinate out and `latLngOf` reads a stored one back. A
+ * round trip through a stub holding only half of a pair would prove nothing
+ * about either half, and the elliptical inverse in particular has no closed form
+ * -- it is the one place where inventing the arithmetic would have been easiest
+ * and most wrong.
+ *
  * The export shape is the engine's: modules hang off the prototype, because
  * `frontend/spatial.js` reaches them with `getPrototypeOf`. Going through that
  * shim rather than around it keeps the package's one rule -- one caller of the
@@ -22,7 +29,8 @@ const RAD = Math.PI / 180;
 
 /** L.Projection.LonLat: degrees straight through, which is what EPSG:4326 is. */
 const lonLat = {
-  project: (latlng) => ({ x: latlng.lng, y: latlng.lat })
+  project: (latlng) => ({ x: latlng.lng, y: latlng.lat }),
+  unproject: (point) => ({ lat: point.y, lng: point.x })
 };
 
 /** L.Projection.SphericalMercator, EPSG:3857. */
@@ -33,6 +41,13 @@ const sphericalMercator = {
     return {
       x: R * latlng.lng * RAD,
       y: (R * Math.log((1 + sin) / (1 - sin))) / 2
+    };
+  },
+  unproject: (point) => {
+    const d = 180 / Math.PI;
+    return {
+      lat: (2 * Math.atan(Math.exp(point.y / R)) - Math.PI / 2) * d,
+      lng: (point.x * d) / R
     };
   }
 };
@@ -46,6 +61,24 @@ const mercator = {
     const con = e * Math.sin(y);
     const ts = Math.tan(Math.PI / 4 - y / 2) / ((1 - con) / (1 + con)) ** (e / 2);
     return { x: latlng.lng * RAD * R, y: -R * Math.log(Math.max(ts, 1e-10)) };
+  },
+  // Iterative, as Leaflet's is: the elliptical inverse has no closed form, and a
+  // stub that solved it some other way would not be the thing under test.
+  unproject: (point) => {
+    const d = 180 / Math.PI;
+    const tmp = R_MINOR / R;
+    const e = Math.sqrt(1 - tmp * tmp);
+    const ts = Math.exp(-point.y / R);
+    let phi = Math.PI / 2 - 2 * Math.atan(ts);
+
+    for (let i = 0, dphi = 0.1; i < 15 && Math.abs(dphi) > 1e-7; i += 1) {
+      let con = e * Math.sin(phi);
+      con = ((1 - con) / (1 + con)) ** (e / 2);
+      dphi = Math.PI / 2 - 2 * Math.atan(ts * con) - phi;
+      phi += dphi;
+    }
+
+    return { lat: phi * d, lng: (point.x * d) / R };
   }
 };
 
@@ -104,7 +137,7 @@ const core = {
     getZoom: () => view.zoom,
     distance
   },
-  factory: { CRS, latLng, latLngBounds }
+  factory: { CRS, latLng, latLngBounds, point: (x, y) => ({ x, y }) }
 };
 
 const engine = {

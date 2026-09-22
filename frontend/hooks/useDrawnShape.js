@@ -1,5 +1,6 @@
 import { React, elements } from 'perun-core';
 import { bindPath, fillBody, pointIn, postTo, ringIn, unitsPerMetre } from '../data';
+import { useSelection } from './useSelection';
 
 const { useState } = React
 const { alertUserResponse } = elements
@@ -28,15 +29,24 @@ const alertType = (data, ok) => (data?.type ? undefined : (ok ? 'success' : 'err
  * in one place, and a guard refuses a save the projection cannot express. None
  * of that is about a toolbar.
  *
+ * A shape is also a question about what it covers, and `draw.select` is a row
+ * asking it. That half is `useSelection`, composed here rather than beside this
+ * in the panel for one reason: it needs the shape, and the save needs its
+ * answer, so a panel holding the two apart would have to pass one through a ref
+ * to reach the other. Composed, the order is just the order.
+ *
  * @param {Object} params
- * @param {Object} [params.draw]      - The row's `draw` block; `save.onSave` is what makes a panel drawable.
+ * @param {Object} [params.draw]      - The row's `draw` block. `save.onSave` or
+ *        `select` is what makes a panel drawable -- a screen may want the shape
+ *        only for what it catches, and never send it anywhere.
  * @param {number} [params.dataSrid]  - The projection the deployment stores geometry in.
+ * @param {Object} [params.set]       - The collection on screen, for `draw.select`.
  * @param {Object} params.bindings    - What the save path's placeholders resolve against.
  * @param {Object} [params.labels]
- * @returns {Object} The shape, its controls, and `reload` -- a number the layers
- *          refetch on, which a successful write increments.
+ * @returns {Object} The shape, its controls, what it caught, and `reload` -- a
+ *          number the layers refetch on, which a successful write increments.
  */
-export const useDrawnShape = ({ draw, dataSrid, bindings, labels = {} }) => {
+export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) => {
   /**
    * The shape being drawn, and everything that goes with sending it.
    *
@@ -50,12 +60,23 @@ export const useDrawnShape = ({ draw, dataSrid, bindings, labels = {} }) => {
    * -- so it is told, by a number it refetches on. It is not a placeholder and
    * never reaches a URL.
    */
-  const drawable = Boolean(draw?.save?.onSave)
+  // A save or a selection. Either is a reason to put a shape on the map, and a
+  // screen that draws a radius to see what falls inside it has nothing to send.
+  const drawable = Boolean(draw?.save?.onSave || draw?.select)
   const [drawing, setDrawing] = useState(false)
   const [shape, setShape] = useState(null)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [reload, setReload] = useState(0)
+
+  /**
+   * What the shape covers, when a row asked.
+   *
+   * Derived rather than held: it is a function of the shape and the set, and
+   * storing it would be a second copy of an answer that changes on every
+   * keystroke in the radius field.
+   */
+  const selection = useSelection({ set, shape, dataSrid, select: draw?.select })
 
   /** Nothing drawn and nothing pending. */
   const clearDrawing = () => {
@@ -183,7 +204,12 @@ export const useDrawnShape = ({ draw, dataSrid, bindings, labels = {} }) => {
         y,
         radius,
         ring,
-        geojson
+        geojson,
+        // Only where a row asked for a selection. A screen that draws a shape
+        // and sends it somewhere has no use for `{draw.selected.ids}`, and an
+        // empty one in the context is a placeholder that resolves to nothing
+        // rather than one that is visibly not configured.
+        ...(selection.context ? { selected: selection.context } : {})
       }
     }
 
@@ -214,6 +240,7 @@ export const useDrawnShape = ({ draw, dataSrid, bindings, labels = {} }) => {
     drawable,
     drawing,
     shape,
+    selection,
     note,
     saving,
     reload,

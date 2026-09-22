@@ -109,6 +109,33 @@ export const pointIn = (latlng, srid) => {
 };
 
 /**
+ * The other direction: a stored coordinate, as a place on the ground.
+ *
+ * The inverse of `pointIn`, and the one this package had been doing without --
+ * because the engine does it for anything that reaches the map. spatial's
+ * GeoJSON override installs a `coordsToLatLng` that unprojects through
+ * `dbCRSCode` on every `addData`, so a layer draws in the right place while the
+ * collection behind it is never converted at all. Anything that reads the
+ * *collection* rather than the layer -- a test against a drawn shape, a file
+ * written out -- is therefore holding stored units and has to say so.
+ *
+ * Written the way the engine writes it rather than by another route, so the two
+ * cannot disagree about where a feature is: the same three convertible CRSs, the
+ * same `projection.unproject`.
+ *
+ * @param {{x: number, y: number}|number[]} position - A stored coordinate, or a
+ *        GeoJSON position, which is `[x, y]` and therefore `[lng, lat]` in 4326.
+ * @param {string|number} [srid] - The EPSG code it is expressed in.
+ * @returns {{lat: number, lng: number}}
+ */
+export const latLngOf = (position, srid) => {
+  const [x, y] = Array.isArray(position) ? position : [position?.x, position?.y];
+  const crs = projectionFor(srid) ?? Map.getCRS();
+  const { lat, lng } = crs.projection.unproject(factory.point(x, y));
+  return { lat, lng };
+};
+
+/**
  * How many units of a projection go to a metre on the ground, at a place.
  *
  * A distance drawn on the map is in metres, because that is what the reader

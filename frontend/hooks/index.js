@@ -16,3 +16,4 @@ export { useDateWindow } from './useDateWindow';
 export { useDrawnShape } from './useDrawnShape';
 export { useExport } from './useExport';
 export { useRecord } from './useRecord';
+export { useSelection } from './useSelection';

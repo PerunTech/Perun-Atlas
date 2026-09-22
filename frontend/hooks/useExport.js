@@ -12,13 +12,17 @@ import { today } from '../lib/dates';
  *
  * @param {Object} params
  * @param {Object} params.set          - The collection currently drawn, or null.
+ * @param {Object} [params.selection]  - What a drawn shape caught, from
+ *        `useSelection`. While a shape has caught something the buttons write
+ *        that rather than the whole set -- which is the point of drawing one on
+ *        a screen that offers files, and is why the filename says so.
  * @param {boolean|Object} params.exportable - `false` to withhold the buttons, or
  *        `{ filename, fields, exclude, geojson, csv }`.
  * @param {Function} [params.labelResolver]
  * @param {boolean} params.timeScoped  - Whether the screen has a date window.
  * @param {{from: string, to: string}} params.range
  */
-export const useExport = ({ set, exportable, labelResolver, timeScoped, range }) => {
+export const useExport = ({ set, selection, exportable, labelResolver, timeScoped, range }) => {
   /**
    * How this set is offered as a file, or nothing.
    *
@@ -33,7 +37,19 @@ export const useExport = ({ set, exportable, labelResolver, timeScoped, range })
    * like the export worked.
    */
   const offer = exportable === false ? null : (exportable && exportable !== true ? exportable : {})
-  const canExport = offer && set && (set.features?.length ?? 0) > 0
+
+  /**
+   * What the buttons write: the whole set, or what a drawn shape caught.
+   *
+   * Only while the shape has caught something. An empty selection is a shape
+   * mid-draw or one over nothing, and swapping a full file for an empty one
+   * because a reader clicked a centre would be the worst moment to do it -- so
+   * until the circle covers a feature the buttons go on offering the set.
+   */
+  const narrowed = Boolean(selection?.selecting && selection.feedsExport && selection.count > 0)
+  const source = narrowed ? { type: 'FeatureCollection', features: selection.inside } : set
+
+  const canExport = offer && source && (source.features?.length ?? 0) > 0
 
   /**
    * What the file is called.
@@ -42,10 +58,17 @@ export const useExport = ({ set, exportable, labelResolver, timeScoped, range })
    * the same screen do not land in a downloads folder as `features (3)`. The
    * stem is the caller's, because this file has no idea what the set is.
    */
-  const filename = [offer?.filename ?? 'features', timeScoped ? `${range.from}_${range.to}` : today()].join('-')
+  const filename = [
+    offer?.filename ?? 'features',
+    // Which question this file answers. Two files from one screen an hour apart
+    // -- one of everything, one of what a circle covered -- are otherwise the
+    // same name and a guess about which is which.
+    narrowed ? `within-${Math.round(selection.radius ?? 0) || 'shape'}` : null,
+    timeScoped ? `${range.from}_${range.to}` : today()
+  ].filter(Boolean).join('-')
 
-  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(set), 'application/geo+json')
-  const saveCSV = () => download(`${filename}.csv`, toCSV(set, { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
+  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(source), 'application/geo+json')
+  const saveCSV = () => download(`${filename}.csv`, toCSV(source, { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
 
   return { offer, canExport, saveGeoJSON, saveCSV }
 }

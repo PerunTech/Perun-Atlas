@@ -138,8 +138,35 @@ const { useMemo } = React;
  *                 string -- which decides what becomes of the drawn shape, not
  *                 what the reader is shown: the answer itself goes to
  *                 `alertUserResponse` as it arrived. The words -- `draw`,
- *                 `radius`, `save`, `saveTooSmall` and the rest -- are label
- *                 codes in `labels`, like every other word on the panel
+ *                 `radius`, `save`, `saveTooSmall`, `caught` and the rest --
+ *                 are label codes in `labels`, like every other word on the
+ *                 panel.
+ *
+ *                 `select` asks the other question a drawn shape answers: which
+ *                 of the features on screen it covers. `true` for the defaults,
+ *                 or `{ mode, id, join, export }`. The count appears beside the
+ *                 radius and moves as the radius is typed; the file buttons
+ *                 write what was caught rather than the whole set, unless
+ *                 `"export": false`; and the save body gains
+ *                 `{draw.selected.count}`, `{draw.selected.ids}` and
+ *                 `{draw.selected.geojson}`, so a shape can be posted together
+ *                 with the records it covers. `mode` is `"touches"` -- anything
+ *                 reaching into the circle -- or `"contains"` for wholly
+ *                 inside. `id` and `join` spell the identifier list exactly as
+ *                 `ring.point` and `ring.join` spell a ring, and default to
+ *                 `"{pkid}"` and `","`.
+ *
+ *                 It is answered in the browser, over the set the layer
+ *                 fetched. For a feature set, which arrives complete in one
+ *                 response, that is the whole of it. A screen colouring areas
+ *                 from a bounding box holds only what is in view, so a radius
+ *                 reaching past the edge of the map would be answered from a
+ *                 set that stops there -- that screen wants a service that
+ *                 takes the circle, which this is not.
+ *
+ *                 A row may ask for `select` with no `save`: a screen that
+ *                 draws a radius only to see what falls inside it never sends
+ *                 the shape anywhere, and the row then offers no Save button
  *   tokens        CSS custom properties: { "--ap-accent": "#6a1b9a", ... }
  *
  * Rendered inside the shell, so `connect` has a store above it. An explicit
