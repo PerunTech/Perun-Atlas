@@ -42,12 +42,19 @@
 /*
  * The two buttons.
  *
+ * 26 pixels, because that is what spatial's `toolbar.css` gives every other
+ * button on this map and a control in the same corner that does not match them
+ * reads as something else's chrome that wandered in. Centred as a grid for the
+ * reason that file gives: what goes in one of these is an icon, not a character
+ * on a baseline.
+ *
  * Said rather than inherited: a deployment's bare `button` rules reach into this
  * package and win everything a class does not claim. `frontend/style/README.md`
  * has the case that taught us.
  */
 .atlas-zoom__step {
-  display: block;
+  display: grid;
+  place-items: center;
   flex: 0 0 auto;
   width: 26px;
   height: 26px;
@@ -56,8 +63,7 @@
   border-radius: var(--ap-radius, 3px);
   background: transparent;
   color: inherit;
-  font: 600 16px/26px system-ui, sans-serif;
-  text-align: center;
+  font: 600 16px/1 system-ui, sans-serif;
   text-indent: 0;
   cursor: pointer;
 }

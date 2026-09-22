@@ -1,5 +1,6 @@
 import { React, ReactDOM, PropTypes } from 'perun-core';
 import { core } from '../spatial';
+import { GLYPHS, ICON_SIZE, ICON_STROKE } from '../lib/icons';
 import { marksIn, rungs } from '../lib/zoom';
 import '../style/zoom.css';
 
@@ -63,6 +64,35 @@ export const ZOOM_LABELS = {
 let instances = 0;
 
 const percent = (fraction) => `${(fraction * 100).toFixed(4)}%`;
+
+/**
+ * A control glyph, as JSX.
+ *
+ * The same preset `lib/icons.js` serialises for the two Leaflet controls, said
+ * again here because a React tree cannot take a string of markup. The paths, the
+ * size and the stroke come from there, so the two renderings cannot disagree
+ * about the part that could change; the rest is Tabler's outline preset, which
+ * is the same for every icon in the set.
+ */
+const Glyph = ({ name }) => (
+  <svg
+    className={`atlas-icon atlas-icon--${name}`}
+    width={ICON_SIZE}
+    height={ICON_SIZE}
+    viewBox='0 0 24 24'
+    fill='none'
+    stroke='currentColor'
+    strokeWidth={ICON_STROKE}
+    strokeLinecap='round'
+    strokeLinejoin='round'
+    aria-hidden='true'
+    focusable='false'
+  >
+    {GLYPHS[name].map(d => <path key={d} d={d} />)}
+  </svg>
+);
+
+Glyph.propTypes = { name: PropTypes.oneOf(Object.keys(GLYPHS)).isRequired };
 
 export const ZoomRail = ({ position = 'bottomright', marks = [], labels }) => {
   const copy = { ...ZOOM_LABELS, ...labels };
@@ -137,7 +167,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels }) => {
         title={copy.in}
         aria-label={copy.in}
       >
-        +
+        <Glyph name='plus' />
       </button>
 
       {/* A range with no room in it gets the buttons alone. That is a real
@@ -202,7 +232,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels }) => {
         title={copy.out}
         aria-label={copy.out}
       >
-        &minus;
+        <Glyph name='minus' />
       </button>
 
       <output className='atlas-zoom__level' title={copy.level}>{level}</output>

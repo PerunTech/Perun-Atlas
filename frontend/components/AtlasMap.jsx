@@ -2,6 +2,7 @@ import { React } from 'perun-core';
 import { core, data, ui } from '../spatial';
 import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
+import { svgMarkup } from '../lib/icons';
 import { formatRatio, ratioFor } from '../lib/zoom';
 import { ZoomRail, ZOOM_LABELS } from './ZoomRail';
 import '../style/controls.css';
@@ -178,8 +179,20 @@ export const AtlasMap = ({
         // reading a country. `leaflet.fullscreen` is one of spatial's own
         // dependencies and its Factory imports it, so this is a control the
         // engine already carries rather than a new one.
+        //
+        // `content` is the plugin's own option for supplying the button's
+        // contents, and passing it drops the `fullscreen-icon` class the sprite
+        // is keyed to -- so spatial's `fullscreen-control.css`, which exists to
+        // stop that two-frame image showing both frames at once, goes quiet
+        // rather than fighting this. Both glyphs are put in and one is shown:
+        // the plugin toggles `leaflet-fullscreen-on` and never touches the
+        // contents again, which is exactly what the sprite's two frames were
+        // doing, done with CSS that can say which is which.
         if (fullscreen && factory.control.fullscreen) {
-          fullscreenRef.current = factory.control.fullscreen({ position: fullscreenPosition }).addTo(Map);
+          fullscreenRef.current = factory.control.fullscreen({
+            position: fullscreenPosition,
+            content: svgMarkup('maximize') + svgMarkup('minimize')
+          }).addTo(Map);
         }
 
         // Where the reader is. Guarded like the readout and the measure tools --
@@ -220,8 +233,18 @@ export const AtlasMap = ({
         // `=== true`: a menu row is JSON written by hand, and a screen that has
         // been saying `"zoomControl": 1` for a year should not lose its zoom to
         // a new spelling arriving beside it.
+        //
+        // Leaflet's own `zoomInText`/`zoomOutText` rather than reaching into the
+        // control's DOM afterwards: they are the supported way to say what a
+        // zoom button holds, and they leave every behaviour that makes this
+        // control worth keeping -- the disabled state at each end of the range,
+        // shift-click for three levels, the titles -- untouched.
         if (zoomControl && zoomControl !== 'rail') {
-          zoomRef.current = factory.control.zoom({ position: zoomPosition }).addTo(Map);
+          zoomRef.current = factory.control.zoom({
+            position: zoomPosition,
+            zoomInText: svgMarkup('plus'),
+            zoomOutText: svgMarkup('minus')
+          }).addTo(Map);
         }
 
         // Leaflet's own distance bar rather than spatial's `ScaleControl`, which

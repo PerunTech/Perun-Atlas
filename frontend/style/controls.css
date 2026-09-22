@@ -87,3 +87,53 @@
 .atlas-scale-ratio:empty {
   display: none;
 }
+
+/*
+ * The glyph in a Leaflet button.
+ *
+ * Three buttons on this map are Leaflet's rather than this package's -- the two
+ * zoom buttons and the fullscreen toggle -- and all three now hold a Tabler
+ * icon instead of a character or a sprite, so that the corner they share with
+ * spatial's locate and measure controls reads as one instrument. `lib/icons.js`
+ * says why the icons are transcribed rather than taken from `elements.Icon`.
+ *
+ * Centred as a grid, which is what spatial's `toolbar.css` already does for the
+ * bar's `button` elements and for the same reason it gives there: what goes in
+ * one of these is an icon, not a character on a baseline, so there is no
+ * line-height to centre it with.
+ *
+ * Both classes on purpose. `.leaflet-bar a` in spatial's toolbar.css sets
+ * `display: block` and `.leaflet-control-zoom-in` in its zoom.css sets a
+ * monospace face and a one-pixel indent for the character that used to be here;
+ * a lone class selector loses to the first of those whatever the source order,
+ * which is the same arithmetic spatial's own fullscreen rules had to do.
+ */
+.leaflet-bar a.leaflet-control-zoom-in,
+.leaflet-bar a.leaflet-control-zoom-out,
+.leaflet-bar a.leaflet-control-zoom-fullscreen {
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  text-indent: 0;
+}
+
+.atlas-icon {
+  display: block;
+}
+
+/*
+ * One button, two glyphs, one of them showing.
+ *
+ * The fullscreen plugin writes the button's contents once and then only toggles
+ * `leaflet-fullscreen-on`, so the state has to be drawn rather than rebuilt --
+ * which is what its two-frame sprite was doing, done here in a form that can
+ * say which frame is which.
+ */
+.leaflet-bar a.leaflet-control-zoom-fullscreen .atlas-icon--minimize,
+.leaflet-bar a.leaflet-control-zoom-fullscreen.leaflet-fullscreen-on .atlas-icon--maximize {
+  display: none;
+}
+
+.leaflet-bar a.leaflet-control-zoom-fullscreen.leaflet-fullscreen-on .atlas-icon--minimize {
+  display: block;
+}

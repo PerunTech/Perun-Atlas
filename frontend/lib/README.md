@@ -18,4 +18,5 @@ out of.
 | `cluster.js` | What the clustering plugin is asked for, and what a badge standing for a group is made of. Both settled before a layer exists. |
 | `route.js` | Where a line's ends belong while its markers are being clustered. Arithmetic only; `FeatureSet` owns the animation. |
 | `dates.js` | The date window as the wire writes it. Deliberately not a date library. |
+| `icons.js` | The glyphs the map's controls are drawn with. Tabler's path data, transcribed — `elements.Icon` resolves through a dynamic import and two of the three controls that need these are Leaflet's, which take their contents as a string. |
 | `zoom.js` | The zoom ladder as arithmetic: where a level sits on a rail, which thresholds fall inside the range, and the view's scale as a ratio. No map, no DOM, no projection — which is what puts the numbers the rail draws with under test. |
