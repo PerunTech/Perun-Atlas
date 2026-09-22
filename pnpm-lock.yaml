@@ -18,7 +18,7 @@ importers:
         version: git+https://git@gitlab.prtech.mk/svarog4/perun-core#147cdc505016e0ce8db6c1389852469195938bfb(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
       spatial:
         specifier: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#dev
-        version: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
+        version: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#54e3be54a593764e025ed0102cbd02652e7591b6(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
     devDependencies:
       '@babel/core':
         specifier: ^7.23.9
@@ -2955,8 +2955,8 @@ packages:
     version: 0.2.0
     engines: {node: '>=18.12.0'}
 
-  perun-core@git+https://git@gitlab.prtech.mk/svarog4/perun-core#8b04de1a80ad91955d6dbff4093487f19d813899:
-    resolution: {commit: 8b04de1a80ad91955d6dbff4093487f19d813899, repo: https://git@gitlab.prtech.mk/svarog4/perun-core, type: git}
+  perun-core@git+https://git@gitlab.prtech.mk/svarog4/perun-core#f24308762304f570a50c21b18e743ed9eedaa2ee:
+    resolution: {commit: f24308762304f570a50c21b18e743ed9eedaa2ee, repo: https://git@gitlab.prtech.mk/svarog4/perun-core, type: git}
     version: 0.2.0
     engines: {node: '>=18.12.0'}
 
@@ -3515,8 +3515,8 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
 
-  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d:
-    resolution: {commit: 7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d, repo: https://git@gitlab.prtech.mk/svarog4/svarog-spatial, type: git}
+  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#54e3be54a593764e025ed0102cbd02652e7591b6:
+    resolution: {commit: 54e3be54a593764e025ed0102cbd02652e7591b6, repo: https://git@gitlab.prtech.mk/svarog4/svarog-spatial, type: git}
     version: 5.0.0
 
   spdy-transport@3.0.0:
@@ -7340,7 +7340,7 @@ snapshots:
       - supports-color
       - typescript
 
-  perun-core@git+https://git@gitlab.prtech.mk/svarog4/perun-core#8b04de1a80ad91955d6dbff4093487f19d813899(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1):
+  perun-core@git+https://git@gitlab.prtech.mk/svarog4/perun-core#f24308762304f570a50c21b18e743ed9eedaa2ee(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1):
     dependencies:
       '@json2csv/plainjs': 7.0.8
       '@monaco-editor/react': 4.7.0(monaco-editor@0.56.0)(react-dom@16.14.0(react@16.14.0))(react@16.14.0)
@@ -8078,13 +8078,13 @@ snapshots:
 
   source-map@0.6.1: {}
 
-  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#7cab5eb9a9cd67a25569a1e02f5fe58974ac3b5d(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1):
+  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#54e3be54a593764e025ed0102cbd02652e7591b6(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1):
     dependencies:
       leaflet: 1.5.1
       leaflet-polylinedecorator: 1.6.0
       leaflet.fullscreen: 3.0.2
       leaflet.markercluster: 1.5.3(leaflet@1.5.1)
-      perun-core: git+https://git@gitlab.prtech.mk/svarog4/perun-core#8b04de1a80ad91955d6dbff4093487f19d813899(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
+      perun-core: git+https://git@gitlab.prtech.mk/svarog4/perun-core#f24308762304f570a50c21b18e743ed9eedaa2ee(@babel/runtime@7.29.7)(@types/react@18.3.31)(debug@4.4.3(supports-color@8.1.1))(monaco-editor@0.56.0)(supports-color@8.1.1)
       proj4: 2.10.0
     transitivePeerDependencies:
       - '@babel/runtime'
