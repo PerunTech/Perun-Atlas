@@ -1,0 +1,288 @@
+/*
+ * The zoom rail's structure, and nothing about its look.
+ *
+ * Same division as legend.css: what makes this a readable ladder rather than a
+ * pile of absolutely positioned spans ships here, because a deployment serving
+ * no stylesheet of its own must still get a working control. Colours and type
+ * come from the panel's tokens, so a screen described entirely in a menu row
+ * gets a rail that matches its accent.
+ *
+ * It places nothing. The rail is a Leaflet control, so its corner and its
+ * stacking come from the map's own chrome.
+ *
+ * One length governs the whole thing. Every rung, every mark and the handle are
+ * positioned as a percentage of it, so a deployment retunes the control by
+ * setting `--atlas-zoom-length` and nothing else has to agree.
+ */
+
+.atlas-zoom {
+  --atlas-zoom-length: 168px;
+  /* Where the track sits across the control's width, and how wide it is. The
+     numbers occupy everything to the left of it. */
+  --atlas-zoom-axis: 22px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  /* Its own offset from the corner. Leaflet's stylesheet is where a control's
+     margin normally comes from and spatial does not ship it, so every control
+     in a corner carries one -- the legend and the measure control do the same. */
+  margin: 10px;
+  padding: 3px;
+  /* Opaque, because it sits over tiles and every part of it is a position being
+     read against a scale. */
+  background: var(--ap-surface, #ffffff);
+  border: 1px solid var(--ap-rule, rgba(0, 0, 0, 0.2));
+  border-radius: var(--ap-radius, 3px);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  color: var(--ap-ink, #212529);
+}
+
+/*
+ * The two buttons.
+ *
+ * Said rather than inherited: a deployment's bare `button` rules reach into this
+ * package and win everything a class does not claim. `frontend/style/README.md`
+ * has the case that taught us.
+ */
+.atlas-zoom__step {
+  display: block;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ap-radius, 3px);
+  background: transparent;
+  color: inherit;
+  font: 600 16px/26px system-ui, sans-serif;
+  text-align: center;
+  text-indent: 0;
+  cursor: pointer;
+}
+
+.atlas-zoom__step:hover:not(:disabled) {
+  background: var(--ap-rule, rgba(0, 0, 0, 0.08));
+}
+
+.atlas-zoom__step:disabled {
+  color: var(--ap-muted, #6c757d);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.atlas-zoom__step:focus-visible {
+  outline: 2px solid var(--ap-accent, #3399ff);
+  outline-offset: -2px;
+}
+
+.atlas-zoom__rail {
+  position: relative;
+  width: 36px;
+  height: var(--atlas-zoom-length);
+  margin: 4px 0;
+}
+
+/* The axis the levels are read against. */
+.atlas-zoom__track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--atlas-zoom-axis) - 2px);
+  width: 4px;
+  border-radius: 2px;
+  background: var(--ap-rule, #d8dde3);
+}
+
+/*
+ * A threshold, drawn over the track.
+ *
+ * `min-height` is what makes a line and a band the same element: a mark with no
+ * end has a span of zero, and zero percent of the rail is nothing to see.
+ */
+.atlas-zoom__mark {
+  position: absolute;
+  left: calc(var(--atlas-zoom-axis) - 4px);
+  width: 8px;
+  min-height: 2px;
+  border-radius: 2px;
+  background: var(--ap-muted, #6c757d);
+}
+
+/*
+ * Above here the basemap is enlarged rather than sharper. Hatched rather than
+ * filled: the map still works up there, it just stops gaining detail, and a
+ * solid block reads as a part of the range that has been taken away.
+ *
+ * Lifted above the other marks. A screen's own bands are drawn after this one
+ * -- `AtlasMap` puts what it knows first and the screen's after -- and a band
+ * reaching the top of the range would otherwise bury the ceiling underneath it.
+ * Of the two, the ceiling is the one nobody configured and nobody expects.
+ */
+.atlas-zoom__mark--upscaled {
+  z-index: 1;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--ap-muted, #6c757d) 0 1px,
+    transparent 1px 4px
+  );
+  border: 1px solid var(--ap-rule, #d8dde3);
+  border-radius: 2px;
+}
+
+/* A zoom band a screen declared -- where its labels open, where its rows change. */
+.atlas-zoom__mark--labels {
+  background: var(--ap-accent, #4a6a85);
+  opacity: 0.35;
+}
+
+.atlas-zoom__rung {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.atlas-zoom__rung::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--atlas-zoom-axis) + 4px);
+  width: 5px;
+  height: 1px;
+  background: var(--ap-rule, #d8dde3);
+}
+
+.atlas-zoom__rung--numbered::after {
+  width: 9px;
+  background: var(--ap-muted, #6c757d);
+}
+
+/*
+ * The number beside a rung.
+ *
+ * Positioned off the rung rather than flowed, so the type can change size
+ * without moving the level it names. `tabular-nums` keeps a two-digit column
+ * from stepping sideways at ten.
+ */
+.atlas-zoom__number {
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: calc(var(--atlas-zoom-axis) - 9px);
+  font: 500 9px/12px system-ui, sans-serif;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ap-muted, #6c757d);
+}
+
+.atlas-zoom__rung--here .atlas-zoom__number {
+  color: var(--ap-accent, #4a6a85);
+  font-weight: 700;
+}
+
+/*
+ * The native control, turned on its side.
+ *
+ * A rotation rather than one of the three vertical spellings -- see ZoomRail.jsx
+ * for why. It is laid out horizontally at the rail's own length, then centred on
+ * the axis and turned, so its travel is exactly the rail's travel and the two
+ * cannot drift apart.
+ *
+ * The track is transparent because the rail underneath already draws one, with
+ * the marks on it. Only the handle is the slider's own.
+ */
+.atlas-zoom__slider {
+  position: absolute;
+  top: 50%;
+  left: var(--atlas-zoom-axis);
+  width: var(--atlas-zoom-length);
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.atlas-zoom__slider::-webkit-slider-runnable-track {
+  height: 24px;
+  background: transparent;
+  border: none;
+}
+
+.atlas-zoom__slider::-moz-range-track {
+  height: 24px;
+  background: transparent;
+  border: none;
+}
+
+.atlas-zoom__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 8px;
+  height: 14px;
+  margin-top: 5px;
+  border: 1px solid var(--ap-rule, #adb5bd);
+  border-radius: 2px;
+  background: var(--ap-surface, #ffffff);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.atlas-zoom__slider::-moz-range-thumb {
+  width: 8px;
+  height: 14px;
+  border: 1px solid var(--ap-rule, #adb5bd);
+  border-radius: 2px;
+  background: var(--ap-surface, #ffffff);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.atlas-zoom__slider:focus-visible {
+  outline: 2px solid var(--ap-accent, #3399ff);
+  outline-offset: 1px;
+}
+
+/*
+ * What the marks say, for a reader who cannot see where they are.
+ *
+ * Clipped rather than hidden: `display: none` and `visibility: hidden` both take
+ * it out of the accessibility tree, which is the one place it exists to be.
+ */
+.atlas-zoom__described {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.atlas-zoom__level {
+  display: block;
+  min-width: 26px;
+  padding: 1px 0 0;
+  font: 600 10px/13px system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--ap-muted, #6c757d);
+}
+
+/*
+ * A short window gets a short rail.
+ *
+ * The viewport rather than the container, which is the wrong question -- a map
+ * in a modal can be short inside a tall window -- but it is the question CSS can
+ * answer here, and it catches the case that actually happens: the whole screen
+ * is small. The control degrades to its buttons by itself when even this does
+ * not fit, because the rail is the only part with a height.
+ */
+@media (max-height: 640px) {
+  .atlas-zoom {
+    --atlas-zoom-length: 104px;
+  }
+}

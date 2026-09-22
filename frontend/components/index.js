@@ -28,6 +28,7 @@ export { FeaturePanel } from './FeaturePanel';
 export { Legend } from './Legend';
 export { LegendControl } from './LegendControl';
 export { PointPicker } from './layers/PointPicker';
+export { ZoomRail } from './ZoomRail';
 
 // The connected one is the public name: a consumer wants the screen that finds
 // its own session, and the bare component next to it in ConfiguredMap.jsx is for

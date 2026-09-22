@@ -1,9 +1,10 @@
 The stylesheets, and nothing else.
 
-Six files, each imported for its side effect by the component it dresses —
+Seven files, each imported for its side effect by the component it dresses —
 `panel.css` and `draw.css` by `FeaturePanel`, `draw.css` again by
 `CirclePicker`, `features.css` by `FeatureSet`, `legend.css` by `Legend`,
-`picker.css` by `PointPicker`, `controls.css` by `AtlasMap`.
+`picker.css` by `PointPicker`, `controls.css` by `AtlasMap`, `zoom.css` by
+`ZoomRail`.
 
 They are kept together rather than beside their components because a
 deployment restyles this package from the outside, and one directory is the

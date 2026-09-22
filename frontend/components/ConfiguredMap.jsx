@@ -54,13 +54,26 @@ const { useMemo } = React;
  *                 so a new one needs a menu row and no code here
  *   title         a label code for the heading, when the caller passes no title
  *   map           everything AtlasMap takes: { layerSwitcher, zoomControl,
- *                 zoomPosition, coordinates, coordinatesPosition, measure,
+ *                 zoomPosition, zoomMarks, zoomLabels, coordinates,
+ *                 coordinatesPosition, measure,
  *                 measurePosition, measureTools, fullscreen, fullscreenPosition,
- *                 locate, locatePosition, scale, scalePosition, overrides }.
+ *                 locate, locatePosition, scale, scalePosition, scaleRatio,
+ *                 overrides }.
  *                 All of the controls are on unless a row turns one off --
  *                 `"measure": false`, `"locate": false` -- and each takes a
  *                 Leaflet corner. `measureTools` narrows the measure control to
- *                 a chosen few, for a screen with no use for a protractor
+ *                 a chosen few, for a screen with no use for a protractor.
+ *
+ *                 `"zoomControl": "rail"` swaps the two buttons for a ladder
+ *                 from the deployment's minimum zoom to its maximum, carrying
+ *                 the current level and marking where the map changes
+ *                 behaviour: the basemap's own tile ceiling is marked without
+ *                 being asked for, and `zoomMarks` adds a screen's own --
+ *                 `[{ "from": 12, "to": 18, "kind": "labels", "label": "..." }]`,
+ *                 where `kind` becomes a class and `to` may be left out for a
+ *                 line rather than a band. `zoomLabels` is the control's own
+ *                 copy, and `"scaleRatio": false` drops the `1:25 000` line the
+ *                 scale bar carries under its distance
  *   export        false to withhold the file buttons, or { geojson, csv,
  *                 filename, fields, exclude } to choose the formats, name the
  *                 file, fix the CSV's columns, or drop more of them -- the

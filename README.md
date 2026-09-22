@@ -42,7 +42,7 @@ import { ConfiguredMap, FeaturePanel, AtlasMap, PointPicker } from 'perun-atlas'
 import * as atlas from 'perun-atlas';   // atlas.appearance, .bootstrap, .config, .data
 ```
 
-Twelve components, and four namespaces beside them. `ConfiguredMap` is the one
+Thirteen components, and four namespaces beside them. `ConfiguredMap` is the one
 most screens want: it reads a menu row and builds the rest.
 
 `appearance` was called `style` until the stylesheets took that name back.

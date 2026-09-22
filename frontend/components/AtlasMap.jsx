@@ -2,11 +2,23 @@ import { React } from 'perun-core';
 import { core, data, ui } from '../spatial';
 import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
+import { formatRatio, ratioFor } from '../lib/zoom';
+import { ZoomRail, ZOOM_LABELS } from './ZoomRail';
 import '../style/controls.css';
 
 const { Map, control, factory } = core;
 const { layerControl } = data;
-const { useEffect, useRef, useState } = React;
+const { useEffect, useMemo, useRef, useState } = React;
+
+/**
+ * How wide the scale bar is allowed to be, and therefore the span the ratio
+ * beside it is measured across.
+ *
+ * One number for both on purpose: the bar and the ratio are two readings of the
+ * same measurement, and taking them across different spans is how they come to
+ * disagree by a rounding.
+ */
+const SCALE_WIDTH = 140;
 
 /**
  * A map, mounted into whatever container this component renders.
@@ -16,9 +28,11 @@ const { useEffect, useRef, useState } = React;
  *
  * Controls: spatial's map is built with its own zoom and attribution controls
  * switched off, because its toolbar supplies them and this component does not
- * mount that toolbar. Both are added here instead — zoom on by default and
- * positionable with `zoomControl` / `zoomPosition`, attribution always, since a
- * tile provider's terms are not an option a screen gets to decline, a
+ * mount that toolbar. Both are added here instead — zoom on by default, in the
+ * bottom right, positionable with `zoomControl` / `zoomPosition` and drawn as a
+ * ladder rather than two buttons where a screen asks for `zoomControl: 'rail'`,
+ * attribution always, since a tile provider's terms are not an option a screen
+ * gets to decline, a
  * coordinate readout, on by default and positionable the same way -- it quotes
  * the pointer's position in whichever system the reader picks, which is how a
  * feature is checked against the GPS fields in its own record -- and a
@@ -27,6 +41,14 @@ const { useEffect, useRef, useState } = React;
  * and a locate button are on by default too: the first because this map usually
  * lives in a modal, the second because a distance on screen means nothing
  * without one, and the third because field use on tablets is real.
+ *
+ * Where they sit is a division of labour rather than a taste: a control that
+ * acts on the map takes a corner it can be reached in, and a control that
+ * describes the map sits along the bottom with the others that describe it. The
+ * zoom is the one that used to straddle that line -- two buttons that act, and
+ * a level that nobody could read anywhere -- which is why it moved out of the
+ * top left, where it had been the first of four, to the bottom right above the
+ * credit, and why the rail carries its level with it.
  *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
@@ -68,7 +90,9 @@ export const AtlasMap = ({
   overrides,
   layerSwitcher = false,
   zoomControl = true,
-  zoomPosition = 'topleft',
+  zoomPosition = 'bottomright',
+  zoomMarks,
+  zoomLabels,
   coordinates = true,
   coordinatesPosition = 'bottomcenter',
   measure = true,
@@ -80,6 +104,7 @@ export const AtlasMap = ({
   locatePosition = 'topleft',
   scale = true,
   scalePosition = 'bottomleft',
+  scaleRatio = true,
   className = 'atlas-map',
   style,
   onReady,
@@ -96,8 +121,13 @@ export const AtlasMap = ({
   const scaleRef = useRef(null);
   const attributionRef = useRef(null);
   const adoptedStyleRef = useRef(null);
+  // Not a control, so it is not in the list that gets `remove()`d: the ratio is
+  // a line inside the scale bar's own container, and what has to be undone is
+  // the listener keeping it current.
+  const ratioOffRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState(null);
+  const [nativeMax, setNativeMax] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -143,19 +173,6 @@ export const AtlasMap = ({
         Map.setMinZoom(config.minZoom).setMaxZoom(config.maxZoom);
         Map.setView(config.center, config.zoom);
 
-        // spatial builds its map with `zoomControl: false` and
-        // `attributionControl: false`, because its own toolbar carries a
-        // NavigationControl and that toolbar is part of the app chrome this
-        // component deliberately does not mount -- it adopts the bare container
-        // instead. So a screen embedding a map this way had no way to zoom
-        // without a wheel or a trackpad, and no way to display a credit.
-        //
-        // Added before the layers, so the attribution control is listening when
-        // they arrive and picks up whatever credit each one carries.
-        if (zoomControl) {
-          zoomRef.current = factory.control.zoom({ position: zoomPosition }).addTo(Map);
-        }
-
         // Worth more here than on a full-page screen, because this map is
         // usually inside a modal: a panel sized for a record is not sized for
         // reading a country. `leaflet.fullscreen` is one of spatial's own
@@ -175,11 +192,37 @@ export const AtlasMap = ({
           console.warn('perun-atlas: the engine on this environment has no locate control; skipping it.');
         }
 
+        // spatial builds its map with `zoomControl: false` and
+        // `attributionControl: false`, because its own toolbar carries a
+        // NavigationControl and that toolbar is part of the app chrome this
+        // component deliberately does not mount -- it adopts the bare container
+        // instead. So a screen embedding a map this way had no way to zoom
+        // without a wheel or a trackpad, and no way to display a credit.
+        //
         // `prefix: false` drops Leaflet's own 'Leaflet' link: this is where a
         // deployment's credit and a tile provider's terms are satisfied, not an
         // advertisement for the mapping library.
+        //
+        // Added before the layers, so the attribution control is listening when
+        // they arrive and picks up whatever credit each one carries.
         attributionRef.current = factory.control.attribution({ prefix: false }).addTo(Map);
         if (config.attribution) attributionRef.current.addAttribution(config.attribution);
+
+        // After the attribution rather than before it, which is the whole of
+        // what puts the zoom above the credit line: Leaflet fills a bottom
+        // corner in reverse arrival order -- `insertBefore(firstChild)` -- so in
+        // a bottom corner the last control added is the top one on screen, and
+        // a credit that is not against the map edge does not read as a credit.
+        //
+        // The rail is not built here. It is a React control and it mounts
+        // itself, from this component's own output, once the map is ready.
+        // Anything truthy that is not the rail keeps the buttons, rather than
+        // `=== true`: a menu row is JSON written by hand, and a screen that has
+        // been saying `"zoomControl": 1` for a year should not lose its zoom to
+        // a new spelling arriving beside it.
+        if (zoomControl && zoomControl !== 'rail') {
+          zoomRef.current = factory.control.zoom({ position: zoomPosition }).addTo(Map);
+        }
 
         // Leaflet's own distance bar rather than spatial's `ScaleControl`, which
         // is a 1:N ratio dropdown reading `crs.options.distances` -- a CRS built
@@ -189,8 +232,50 @@ export const AtlasMap = ({
         if (scale) {
           const metric = config.units !== 'imperial';
           scaleRef.current = factory.control
-            .scale({ position: scalePosition, metric, imperial: !metric, maxWidth: 140 })
+            .scale({ position: scalePosition, metric, imperial: !metric, maxWidth: SCALE_WIDTH })
             .addTo(Map);
+        }
+
+        // The same measurement as a ratio, on the same bar.
+        //
+        // A bar answers "how far is that" and a ratio answers "what is this map,
+        // compared to the ones I already know" -- which is the question a reader
+        // arriving from a paper sheet or a cadastral plan actually has, and the
+        // one a zoom level cannot answer at all, since z14 is a different map at
+        // every latitude.
+        //
+        // Measured rather than derived from the zoom: this package supports
+        // deployments whose map is not on the Web Mercator grid, and the closed
+        // form everyone quotes for metres-per-pixel is only true on that one. A
+        // ground distance across a known span of pixels is true on all of them,
+        // and it is how Leaflet's own scale bar does it.
+        //
+        // Written into the scale control's own container rather than added as a
+        // second control beside it, so it travels with the bar it restates --
+        // same corner, same margin, same lifetime -- instead of being a second
+        // thing in the corner that has to be kept next to the first.
+        if (scale && scaleRatio && scaleRef.current) {
+          const line = factory.DomUtil.create(
+            'div', 'atlas-scale-ratio', scaleRef.current.getContainer()
+          );
+
+          const writeRatio = () => {
+            const size = Map.getSize();
+            const y = Math.round(size.y / 2);
+            const span = Math.min(size.x, SCALE_WIDTH);
+            const metres = Map.distance(
+              Map.containerPointToLatLng(factory.point(0, y)),
+              Map.containerPointToLatLng(factory.point(span, y))
+            );
+            line.textContent = formatRatio(ratioFor(metres, span)) ?? '';
+          };
+
+          // `move` rather than `moveend`: on a Mercator map the ground distance
+          // a pixel covers changes as the reader pans north, so a ratio that
+          // only caught the end of a drag would be wrong for the whole of it.
+          Map.on('move zoomend', writeRatio);
+          writeRatio();
+          ratioOffRef.current = () => Map.off('move zoomend', writeRatio);
         }
 
         // Where the pointer is, quoted in a system the reader chooses -- which is
@@ -224,8 +309,9 @@ export const AtlasMap = ({
         // How far is this from that, how big is this piece of ground, what is
         // the bearing along that boundary -- asked of whatever happens to be on
         // screen, which is why it belongs to the map rather than to a screen's
-        // configuration. Added after the zoom so that Leaflet, which stacks a
-        // corner in the order controls arrive, puts it underneath.
+        // configuration. Added last of the three that share the top left, so
+        // that Leaflet -- which fills a top corner in arrival order -- puts it
+        // under the fullscreen and locate buttons rather than over them.
         //
         // Guarded like the readout above, and for the same reason: this bundle
         // and the engine deploy separately, so an environment on an older
@@ -248,6 +334,13 @@ export const AtlasMap = ({
 
         const base = firstOf(basemap);
         if (base) base.addTo(Map);
+
+        // The deepest zoom this basemap has a real tile for; `data/layers.js`
+        // carries the figure per provider. Above it Leaflet enlarges the last
+        // tile it got, which reads as missing data rather than as the edge of
+        // the data -- so the rail marks it. Null where the provider is not one
+        // of the known ones, and then there is nothing honest to draw.
+        setNativeMax(base?.options?.maxNativeZoom ?? null);
 
         // Built here rather than through spatial's app builder, which adds the
         // control and keeps no reference to it. A control is not a layer, so
@@ -298,6 +391,11 @@ export const AtlasMap = ({
           ref.current = null;
         }
       });
+      // The ratio line goes with the scale control that holds it; the listener
+      // that keeps it current does not, and a map handler left behind on a map
+      // that outlives this component is a leak by any other name.
+      ratioOffRef.current?.();
+      ratioOffRef.current = null;
       clearLayers();
       const element = Map.getContainer();
       if (element && adoptedStyleRef.current) {
@@ -353,6 +451,29 @@ export const AtlasMap = ({
     };
   }, [ready]);
 
+  /**
+   * What the rail marks, which is whatever this component already knows.
+   *
+   * Only the basemap's ceiling comes from here -- everything else that changes
+   * with zoom belongs to a screen rather than to a map, so a screen passes it in
+   * through `zoomMarks` and this does not have to learn what a descriptor is.
+   */
+  const marks = useMemo(() => {
+    const own = nativeMax === null
+      ? []
+      : [{
+        from: nativeMax,
+        // Everything above the ceiling, not a line at it: the tiles do not stop
+        // being enlarged further up, and `lib/zoom` clamps the open end to
+        // whatever the range turns out to be.
+        to: Number.POSITIVE_INFINITY,
+        kind: 'upscaled',
+        label: zoomLabels?.upscaled ?? ZOOM_LABELS.upscaled
+      }];
+
+    return [...own, ...(zoomMarks ?? [])];
+  }, [nativeMax, zoomMarks, zoomLabels]);
+
   if (failure) {
     return (
       <div className={`${className} atlas-map-error`} role="alert">
@@ -364,6 +485,14 @@ export const AtlasMap = ({
   return (
     <>
       <div ref={containerRef} className={className} style={{ height: '100%', ...style }} />
+      {/* Rendered rather than built in the effect above, because everything it
+          draws changes -- the level on every zoom, the marks when the basemap
+          arrives -- and a control built once in an effect closes over the
+          values it was built with. It mounts itself into the map's corner from
+          here; see ZoomRail. */}
+      {ready && zoomControl === 'rail' && (
+        <ZoomRail position={zoomPosition} marks={marks} labels={zoomLabels} />
+      )}
       {ready && children}
     </>
   );

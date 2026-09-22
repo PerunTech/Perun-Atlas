@@ -80,11 +80,13 @@ const { Icon } = elements
  *                                position for a count, which is the right trade
  *                                only once there are too many of them to read.
  * @param {Object} [map]        - Passed to `AtlasMap`: `layerSwitcher`,
- *                                `zoomControl`, `zoomPosition`, `coordinates`,
+ *                                `zoomControl`, `zoomPosition`, `zoomMarks`,
+ *                                `zoomLabels`, `coordinates`,
  *                                `coordinatesPosition`, `measure`,
  *                                `measurePosition`, `measureTools`, `fullscreen`,
  *                                `fullscreenPosition`, `locate`, `locatePosition`,
- *                                `scale`, `scalePosition`, `overrides`.
+ *                                `scale`, `scalePosition`, `scaleRatio`,
+ *                                `overrides`.
  * @param {Object|boolean} [exportable] - Offer the set as a file. Left out, it is
  *                                offered with the defaults; `false` withholds
  *                                the buttons; { geojson, csv, filename, fields,

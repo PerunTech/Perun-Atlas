@@ -55,3 +55,35 @@
 .control-bottomright > .leaflet-control {
   margin-left: auto;
 }
+
+/*
+ * The scale bar's ratio line.
+ *
+ * Not a control. It is a div inside the scale control's own container, which is
+ * what keeps it with the bar it restates -- see `AtlasMap` -- so it needs no
+ * placement and takes the corner, the margin and the lifetime of its host.
+ *
+ * Styled to match what spatial's `attribution.css` gives the bar above it: the
+ * same eleven pixels, the same ink, the same translucent ground. Said rather
+ * than inherited, because the bar's own rules are keyed to
+ * `.leaflet-control-scale-line` and none of them reaches a sibling.
+ *
+ * `tabular-nums` because the digits change under the reader's eye as the map
+ * moves, and a denominator whose width changes with its value reads as movement
+ * of its own.
+ */
+.atlas-scale-ratio {
+  padding: 1px 5px 0;
+  font: 11px/1.3 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #333;
+  background: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  text-indent: 0;
+}
+
+/* Nothing to say yet -- before the first measurement, and wherever a ratio
+   cannot be computed -- takes no room rather than a blank strip. */
+.atlas-scale-ratio:empty {
+  display: none;
+}
