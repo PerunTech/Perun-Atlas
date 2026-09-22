@@ -346,14 +346,10 @@
  * exactly that, which is why the date filter's From and To have been sitting one
  * above the other since they were written.
  *
- * A descendant selector rather than a child one, so a nested object flows too. A
- * schema from `getTableJSONSchema` keys some of its properties by grouppath --
- * `"quarantine.info"` holding an object -- and RJSF renders each of those as a
- * fieldset of its own. Reached here, a group's fields join the row instead of
- * turning it into a column the height of the longest group.
- *
- * Structure only: the widgets, the labels and the error text stay whatever the
- * deployment's own form styling makes them.
+ * A descendant selector rather than a child one, because a schema keyed by
+ * grouppath nests: `"a.b"` holding an object is a fieldset of its own, and its
+ * fields belong in the same row as everything else. What lets them get there is
+ * the rule under this one.
  */
 .atlas-date-range .rjsf fieldset,
 .atlas-panel__drawform .rjsf fieldset {
@@ -367,6 +363,28 @@
   /* The browser's default fieldset frame, which is a box drawn around fields
      that already sit in one. */
   border: 0;
+}
+
+/*
+ * A group is a box around fields, and a row of controls has no room for boxes.
+ *
+ * RJSF wraps each grouppath in a `div.form-group.field-object` holding a
+ * fieldset, and that wrapper is a block: as a flex item it takes the whole line
+ * whatever its fields measure, so two groups are two lines and three are three
+ * -- which is the entire reason the fields beside a shape were stacking while
+ * every one of them would have fitted across.
+ *
+ * `display: contents` takes the wrapper's own box away and leaves its children
+ * in the row, so a field is an item of this row no matter how deep the schema
+ * put it. The fieldset inside goes the same way for the same reason.
+ *
+ * It costs the fieldset's grouping, which is a fair trade only because the
+ * titles above are hidden: a fieldset with no legend has no accessible name to
+ * lose, and every field keeps its own label.
+ */
+.atlas-panel__drawform .rjsf fieldset .form-group.field-object,
+.atlas-panel__drawform .rjsf fieldset fieldset {
+  display: contents;
 }
 
 /*
