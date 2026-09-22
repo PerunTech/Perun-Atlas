@@ -80,8 +80,11 @@ const box = (busy) => `atlas-panel__drawbox${busy ? ' atlas-panel__drawbox--off'
  * @param {boolean} drawing      - whether the map is armed
  * @param {boolean} busy         - a save is in flight
  * @param {Object} [note]        - { value, onChange, required } for the free-text field
- * @param {Object} [form]        - { schema, uiSchema, data, errors, onChange } for
- *        the fields a row described instead of hardcoding. See below.
+ * @param {Object} [form]        - { schema, uiSchema, data, errors, onChange,
+ *        loading, failed } for the fields a row described instead of
+ *        hardcoding. Passed at all, it is a row that has fields; `schema` null
+ *        is a row whose fields are still on their way from a service, or are
+ *        not coming. See below.
  * @param {Object} [limits]      - { min, max, step } for the radius
  * @param {Object} [caught]      - { count, total } the shape covers, for a row
  *        that asked what is inside it. Left out, the row says nothing about it.
@@ -109,7 +112,11 @@ export const DrawBar = ({
   const blocked = busy
     || !hasShape
     || (note?.required && !String(note.value ?? '').trim())
-    || (form?.errors?.length ?? 0) > 0;
+    || (form?.errors?.length ?? 0) > 0
+    // A row with fields, and no fields. Saving now would write a record with
+    // everything the form was there to carry missing, which is worse than not
+    // saving and quieter.
+    || Boolean(form && !form.schema);
 
   return (
     <div className='atlas-panel__draw' role='group' aria-label={labels.draw ?? 'Draw'}>
@@ -148,6 +155,14 @@ export const DrawBar = ({
         </label>
       )}
 
+      {hasShape && form && !form.schema && (
+        <p className='atlas-panel__drawhint'>
+          {form.loading
+            ? (labels.formLoading ?? 'Loading the fields…')
+            : (labels.formFailed ?? 'These fields did not load, so there is nothing to save into.')}
+        </p>
+      )}
+
       {/*
         * The fields a row described, rather than the ones this file happens to
         * have.
@@ -167,6 +182,11 @@ export const DrawBar = ({
         * Submission is suppressed the same way `DateRange` suppresses it: the
         * panel's own Save is what sends this, because what it sends is the form
         * *and* a geometry the form knows nothing about.
+        *
+        * A schema a row named rather than wrote arrives one request later than
+        * the rest of this row, so `form` without a `schema` is the state above:
+        * a line where the fields will be, and a Save that stays disabled either
+        * way. A row that wrote its schema out never sees it.
         */}
       {hasShape && form?.schema && (
         <div className='atlas-panel__drawform'>

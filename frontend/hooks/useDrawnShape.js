@@ -1,5 +1,6 @@
 import { React, elements, validator } from 'perun-core';
 import { bindPath, fillBody, pointIn, postTo, ringIn, unitsPerMetre } from '../data';
+import { useFormSchema } from './useFormSchema';
 import { useSelection } from './useSelection';
 
 const { useMemo, useState } = React
@@ -75,11 +76,14 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
    * `note` above is the one field this panel ever hardcoded, and it stays --
    * rows use it. `draw.form` is the general answer: a screen wanting a date, a
    * code list or three fields says so in a schema rather than waiting for this
-   * file to grow another input.
+   * file to grow another input, and says it by naming the service that already
+   * describes those fields rather than describing them again.
    *
    * Seeded from the row, so a screen can open with a value already in it.
    */
   const [formData, setFormData] = useState(() => draw?.form?.data ?? {})
+
+  const fields = useFormSchema({ form: draw?.form, bindings })
 
   /**
    * Whether the form is answerable as it stands.
@@ -90,12 +94,15 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
    * none -- and Save would be live on a form nobody has filled in. Asking the
    * validator directly is the same pass RJSF makes, made about the state that
    * exists rather than about the last edit.
+   *
+   * It is also the pass that catches a fetched schema arriving with `required`
+   * on fields this row did not pick, which is the one way a form from a service
+   * can be unanswerable rather than merely wrong.
    */
   const formErrors = useMemo(() => {
-    const schema = draw?.form?.schema
-    if (!schema) return []
-    return validator.validateFormData(formData, schema)?.errors ?? []
-  }, [formData, draw?.form?.schema])
+    if (!fields.schema) return []
+    return validator.validateFormData(formData, fields.schema)?.errors ?? []
+  }, [formData, fields.schema])
 
   /**
    * What the shape covers, when a row asked.
@@ -146,6 +153,16 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
    */
   const saveShape = async () => {
     if (!shape || saving) return
+
+    // A form that was configured and is not here. The button is already
+    // disabled for this, and it is guarded again because the button is one
+    // caller: a screen building its own controls out of this hook would
+    // otherwise post a body with every field the form was carrying missing,
+    // and the record would be written.
+    if (draw.form && !fields.schema) {
+      console.error('perun-atlas: nothing sent -- this row configures a form and its fields are not loaded.')
+      return
+    }
 
     setSaving(true)
 
@@ -277,9 +294,24 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
     shape,
     selection,
     note,
-    formData,
-    formErrors,
-    setFormData,
+    /**
+     * The form, in the shape the row that renders it takes.
+     *
+     * One object rather than five loose keys, because it is one thing: a
+     * schema, what has been typed into it, what is wrong with that, and the
+     * two states a schema fetched from a service has and an inline one never
+     * does. A panel passing this straight to `DrawBar` is passing on a whole
+     * answer instead of reassembling one.
+     */
+    form: draw?.form ? {
+      schema: fields.schema,
+      uiSchema: draw.form.uiSchema,
+      data: formData,
+      errors: formErrors,
+      onChange: setFormData,
+      loading: fields.loading,
+      failed: fields.failed
+    } : undefined,
     saving,
     reload,
     setShape,

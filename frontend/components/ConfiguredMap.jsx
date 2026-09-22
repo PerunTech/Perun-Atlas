@@ -144,14 +144,43 @@ const { useMemo } = React;
  *
  *                 `form` is how a screen says what goes beside the shape
  *                 without waiting for this package to grow another input:
- *                 `{ schema, uiSchema, data }`, an RJSF form rendered in the
- *                 draw row. `schema` is JSON Schema as
- *                 `/ReactElements/getTableJSONSchema` returns it, so its
- *                 properties may be keyed by grouppath -- `"quarantine.info"`
- *                 as one dotted key holding an object -- and the form data then
- *                 comes out in exactly the shape `addValueToDataObject` reads
- *                 on the way in. `data` seeds it, and a discard puts those
- *                 values back.
+ *                 `{ schema, pick, uiSchema, data }`, an RJSF form rendered in
+ *                 the draw row.
+ *
+ *                 `schema` is either the schema itself or the path to a service
+ *                 that answers with one -- an object is the fields, a string is
+ *                 where they live. The string is the one to reach for: the
+ *                 fields a record is written from are already described by the
+ *                 table they belong to, and
+ *                 `"/ReactElements/getTableJSONSchema/{session}/TABLE_NAME"` is
+ *                 that description. Named rather than copied into the row, a
+ *                 field added, renamed, given a code list or made mandatory
+ *                 reaches this form on its own.
+ *
+ *                 `pick` narrows it, and a named schema needs narrowing: a
+ *                 table's schema is the whole table, which is a form for a page
+ *                 rather than a row under a toolbar. It names fields in the
+ *                 order they should appear -- a top-level field by name, a
+ *                 field inside a group as `"a.b.FIELD"`, a whole group by
+ *                 naming the group -- and `required` is narrowed with them, at
+ *                 both levels. The table's own title is dropped, because three
+ *                 of its fields are not that table; `ui:title` in `uiSchema`
+ *                 puts a heading back. A name the schema does not have is said
+ *                 in the console and left off the form.
+ *
+ *                 Either way the properties may be keyed by grouppath --
+ *                 `"a.b"` as one dotted key holding an object -- and the form
+ *                 data then comes out in exactly the shape
+ *                 `addValueToDataObject` reads on the way in, which is why a
+ *                 picked group stays a group rather than being flattened.
+ *                 `data` seeds the form, and a discard puts those values back.
+ *
+ *                 A named schema arrives a request after the rest of the row,
+ *                 so the draw row says so where the fields will be and Save
+ *                 waits for them. One that never arrives -- an expired session,
+ *                 a table this reader may not have -- leaves Save disabled and
+ *                 the reason in the console: a record written without the
+ *                 fields the form was carrying is worse than one not written.
  *
  *                 That is what lets the body stop naming fields. `"{form}"` is
  *                 the whole of it, and `"..."` spreads it so the geometry can
