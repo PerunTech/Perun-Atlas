@@ -405,6 +405,23 @@ export const AtlasMap = ({
     return () => {
       cancelled = true;
       mounted = false;
+      // `leaflet.fullscreen` subscribes `_toggleState` to the map in `onAdd` and
+      // its `onRemove` does not take it off again, so `Control.remove` nulls the
+      // control's `_map` and leaves a handler on the map still reading it. The
+      // map is the engine's page-lifetime singleton, so that is one dead handler
+      // per mount, and the next exit from fullscreen -- which the live control
+      // fires at every subscriber -- throws on the first of them:
+      //
+      //     Cannot read properties of null (reading '_isFullscreen')
+      //
+      // The engine now patches this in its own Factory, and `off` on a handler
+      // that is already gone is a no-op, so this is here for the deployments
+      // where the two bundles are not the same age. Before `remove`, which is
+      // what puts the control out of reach of its own map.
+      if (fullscreenRef.current?._toggleState) {
+        Map.off('enterFullscreen exitFullscreen',
+          fullscreenRef.current._toggleState, fullscreenRef.current);
+      }
       // Controls are not layers, so `clearLayers` never sees them and the map
       // outlives this component. Each one that was added has to come off.
       [switcherRef, zoomRef, coordinatesRef, measureRef,
