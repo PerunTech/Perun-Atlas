@@ -69,6 +69,29 @@ after_script:
   script:
     - pwd
     - git reset --hard HEAD
+    # The floor is stated once, in package.json's `engines`, and read back here
+    # rather than repeated -- the two cannot drift into disagreeing.
+    #
+    # It is checked rather than merely declared because declaring it is not
+    # enough: pnpm only warns when a regular dependency's engines do not match,
+    # and says nothing at all when it skips an *optional* one for the same
+    # reason. Every `@rolldown/binding-*` that vitest needs is optional, so a
+    # runner below the floor installs cleanly and then fails inside rolldown
+    # with a missing-module trace that names neither node nor the version. That
+    # happened on the first pipeline that ran this suite, against a runner one
+    # minor release short. Ten seconds here buys a sentence instead.
+    - |
+      floor=$(node -p "require('./package.json').engines.node.replace(/[^0-9.]/g,'')")
+      have=$(node -p "process.versions.node")
+      if [ "$(printf '%s\n%s\n' "$floor" "$have" | sort -V | head -1)" != "$floor" ]; then
+        echo "This runner has node $have; this package needs $floor or newer."
+        echo "vitest and vite declare it, and their native bindings are optional"
+        echo "dependencies -- pnpm skips one whose engines do not match without"
+        echo "printing anything, so the suite would fail three layers lower down."
+        echo "Upgrade node on the runner rather than changing anything here."
+        exit 1
+      fi
+      echo "ok - node $have meets the floor of $floor"
     - rm -rf node_modules
     - pnpm install --frozen-lockfile
     # `test` used to be `eslint --fix frontend/ || exit 0`, which could never

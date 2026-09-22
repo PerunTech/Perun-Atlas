@@ -11,6 +11,9 @@
     "perun-core": "git+https://git@gitlab.prtech.mk/svarog4/perun-core#dev",
     "spatial": "git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#dev"
   },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.23.9",
     "@babel/eslint-parser": "^7.23.10",
