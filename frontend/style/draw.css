@@ -158,6 +158,31 @@
 }
 
 /*
+ * The box the fields a row described sit in.
+ *
+ * What lays them along the row rather than down it is in `panel.css`, shared
+ * with the date filter because both are RJSF and both were getting it wrong the
+ * same way. This is only the box's own behaviour in the row.
+ *
+ * `flex: 1 1 auto` with `min-width: 0` so the form takes the room left after
+ * the radius and gives it back when the row wraps -- without the zero minimum a
+ * flex item refuses to shrink below its content and a long field pushes the
+ * actions off the end.
+ *
+ * Only layout. The widgets, their labels and their error text are the
+ * deployment's, which is the whole reason this is an RJSF form and not a second
+ * set of inputs.
+ */
+.atlas-panel__drawform {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.atlas-panel__drawform .rjsf {
+  margin: 0;
+}
+
+/*
  * What the shape covers.
  *
  * Beside the radius that decides it rather than under the map, because the two

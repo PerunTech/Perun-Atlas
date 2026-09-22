@@ -1,8 +1,8 @@
-import { React, elements } from 'perun-core';
+import { React, elements, validator } from 'perun-core';
 import { bindPath, fillBody, pointIn, postTo, ringIn, unitsPerMetre } from '../data';
 import { useSelection } from './useSelection';
 
-const { useState } = React
+const { useMemo, useState } = React
 const { alertUserResponse } = elements
 
 /**
@@ -70,6 +70,34 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
   const [reload, setReload] = useState(0)
 
   /**
+   * The fields beside the shape, when a row describes them with a schema.
+   *
+   * `note` above is the one field this panel ever hardcoded, and it stays --
+   * rows use it. `draw.form` is the general answer: a screen wanting a date, a
+   * code list or three fields says so in a schema rather than waiting for this
+   * file to grow another input.
+   *
+   * Seeded from the row, so a screen can open with a value already in it.
+   */
+  const [formData, setFormData] = useState(() => draw?.form?.data ?? {})
+
+  /**
+   * Whether the form is answerable as it stands.
+   *
+   * Validated here rather than read off RJSF's `onChange`, and the difference
+   * matters at exactly one moment: the first. `liveValidate` reports errors when
+   * something changes, so an untouched form with a required field empty reports
+   * none -- and Save would be live on a form nobody has filled in. Asking the
+   * validator directly is the same pass RJSF makes, made about the state that
+   * exists rather than about the last edit.
+   */
+  const formErrors = useMemo(() => {
+    const schema = draw?.form?.schema
+    if (!schema) return []
+    return validator.validateFormData(formData, schema)?.errors ?? []
+  }, [formData, draw?.form?.schema])
+
+  /**
    * What the shape covers, when a row asked.
    *
    * Derived rather than held: it is a function of the shape and the set, and
@@ -83,6 +111,9 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
     setDrawing(false)
     setShape(null)
     setNote('')
+    // Back to what the row seeded, not to empty: a screen that opens with a
+    // value in a field should open that way again after a discard.
+    setFormData(draw?.form?.data ?? {})
   }
 
   /**
@@ -210,7 +241,11 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
         // empty one in the context is a placeholder that resolves to nothing
         // rather than one that is visibly not configured.
         ...(selection.context ? { selected: selection.context } : {})
-      }
+      },
+      // At the top rather than under `draw`, because it is not about the shape.
+      // A row spreads it with `"...": "{form}"`, which is what lets the fields a
+      // schema describes arrive beside a geometry that is never one of them.
+      ...(draw?.form ? { form: formData } : {})
     }
 
     const answer = await postTo(draw.save.onSave, context, {
@@ -242,6 +277,9 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
     shape,
     selection,
     note,
+    formData,
+    formErrors,
+    setFormData,
     saving,
     reload,
     setShape,

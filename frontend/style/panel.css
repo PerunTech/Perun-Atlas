@@ -330,3 +330,57 @@
 @media (prefers-reduced-motion: reduce) {
   .atlas-panel__spinner { animation-duration: 2.4s; }
 }
+
+/*
+ * The two RJSF forms this panel renders, laid along a row rather than down one.
+ *
+ * Here rather than beside either of them because it is one rule about both: the
+ * date filter above the map and the fields beside a drawn shape are the same
+ * kind of thing in the same kind of space, and a toolbar that flows one and
+ * stacks the other reads as two unrelated controls.
+ *
+ * The flex container is the *fieldset*, and that is the whole of what this
+ * fixes. RJSF builds a form as `form.rjsf > div.form-group > fieldset >
+ * (a form-group per field)`, so `.rjsf` has exactly one child -- flexing it
+ * lays out that single wrapper and changes nothing. The rule this replaces did
+ * exactly that, which is why the date filter's From and To have been sitting one
+ * above the other since they were written.
+ *
+ * A descendant selector rather than a child one, so a nested object flows too. A
+ * schema from `getTableJSONSchema` keys some of its properties by grouppath --
+ * `"quarantine.info"` holding an object -- and RJSF renders each of those as a
+ * fieldset of its own. Reached here, a group's fields join the row instead of
+ * turning it into a column the height of the longest group.
+ *
+ * Structure only: the widgets, the labels and the error text stay whatever the
+ * deployment's own form styling makes them.
+ */
+.atlas-date-range .rjsf fieldset,
+.atlas-panel__drawform .rjsf fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  /* The browser's default fieldset frame, which is a box drawn around fields
+     that already sit in one. */
+  border: 0;
+}
+
+/* A group's name, before the fields it names rather than above them. */
+.atlas-date-range .rjsf legend,
+.atlas-panel__drawform .rjsf legend {
+  flex: 0 0 auto;
+  padding: 0;
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+  color: var(--ap-muted, #6b6f7a);
+}
+
+/* RJSF's per-field bottom margin: spacing for a stacked form, and a ragged
+   baseline in a row. The gap above does that job here. */
+.atlas-date-range .rjsf .form-group,
+.atlas-panel__drawform .rjsf .form-group {
+  margin-bottom: 0;
+}

@@ -82,16 +82,14 @@
  * thing changed here: the widgets, labels and error text stay whatever the
  * deployment's form stylesheet makes them.
  */
+/*
+ * The date filter's own spacing. What lays its fields along a row rather than
+ * down one is in `panel.css`, with the same rule for the draw row's form --
+ * both are RJSF, both put their fields inside a fieldset, and the rule that
+ * used to be here flexed the wrong element. See the note there.
+ */
 .atlas-date-range .rjsf {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-start;
   margin-bottom: 8px;
-}
-
-.atlas-date-range .form-group {
-  margin-bottom: 0;
 }
 
 /*

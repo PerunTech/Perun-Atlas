@@ -53,6 +53,69 @@ describe('fillBody', () => {
     expect(fillBody({ QUARANTINE_TYPE: 1, ok: true, none: null }, context))
       .toEqual({ QUARANTINE_TYPE: 1, ok: true, none: null });
   });
+
+  /**
+   * A form's data is already the payload the service wants, and the geometry
+   * beside it never will be the form's business -- so the two have to end up in
+   * one object, and a sole placeholder cannot have siblings.
+   */
+  describe('the spread key', () => {
+    const form = {
+      'quarantine.info': { DISEASE: 'FMD', STARTED: '2026-09-22' },
+      EXTERNAL_ID: 'Q-4417'
+    };
+
+    it('lifts what it names into the object holding it', () => {
+      expect(fillBody({ '...': '{form}', geometry: '{draw.geojson}' }, { ...context, form }))
+        .toEqual({
+          'quarantine.info': { DISEASE: 'FMD', STARTED: '2026-09-22' },
+          EXTERNAL_ID: 'Q-4417',
+          geometry: context.draw.geojson
+        });
+    });
+
+    it('keeps a grouppath key whole, because that is the key the service reads', () => {
+      const out = fillBody({ '...': '{form}' }, { ...context, form });
+      // Not `{ quarantine: { info: ... } }`: the backend looks the dotted string
+      // up as one key, so splitting it here would lose every field under it.
+      expect(out['quarantine.info']).toEqual(form['quarantine.info']);
+      expect(out.quarantine).toBeUndefined();
+    });
+
+    it('lets a later key win, as an object literal would', () => {
+      expect(fillBody({ '...': '{form}', EXTERNAL_ID: 'fixed' }, { ...context, form }).EXTERNAL_ID)
+        .toBe('fixed');
+    });
+
+    it('lets the spread win over a default written before it', () => {
+      expect(fillBody({ EXTERNAL_ID: 'fallback', '...': '{form}' }, { ...context, form }).EXTERNAL_ID)
+        .toBe('Q-4417');
+    });
+
+    it('resolves the placeholders inside what it spreads', () => {
+      expect(fillBody({ '...': { size: '{draw.metres}' } }, context)).toEqual({ size: 1500 });
+    });
+
+    it('spreads an empty form to nothing rather than to a key', () => {
+      expect(fillBody({ '...': '{form}', a: 1 }, { ...context, form: {} })).toEqual({ a: 1 });
+    });
+
+    /**
+     * Left standing rather than dropped, on the same argument as an unresolved
+     * placeholder: a body carrying a visible `"...": "{form}"` is a call
+     * somebody looks at, and one quietly missing every field the form was meant
+     * to supply is a record saved empty.
+     */
+    it('leaves a spread of something unspreadable in place, where it can be seen', () => {
+      expect(fillBody({ '...': '{form}', a: 1 }, context)).toEqual({ '...': '{form}', a: 1 });
+      expect(fillBody({ '...': '{draw.metres}' }, context)).toEqual({ '...': 1500 });
+      expect(fillBody({ '...': [1, 2] }, context)).toEqual({ '...': [1, 2] });
+    });
+
+    it('is only special as a key, never as a value', () => {
+      expect(fillBody({ marker: '...' }, context)).toEqual({ marker: '...' });
+    });
+  });
 });
 
 describe('postTo', () => {

@@ -156,6 +156,15 @@ const { Icon } = elements
  *                                Nothing here knows what the shape means; this
  *                                panel draws a circle and posts numbers.
  *
+ *                                `form` is `{ schema, uiSchema, data }` -- an
+ *                                RJSF form in the draw row, for the fields this
+ *                                panel does not hardcode. Its data reaches the
+ *                                save as `{form}`, which `"..."` spreads into a
+ *                                body beside the geometry. `note` is the one
+ *                                field that was hardcoded and stays, for the
+ *                                rows that use it; a row moving to `form`
+ *                                should drop it rather than render both.
+ *
  *                                `select` asks the other question a shape
  *                                answers: which features on screen it covers.
  *                                `true`, or `{ mode, id, join, export }`. The
@@ -269,8 +278,8 @@ export const FeaturePanel = ({
   const [drawn, setDrawn] = useState(noneDrawn)
 
   const {
-    drawable, drawing, shape, selection, note, saving, reload,
-    setShape, setNote, startDrawing, finishDrawing, clearDrawing, saveShape
+    drawable, drawing, shape, selection, note, formData, formErrors, saving, reload,
+    setShape, setNote, setFormData, startDrawing, finishDrawing, clearDrawing, saveShape
   } = useDrawnShape({ draw, dataSrid, set, bindings, labels })
 
   const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing })
@@ -438,6 +447,13 @@ export const FeaturePanel = ({
             caught={selection.selecting ? { count: selection.count, total: selection.total } : undefined}
             savable={Boolean(draw.save?.onSave)}
             note={draw.note ? { value: note, onChange: setNote, required: draw.note.required } : undefined}
+            form={draw.form ? {
+              schema: draw.form.schema,
+              uiSchema: draw.form.uiSchema,
+              data: formData,
+              errors: formErrors,
+              onChange: setFormData
+            } : undefined}
             labels={labels}
             onCancel={clearDrawing}
             onRadius={(radius) => setShape((current) => (current ? { ...current, radius } : current))}

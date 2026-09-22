@@ -142,6 +142,37 @@ const { useMemo } = React;
  *                 are label codes in `labels`, like every other word on the
  *                 panel.
  *
+ *                 `form` is how a screen says what goes beside the shape
+ *                 without waiting for this package to grow another input:
+ *                 `{ schema, uiSchema, data }`, an RJSF form rendered in the
+ *                 draw row. `schema` is JSON Schema as
+ *                 `/ReactElements/getTableJSONSchema` returns it, so its
+ *                 properties may be keyed by grouppath -- `"quarantine.info"`
+ *                 as one dotted key holding an object -- and the form data then
+ *                 comes out in exactly the shape `addValueToDataObject` reads
+ *                 on the way in. `data` seeds it, and a discard puts those
+ *                 values back.
+ *
+ *                 That is what lets the body stop naming fields. `"{form}"` is
+ *                 the whole of it, and `"..."` spreads it so the geometry can
+ *                 sit beside it:
+ *
+ *                     "body": { "...": "{form}",
+ *                               "geometry": "{draw.geojson}",
+ *                               "RADIUS": "{draw.metres}" }
+ *
+ *                 Later keys win, as in an object literal. A nested body means
+ *                 `"contentType": "application/json"`: the default form
+ *                 encoding cannot carry one, and a grouppath key must arrive
+ *                 whole -- the backend looks the dotted string up as a single
+ *                 key, and a body that split or flattened it has every field in
+ *                 that group skipped without a word.
+ *
+ *                 The radius stays its own native input rather than a schema
+ *                 field. It is bound to the map in both directions, and RJSF
+ *                 reports a change per keystroke -- so a circle would collapse
+ *                 while its radius was being retyped.
+ *
  *                 `select` asks the other question a drawn shape answers: which
  *                 of the features on screen it covers. `true` for the defaults,
  *                 or `{ mode, id, join, export }`. The count appears beside the

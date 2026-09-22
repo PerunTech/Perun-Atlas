@@ -1,4 +1,4 @@
-import { React, elements } from 'perun-core';
+import { Form, React, elements, validator } from 'perun-core';
 
 const { Icon } = elements;
 
@@ -80,6 +80,8 @@ const box = (busy) => `atlas-panel__drawbox${busy ? ' atlas-panel__drawbox--off'
  * @param {boolean} drawing      - whether the map is armed
  * @param {boolean} busy         - a save is in flight
  * @param {Object} [note]        - { value, onChange, required } for the free-text field
+ * @param {Object} [form]        - { schema, uiSchema, data, errors, onChange } for
+ *        the fields a row described instead of hardcoding. See below.
  * @param {Object} [limits]      - { min, max, step } for the radius
  * @param {Object} [caught]      - { count, total } the shape covers, for a row
  *        that asked what is inside it. Left out, the row says nothing about it.
@@ -96,6 +98,7 @@ export const DrawBar = ({
   onRadius,
   onSave,
   note,
+  form,
   caught,
   savable = true,
   limits = {},
@@ -103,7 +106,10 @@ export const DrawBar = ({
 }) => {
   const { min = 50, max = 500000, step = 50 } = limits;
   const hasShape = Boolean(shape);
-  const blocked = busy || !hasShape || (note?.required && !String(note.value ?? '').trim());
+  const blocked = busy
+    || !hasShape
+    || (note?.required && !String(note.value ?? '').trim())
+    || (form?.errors?.length ?? 0) > 0;
 
   return (
     <div className='atlas-panel__draw' role='group' aria-label={labels.draw ?? 'Draw'}>
@@ -140,6 +146,45 @@ export const DrawBar = ({
             <span className='atlas-panel__drawunit'>{labels.metres ?? 'm'}</span>
           </span>
         </label>
+      )}
+
+      {/*
+        * The fields a row described, rather than the ones this file happens to
+        * have.
+        *
+        * RJSF, because perun-core already exports it and `DateRange` above this
+        * panel is already one -- so these fields inherit the house widgets, the
+        * error rendering and whatever a deployment does to its forms, instead of
+        * being a second look on the same screen.
+        *
+        * `idPrefix` is not optional here and is the reason `DateRange` gained
+        * one in the same change. RJSF names every control `root_<field>` by
+        * default, so two forms on one panel put two elements with id `root` in
+        * the document -- and a `<label for>` then points at whichever the
+        * browser found first, which is the date filter stealing clicks meant for
+        * a field beside the shape.
+        *
+        * Submission is suppressed the same way `DateRange` suppresses it: the
+        * panel's own Save is what sends this, because what it sends is the form
+        * *and* a geometry the form knows nothing about.
+        */}
+      {hasShape && form?.schema && (
+        <div className='atlas-panel__drawform'>
+          <Form
+            idPrefix='atlas-draw'
+            schema={form.schema}
+            uiSchema={{ 'ui:submitButtonOptions': { norender: true }, ...form.uiSchema }}
+            formData={form.data}
+            validator={validator}
+            disabled={busy}
+            liveValidate
+            showErrorList={false}
+            noHtml5Validate
+            onChange={({ formData }) => form.onChange?.(formData)}
+          >
+            <></>
+          </Form>
+        </div>
       )}
 
       {hasShape && note && (

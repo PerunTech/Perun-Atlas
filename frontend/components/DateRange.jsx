@@ -57,6 +57,12 @@ export const DateRange = ({
   return (
     <div className={className}>
       <Form
+        /* Named, so that the draw row's form and this one do not both call their
+           root `root` and every control under it `root_<field>`. Two elements
+           sharing an id make `<label for>` ambiguous, and the browser resolves
+           it by document order -- which would hand a click meant for a field
+           beside the shape to whichever of these rendered first. */
+        idPrefix='atlas-range'
         schema={schema}
         uiSchema={uiSchema}
         formData={{ from, to }}

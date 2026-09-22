@@ -109,6 +109,28 @@ const tryParse = (text) => {
 const SOLE_PLACEHOLDER = /^\{([^{}]+)\}$/;
 
 /**
+ * The key that spreads what it names into the object holding it.
+ *
+ * A sole placeholder replaces the whole body, which is all a row needed while a
+ * body was either one shape or a handful of named fields. A form changes that:
+ * its data is already the payload the service wants -- keyed by grouppath,
+ * because that is how the table's own schema is keyed -- and the geometry beside
+ * it is not the form's business and never will be. Those two have to end up in
+ * one object, and `"{form}"` cannot have siblings.
+ *
+ * So `"..."` is a key that means what it means in JavaScript, which is the one
+ * spelling nobody has to be taught:
+ *
+ *     "body": { "...": "{form}", "geometry": "{draw.geojson}" }
+ *
+ * Later keys win, as they do in an object literal, because `Object.entries`
+ * keeps the order the row was written in. A row can therefore fix a field the
+ * form also carries by naming it after the spread, and override the spread with
+ * a default by naming it before.
+ */
+const SPREAD_KEY = '...';
+
+/**
  * A configured payload, with its placeholders resolved.
  *
  * The same `{token}` substitution the paths take, applied through a body of any
@@ -120,6 +142,12 @@ const SOLE_PLACEHOLDER = /^\{([^{}]+)\}$/;
  * `{note}` written in a field, which is worse to read and better than a record
  * saved with a value silently dropped. A sole placeholder that resolves to
  * nothing is left standing as its own text for the same reason.
+ *
+ * `"..."` spreads -- see `SPREAD_KEY`. A spread of something that is not a plain
+ * object is left in place under its own key rather than dropped, on the same
+ * argument: a body carrying a visible `"...": "{form}"` is a service call
+ * somebody looks at, and a body quietly missing every field a form was meant to
+ * supply is a record saved empty.
  */
 export const fillBody = (template, context) => {
   if (typeof template === 'string') {
@@ -132,7 +160,22 @@ export const fillBody = (template, context) => {
   }
   if (Array.isArray(template)) return template.map((item) => fillBody(item, context));
   if (template && typeof template === 'object') {
-    return Object.fromEntries(Object.entries(template).map(([key, value]) => [key, fillBody(value, context)]));
+    const out = {};
+
+    Object.entries(template).forEach(([key, value]) => {
+      const filled = fillBody(value, context);
+
+      if (key === SPREAD_KEY) {
+        const spreadable = filled && typeof filled === 'object' && !Array.isArray(filled);
+        if (spreadable) Object.assign(out, filled);
+        else out[key] = filled;
+        return;
+      }
+
+      out[key] = filled;
+    });
+
+    return out;
   }
   return template;
 };
