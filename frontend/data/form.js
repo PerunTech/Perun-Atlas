@@ -22,44 +22,68 @@ import { bindPath } from './geometry';
  */
 
 /**
- * Fetches the schema a form is built from.
+ * One of the two documents a form is made of, fetched.
  *
- * Failure is null rather than an empty schema, and the difference is the whole
- * point: an empty schema renders as a form with no fields and a live Save above
- * it, which is a record written with everything the form was there to carry
- * missing. Null is the caller's signal to say so and refuse the save.
+ * Failure is null rather than an empty object, and for the schema that is the
+ * whole point: an empty schema renders as a form with no fields and a live Save
+ * above it, which is a record written with everything the form was there to
+ * carry missing. Null is the caller's signal to say so and refuse the save.
  *
  * The shape check is not defensive dressing. These services answer a refusal
- * with a bare label code -- a string, under a 200 -- so a body that is not an
- * object with properties is the ordinary shape of an expired session or a table
- * this user may not read, and handing it to RJSF would be an exception thrown
- * from inside a form rather than a sentence in the console.
- *
- * @param {string} servicePath - Path with optional {token} placeholders, from configuration.
- * @param {Object} context     - Values those placeholders resolve against.
- * @returns {Promise<Object|null>} - The schema as the service sent it, or null.
+ * with a bare label code -- a string, under a 200 -- so a body that is not the
+ * document asked for is the ordinary shape of an expired session or a table this
+ * user may not read, and handing it to RJSF would be an exception thrown from
+ * inside a form rather than a sentence in the console.
  */
-export const fetchSchema = async (servicePath, context = {}) => {
+const fetchDocument = async (servicePath, context, what, usable) => {
   if (!servicePath) return null;
 
   const url = `${window.server}${bindPath(servicePath, context)}`;
 
   const response = await axios.get(url).catch((err) => {
-    console.error(`perun-atlas: no form schema from ${url}`, err);
+    console.error(`perun-atlas: no ${what} from ${url}`, err);
     return null;
   });
 
   if (!response) return null;
 
-  const schema = response.data;
+  const body = response.data;
 
-  if (!schema || typeof schema !== 'object' || !schema.properties) {
-    console.error(`perun-atlas: ${url} answered with no JSON Schema, so the form cannot be built`, schema);
+  if (!usable(body)) {
+    console.error(`perun-atlas: ${url} answered with no ${what}`, body);
     return null;
   }
 
-  return schema;
+  return body;
 };
+
+const isObject = (body) => Boolean(body) && typeof body === 'object' && !Array.isArray(body);
+
+/**
+ * Fetches the schema a form is built from: the fields, and which are mandatory.
+ *
+ * @param {string} servicePath - Path with optional {token} placeholders, from configuration.
+ * @param {Object} context     - Values those placeholders resolve against.
+ * @returns {Promise<Object|null>} - The schema as the service sent it, or null.
+ */
+export const fetchSchema = (servicePath, context = {}) =>
+  fetchDocument(servicePath, context, 'form schema', (body) => isObject(body) && Boolean(body.properties));
+
+/**
+ * Fetches the layout beside it: which widget a field is drawn with, and how.
+ *
+ * Its own request because it is its own service, and the two are paired by
+ * field name at the far end. A deployment keeps this in `GUI_METADATA` beside
+ * the field it belongs to, which is why it can be asked for by table and why it
+ * is worth asking for: the dates, the text areas and the read-only fields are
+ * already decided there.
+ *
+ * Null when it does not arrive, and that is not a reason to refuse anything.
+ * A form that renders in the default widgets is a form; a form missing a field
+ * is a record missing a value.
+ */
+export const fetchUISchema = (servicePath, context = {}) =>
+  fetchDocument(servicePath, context, 'form layout', isObject);
 
 /**
  * A schema narrowed to the fields a row asked for, in the order it asked.
@@ -155,4 +179,106 @@ export const pickFields = (schema, pick) => {
   }
 
   return out;
+};
+
+/**
+ * The widget names this form can draw, transcribed from RJSF 5.
+ *
+ * `ui:widget` naming something the form's registry does not have is not a field
+ * that renders plainly -- it is an exception thrown out of the middle of a
+ * render, which takes the panel with it. And a table's layout is full of names
+ * like that: a deployment's own widgets are registered by the component that
+ * renders its record forms, and this row is not one of them. It is a toolbar
+ * with a `Form` in it.
+ *
+ * So the names are listed rather than the registry asked, for the reason the
+ * icons are drawn rather than imported: what would have to be asked is not
+ * exported by anything this package is allowed to import. `@rjsf/core` exports
+ * `getDefaultRegistry` and the shell does not re-export it, and the alias table
+ * lives in `@rjsf/utils`, which is the shell's dependency and not this
+ * package's. Two lists that change on a major version, against a crash that
+ * takes the screen down.
+ *
+ * By type, because RJSF's map is by type: `updown` is a number widget, and
+ * asking for it on a string throws exactly as loudly as a name nobody has.
+ */
+const ALIASES = {
+  boolean: ['checkbox', 'radio', 'select', 'hidden'],
+  string: ['text', 'password', 'email', 'hostname', 'ipv4', 'ipv6', 'uri', 'data-url', 'radio',
+    'select', 'textarea', 'hidden', 'date', 'datetime', 'date-time', 'alt-date', 'alt-datetime',
+    'time', 'color', 'file'],
+  number: ['text', 'select', 'updown', 'range', 'radio', 'hidden'],
+  integer: ['text', 'select', 'updown', 'range', 'radio', 'hidden'],
+  array: ['select', 'checkboxes', 'files', 'hidden']
+};
+
+/** The registry's own component names, which `ui:widget` may also name directly. */
+const COMPONENTS = new Set(['AltDateTimeWidget', 'AltDateWidget', 'CheckboxWidget', 'CheckboxesWidget',
+  'ColorWidget', 'DateTimeWidget', 'DateWidget', 'EmailWidget', 'FileWidget', 'HiddenWidget',
+  'PasswordWidget', 'RadioWidget', 'RangeWidget', 'SelectWidget', 'TextWidget', 'TextareaWidget',
+  'TimeWidget', 'URLWidget', 'UpDownWidget']);
+
+/** Every alias, for a field whose type this could not find. */
+const ANY_ALIAS = new Set(Object.values(ALIASES).flat());
+
+const drawable = (widget, type) => COMPONENTS.has(widget)
+  || (type ? (ALIASES[type] ?? []).includes(widget) : ANY_ALIAS.has(widget));
+
+/**
+ * A layout with the widgets this form cannot draw taken out of it.
+ *
+ * Everything else is kept: `ui:readonly`, `ui:options`, a title, a placeholder,
+ * an order, and the widgets that are RJSF's own -- `textarea` and `hidden` are
+ * most of what these tables actually ask for. A field whose widget is dropped
+ * falls back to the one its schema implies, which for the dates these services
+ * describe as `{ type: "string", format: "date" }` is a date input.
+ *
+ * Walked against the schema rather than alone, because the question is per
+ * field: `updown` is a widget, on a number. Where the schema has nothing to say
+ * about a node, any of RJSF's names is allowed through -- a layout deeper than
+ * its schema is a question this cannot answer, and refusing it would take out
+ * entries that were never a problem.
+ *
+ * Said in the console once per form, naming what was dropped, because a field
+ * that quietly lost its widget is a field someone chose that widget for.
+ *
+ * @param {Object} uiSchema - The layout, from a service or from a row.
+ * @param {Object} [schema] - The schema it accompanies, for the types.
+ * @returns {Object|null} A copy, or the layout itself when nothing was dropped.
+ */
+export const usableUI = (uiSchema, schema) => {
+  if (!isObject(uiSchema)) return uiSchema ?? null;
+
+  const dropped = [];
+
+  const walk = (node, shape) => {
+    const out = {};
+
+    Object.entries(node).forEach(([key, value]) => {
+      if (key === 'ui:widget' && typeof value === 'string' && !drawable(value, shape?.type)) {
+        dropped.push(value);
+        return;
+      }
+
+      // `items` is a layout for what an array holds; every other object key is
+      // a field, and `ui:` keys are settings rather than fields -- their
+      // contents are options, not a place a widget is named.
+      const deeper = key === 'items' ? shape?.items : shape?.properties?.[key];
+      out[key] = isObject(value) && !key.startsWith('ui:') ? walk(value, deeper) : value;
+    });
+
+    return out;
+  };
+
+  const out = walk(uiSchema, schema);
+
+  if (dropped.length) {
+    console.warn(
+      `perun-atlas: this form cannot draw ${[...new Set(dropped)].map((name) => `"${name}"`).join(', ')}`
+      + ' -- those are the widgets a record form registers, and the draw row is not one. '
+      + 'The fields keep the widget their schema implies.'
+    );
+  }
+
+  return dropped.length ? out : uiSchema;
 };

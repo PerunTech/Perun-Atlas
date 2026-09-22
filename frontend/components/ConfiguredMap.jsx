@@ -168,6 +168,23 @@ const { useMemo } = React;
  *                 puts a heading back. A name the schema does not have is said
  *                 in the console and left off the form.
  *
+ *                 `uiSchema` takes a path too, and at the far end it is a
+ *                 second service: a deployment keeps a field's widget
+ *                 beside the field, and the two documents pair by field name.
+ *                 Named, a row gets the text areas, the read-only fields and
+ *                 the date inputs the rest of the registry already draws. What
+ *                 it does not get is the deployment's own widgets: those
+ *                 are registered by the component that renders record forms,
+ *                 and this is a toolbar with a form in it, so a layout naming
+ *                 one has that entry taken out before it reaches the form and
+ *                 the field falls back to what its schema implies -- which for
+ *                 a date these services describe as `{ type: "string", format:
+ *                 "date" }` is a date input. The two requests go out together
+ *                 and the form waits for both, so the fields do not appear in
+ *                 one shape and change to another. A layout that never arrives
+ *                 costs the form its widgets and blocks nothing; a schema that
+ *                 never arrives blocks the save.
+ *
  *                 Either way the properties may be keyed by grouppath --
  *                 `"a.b"` as one dotted key holding an object -- and the form
  *                 data then comes out in exactly the shape

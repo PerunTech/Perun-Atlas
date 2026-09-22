@@ -160,8 +160,10 @@ const { Icon } = elements
  *                                -- an RJSF form in the draw row, for the
  *                                fields this panel does not hardcode. `schema`
  *                                is the fields themselves or the path to a
- *                                service that has them, and `pick` names the
- *                                few of them this row wants, in order. Its data
+ *                                service that has them, `uiSchema` is the same
+ *                                choice for how they are drawn, and `pick`
+ *                                names the few of them this row wants, in
+ *                                order. Its data
  *                                reaches the save as `{form}`, which `"..."`
  *                                spreads into a body beside the geometry.
  *                                `note` is the one field that was hardcoded and

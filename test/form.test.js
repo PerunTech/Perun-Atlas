@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('perun-core', () => ({ axios: { get: vi.fn() }, utils: {}, elements: {} }));
 
 const { axios } = await import('perun-core');
-const { fetchSchema, pickFields } = await import('../frontend/data/form');
+const { fetchSchema, fetchUISchema, pickFields, usableUI } = await import('../frontend/data/form');
 
 /**
  * A table's schema, in the shape these services actually send one.
@@ -197,5 +197,97 @@ describe('fetchSchema', () => {
   it('asks nothing when the row named no path', async () => {
     expect(await fetchSchema(undefined)).toBeNull();
     expect(axios.get).not.toHaveBeenCalled();
+  });
+});
+
+describe('usableUI', () => {
+  let warned;
+
+  beforeEach(() => { warned = vi.spyOn(console, 'warn').mockImplementation(() => {}); });
+  afterEach(() => { warned.mockRestore(); });
+
+  /**
+   * The fault this exists for. A deployment registers its own widgets on the
+   * component that renders record forms, and a table's layout names them --
+   * so a layout fetched into this row would not render plainly, it would throw
+   * out of the middle of a render and take the panel with it.
+   */
+  it('drops a widget the form has no component for, and keeps the rest of the entry', () => {
+    const ui = { 'a.b': { DATE_FROM: { 'ui:widget': 'CustomDateWithNowButton', 'ui:helpCode': 'help.date' } } };
+    const out = usableUI(ui);
+    expect(out['a.b'].DATE_FROM).toEqual({ 'ui:helpCode': 'help.date' });
+    expect(warned.mock.calls.flat().join(' ')).toContain('CustomDateWithNowButton');
+  });
+
+  it('keeps the widgets RJSF has, by alias and by component name', () => {
+    const ui = { NOTE: { 'ui:widget': 'textarea' }, HIDE: { 'ui:widget': 'hidden' }, X: { 'ui:widget': 'TextareaWidget' } };
+    expect(usableUI(ui)).toBe(ui);
+    expect(warned).not.toHaveBeenCalled();
+  });
+
+  /**
+   * `updown` is a widget, on a number. Asked for on a string it throws exactly
+   * as loudly as a name nobody has, which is why the schema is walked beside
+   * the layout rather than the names being checked in a flat list.
+   */
+  it('reads a widget against the type of the field it is on', () => {
+    const schema = { type: 'object', properties: { N: { type: 'number' }, S: { type: 'string' } } };
+    expect(usableUI({ N: { 'ui:widget': 'updown' } }, schema).N).toEqual({ 'ui:widget': 'updown' });
+    expect(usableUI({ S: { 'ui:widget': 'updown' } }, schema).S).toEqual({});
+  });
+
+  it('reaches a field inside a group, and a group is keyed by a dotted name', () => {
+    const schema = {
+      type: 'object',
+      properties: { 'a.b': { type: 'object', properties: { N: { type: 'number' } } } }
+    };
+    const out = usableUI({ 'a.b': { N: { 'ui:widget': 'range' }, ORDER: { 'ui:widget': 'range' } } }, schema);
+    expect(out['a.b'].N).toEqual({ 'ui:widget': 'range' });
+    // ORDER is not in the schema, so its type is unknown and a real RJSF name
+    // is let through rather than taken out on a guess.
+    expect(out['a.b'].ORDER).toEqual({ 'ui:widget': 'range' });
+  });
+
+  it('leaves ui: settings alone, including an object of options', () => {
+    const ui = { NOTE: { 'ui:options': { rows: 4, label: false }, 'ui:readonly': true, 'ui:order': ['a', 'b'] } };
+    expect(usableUI(ui)).toBe(ui);
+  });
+
+  it('says nothing and hands back what it was given when there is no layout', () => {
+    expect(usableUI(undefined)).toBeNull();
+    expect(usableUI('epi.error.no_session')).toBe('epi.error.no_session');
+  });
+});
+
+describe('fetchUISchema', () => {
+  let logged;
+
+  beforeEach(() => {
+    globalThis.window = { server: 'https://host/services' };
+    axios.get.mockReset();
+    logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    logged.mockRestore();
+    delete globalThis.window;
+  });
+
+  it('takes any object, because a layout has no required shape', async () => {
+    const ui = { NOTE: { 'ui:widget': 'textarea' } };
+    axios.get.mockResolvedValue({ data: ui });
+    expect(await fetchUISchema('/Ws/getTableUISchema/{session}/SUBJECT', { session: 'abc' })).toBe(ui);
+    expect(axios.get).toHaveBeenCalledWith('https://host/services/Ws/getTableUISchema/abc/SUBJECT');
+  });
+
+  it('takes an empty object, which is a table that decorates nothing', async () => {
+    axios.get.mockResolvedValue({ data: {} });
+    expect(await fetchUISchema('/Ws/ui/abc')).toEqual({});
+  });
+
+  it('answers null for a label code, and says which path said it', async () => {
+    axios.get.mockResolvedValue({ data: 'x.error.no_session' });
+    expect(await fetchUISchema('/Ws/ui/abc')).toBeNull();
+    expect(logged.mock.calls.flat().join(' ')).toContain('form layout');
   });
 });

@@ -1,7 +1,24 @@
 import { React } from 'perun-core';
-import { bindPath, fetchSchema, pickFields } from '../data';
+import { bindPath, fetchSchema, fetchUISchema, pickFields, usableUI } from '../data';
 
 const { useEffect, useMemo, useState } = React
+
+/**
+ * What the request for one of these documents depends on.
+ *
+ * The path with its placeholders filled in, not the bindings: those are rebuilt
+ * on every render and carry the date window, so depending on them would re-ask
+ * for a schema every time the reader moved the dates -- for an answer that names
+ * a table and a session and could not have changed. Resolved, the dependency is
+ * the request.
+ */
+const requestFor = (path, bindings) => (path ? bindPath(path, bindings ?? {}) : null)
+
+/** A document a row either wrote out or named. */
+const sourceOf = (value) => ({
+  path: typeof value === 'string' ? value : null,
+  inline: value && typeof value === 'object' ? value : null
+})
 
 /**
  * Where the fields beside a shape come from.
@@ -14,43 +31,46 @@ const { useEffect, useMemo, useState } = React
  * their code lists and which of them are mandatory all arrive from the place
  * that already knows.
  *
- * One key rather than two, because it is one question: what the fields are. A
- * string is where they live and an object is what they are.
+ * `uiSchema` works the same way and is a second service, because at the far end
+ * it is a second service: a deployment keeps a field's widget in `GUI_METADATA`
+ * beside the field, and the two documents are paired by field name. Named, a row
+ * gets the text areas, the read-only fields and the date inputs the rest of the
+ * registry already draws.
  *
- * Narrowed here rather than by whoever asked, so that `pick` means the same
- * thing either way -- and so the panel sees one schema and never the question
- * of where it came from.
+ * What it does not get is the deployment's own widgets. Those are registered by
+ * the component that renders record forms, and this is a toolbar with a `Form`
+ * in it -- so a layout naming one is filtered before it reaches the form, by
+ * `usableUI`, which is where that reasoning lives. Without that a fetched layout
+ * would not be a plainer form; it would be an exception thrown mid-render.
+ *
+ * The two requests go out together and the form waits for both, so the fields do
+ * not appear in one shape and change to another. A layout that never arrives is
+ * not a reason to refuse anything: a form in default widgets is a form, while a
+ * form missing a field is a record missing a value.
  *
  * @param {Object} params
  * @param {Object} [params.form]     - The row's `draw.form` block, or nothing.
- * @param {Object} params.bindings   - What the path's placeholders resolve against.
- * @returns {Object} `{ schema, loading, failed }`. `schema` is null until it is
- *          there; `failed` says it is not coming, which is a save to refuse
- *          rather than a form to leave empty.
+ * @param {Object} params.bindings   - What the paths' placeholders resolve against.
+ * @returns {Object} `{ schema, uiSchema, loading, failed }`. `schema` is null
+ *          until it is there; `failed` says it is not coming, which is a save to
+ *          refuse rather than a form to leave empty.
  */
 export const useFormSchema = ({ form, bindings }) => {
-  const source = form?.schema
-  const path = typeof source === 'string' ? source : null
-  const inline = source && typeof source === 'object' ? source : null
+  const { path, inline } = sourceOf(form?.schema)
+  const ui = sourceOf(form?.uiSchema)
 
-  /**
-   * The path with its placeholders in, which is what the fetch actually depends
-   * on.
-   *
-   * Not the bindings: they are rebuilt on every render and carry the date
-   * window, so depending on them would re-ask for a schema every time the
-   * reader moved the dates -- for an answer that names a table and a session
-   * and could not have changed. Resolved, the dependency is the request.
-   */
-  const url = path ? bindPath(path, bindings ?? {}) : null
+  const request = requestFor(path, bindings)
+  const uiRequest = requestFor(ui.path, bindings)
 
   const [fetched, setFetched] = useState(null)
-  const [loading, setLoading] = useState(Boolean(path))
+  const [fetchedUI, setFetchedUI] = useState(null)
+  const [loading, setLoading] = useState(Boolean(path || ui.path))
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!path) {
+    if (!path && !ui.path) {
       setFetched(null)
+      setFetchedUI(null)
       setLoading(false)
       // A `form` block that names neither a schema nor a path is a row that
       // meant to have one. Said here because nothing downstream can tell that
@@ -58,7 +78,7 @@ export const useFormSchema = ({ form, bindings }) => {
       // button above nothing.
       const misconfigured = Boolean(form) && !inline
       if (misconfigured) {
-        console.error('perun-atlas: draw.form needs `schema` -- either the schema itself, or the path to a service that answers with one. Got', source)
+        console.error('perun-atlas: draw.form needs `schema` -- either the schema itself, or the path to a service that answers with one. Got', form?.schema)
       }
       setFailed(misconfigured)
       return undefined
@@ -68,16 +88,25 @@ export const useFormSchema = ({ form, bindings }) => {
     setLoading(true)
     setFailed(false)
 
-    fetchSchema(path, bindings).then((next) => {
+    // Together, because they describe one form and arriving apart would render
+    // it twice -- once in whatever widgets the schema implies, and again in the
+    // ones the deployment chose.
+    Promise.all([
+      path ? fetchSchema(path, bindings) : Promise.resolve(null),
+      ui.path ? fetchUISchema(ui.path, bindings) : Promise.resolve(null)
+    ]).then(([schema, layout]) => {
       if (cancelled) return
-      setFetched(next)
-      setFailed(!next)
+      setFetched(schema)
+      setFetchedUI(layout)
+      // Only the schema. A layout that did not arrive costs the form its
+      // widgets; a schema that did not arrive costs it its fields.
+      setFailed(Boolean(path) && !schema)
       setLoading(false)
     })
 
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, url, Boolean(form), Boolean(inline)])
+  }, [path, request, ui.path, uiRequest, Boolean(form), Boolean(inline)])
 
   // By value, for the same reason the bindings are: a menu row arrives as a
   // fresh object on every render of whatever holds it, and an array compared by
@@ -90,5 +119,13 @@ export const useFormSchema = ({ form, bindings }) => {
     [fetched, inline, path, picked]
   )
 
-  return { schema, loading, failed }
+  // Filtered whichever way it arrived. The form is the same form, and a widget
+  // written into a row by hand is as absent from this registry as one read off
+  // a table.
+  const uiSchema = useMemo(
+    () => usableUI(ui.path ? fetchedUI : ui.inline, schema) ?? undefined,
+    [fetchedUI, ui.inline, ui.path, schema]
+  )
+
+  return { schema, uiSchema, loading, failed }
 }

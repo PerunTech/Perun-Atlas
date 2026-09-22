@@ -305,7 +305,7 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
      */
     form: draw?.form ? {
       schema: fields.schema,
-      uiSchema: draw.form.uiSchema,
+      uiSchema: fields.uiSchema,
       data: formData,
       errors: formErrors,
       onChange: setFormData,
