@@ -88,21 +88,21 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
   /**
    * Whether the form is answerable as it stands.
    *
-   * Validated here rather than read off RJSF's `onChange`, and the difference
-   * matters at exactly one moment: the first. `liveValidate` reports errors when
-   * something changes, so an untouched form with a required field empty reports
-   * none -- and Save would be live on a form nobody has filled in. Asking the
-   * validator directly is the same pass RJSF makes, made about the state that
-   * exists rather than about the last edit.
+   * The form asks this too, on its way through its own submit, and asks it
+   * better: it can say which field and put the words beside it. This asks it
+   * again for the one thing the form cannot see, which is the form it holds
+   * when nobody has touched it. A grouppath carries its own `required` inside a
+   * group nothing above demands, so an untouched form is `{}`, and `{}` answers
+   * such a schema with no errors at all -- measured, by submitting one: the
+   * form called back with `{}` and every mandatory field missing. The browser's
+   * own required check is what stops that on screen. This is what stops it here,
+   * one line before the request, because the button is not the only caller: a
+   * screen building its own controls out of this hook has no browser check in
+   * front of it.
    *
-   * It is also the pass that catches a fetched schema arriving with `required`
-   * on fields this row did not pick, which is the one way a form from a service
-   * can be unanswerable rather than merely wrong.
-   *
-   * Asked of the form with its groups in place -- see `withGroups`. A grouppath
-   * carries its own `required` and nothing above says the group must be there,
-   * so an untouched form answers `{}` and `{}` satisfies a schema every field
-   * of which is mandatory. That is not a validator to gate a save on.
+   * Asked with the groups put back -- see `withGroups` -- which is what turns
+   * the question from one the schema shrugs at into the one meant by it. It is
+   * asked for that and nothing else: what gets sent is still what was typed.
    */
   const formErrors = useMemo(() => {
     if (!fields.schema) return []
@@ -166,6 +166,22 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
     // and the record would be written.
     if (draw.form && !fields.schema) {
       console.error('perun-atlas: nothing sent -- this row configures a form and its fields are not loaded.')
+      return
+    }
+
+    // A form that is not answered. Said out loud rather than returned quietly,
+    // because a press that does nothing and says nothing is the thing this is
+    // here to prevent, and by the time it gets here the form has already had
+    // its chance to mark the fields itself.
+    if (formErrors.length) {
+      alertUserResponse({
+        type: 'error',
+        response: labels.saveIncomplete ?? 'Some of these fields are mandatory and are empty. Nothing was sent.'
+      })
+      console.error(
+        'perun-atlas: nothing sent -- the form is not answerable as it stands:',
+        formErrors.map((error) => `${error.property ?? ''} ${error.message ?? ''}`.trim()).join('; ')
+      )
       return
     }
 

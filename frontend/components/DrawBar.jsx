@@ -1,6 +1,7 @@
 import { Form, React, elements, validator } from 'perun-core';
 
 const { Icon } = elements;
+const { useState } = React;
 
 /**
  * Drawing one shape and sending it somewhere, in two pieces.
@@ -62,6 +63,20 @@ export const DrawTool = ({ drawing, busy, onStart, onCancel, labels = {} }) => (
 const box = (busy) => `atlas-panel__drawbox${busy ? ' atlas-panel__drawbox--off' : ''}`;
 
 /**
+ * A name for one row's form, unique in the document.
+ *
+ * The Save button is not inside the form -- it sits in the row's actions,
+ * beside Discard, where the two buttons that end a shape belong -- so it says
+ * which form it submits by naming it, and `form="..."` names it by id. An id is
+ * document-wide: a second row with the same one would point its Save at the
+ * first row's form, submit that, and save the wrong fields without a word. So
+ * it is counted rather than fixed, and the same count is the `idPrefix`, which
+ * puts the fields inside out of each other's way for the same reason.
+ */
+let rows = 0;
+const nextRow = () => `atlas-draw-${rows += 1}`;
+
+/**
  * The row under the toolbar, while a shape is being made.
  *
  * Two states, and the row says which one it is in by what it offers. Armed with
@@ -80,11 +95,12 @@ const box = (busy) => `atlas-panel__drawbox${busy ? ' atlas-panel__drawbox--off'
  * @param {boolean} drawing      - whether the map is armed
  * @param {boolean} busy         - a save is in flight
  * @param {Object} [note]        - { value, onChange, required } for the free-text field
- * @param {Object} [form]        - { schema, uiSchema, data, errors, onChange,
- *        loading, failed } for the fields a row described instead of
- *        hardcoding. Passed at all, it is a row that has fields; `schema` null
- *        is a row whose fields are still on their way from a service, or are
- *        not coming. See below.
+ * @param {Object} [form]        - { schema, uiSchema, data, onChange, loading,
+ *        failed } for the fields a row described instead of hardcoding. Passed
+ *        at all, it is a row that has fields; `schema` null is a row whose
+ *        fields are still on their way from a service, or are not coming. What
+ *        is wrong with what has been typed is not read here -- the form is the
+ *        thing that knows, and the thing that says so. See below.
  * @param {Object} [limits]      - { min, max, step } for the radius
  * @param {Object} [caught]      - { count, total } the shape covers, for a row
  *        that asked what is inside it. Left out, the row says nothing about it.
@@ -109,14 +125,44 @@ export const DrawBar = ({
 }) => {
   const { min = 50, max = 500000, step = 50 } = limits;
   const hasShape = Boolean(shape);
+  // Stable for as long as this row is on screen, and different from the next
+  // row's. See `nextRow`.
+  const [rowId] = useState(nextRow);
+  const formId = `${rowId}-form`;
+  // A form on screen to submit. Not merely `form`: a row whose fields are still
+  // arriving has no `<form>` in the document yet, and a button pointing at an id
+  // that is not there is a button that does nothing.
+  const submits = Boolean(form?.schema);
+
+  /**
+   * What the row will and will not send.
+   *
+   * The form's own errors are deliberately not here. They were, and a form with
+   * a mandatory field empty meant a Save nobody could press -- which says
+   * *that* something is missing and never *what*, because the form only writes
+   * its messages when it is asked to validate, and it is asked when it is
+   * submitted. A Save that cannot be pressed is a Save that is never submitted,
+   * so the two states held each other shut. Pressable, the press produces the
+   * messages, and the fields that need filling say so themselves.
+   *
+   * What is left is everything the form has no opinion about: a save already
+   * out, no shape to save, the note this row hardcodes, and a row with fields
+   * that never arrived -- saving that one would write a record with everything
+   * the form was there to carry missing, which is worse than not saving and
+   * quieter.
+   */
   const blocked = busy
     || !hasShape
     || (note?.required && !String(note.value ?? '').trim())
-    || (form?.errors?.length ?? 0) > 0
-    // A row with fields, and no fields. Saving now would write a record with
-    // everything the form was there to carry missing, which is worse than not
-    // saving and quieter.
     || Boolean(form && !form.schema);
+
+  // One gate, two ways in. The button is the obvious one; Enter in a text field
+  // is the other, and it arrives as a submit on the form rather than as a click
+  // on anything, so a check that lives only on the button is a check that
+  // pressing Enter walks around.
+  const send = () => {
+    if (!blocked && savable) onSave?.();
+  };
 
   return (
     <div className='atlas-panel__draw' role='group' aria-label={labels.draw ?? 'Draw'}>
@@ -177,11 +223,36 @@ export const DrawBar = ({
         * default, so two forms on one panel put two elements with id `root` in
         * the document -- and a `<label for>` then points at whichever the
         * browser found first, which is the date filter stealing clicks meant for
-        * a field beside the shape.
+        * a field beside the shape. It counts up rather than reading `atlas-draw`
+        * flat, because the form now has a name of its own that Save points at,
+        * and both names have to be the only ones of their kind in the document.
         *
-        * Submission is suppressed the same way `DateRange` suppresses it: the
-        * panel's own Save is what sends this, because what it sends is the form
-        * *and* a geometry the form knows nothing about.
+        * The form is what Save submits, rather than something Save reads on its
+        * way past. It is the form that knows which of its fields are empty and
+        * where to write that, and it writes it when it is submitted -- so the
+        * button says `form={formId}`, the form says `onSubmit`, and pressing
+        * Save on an unfinished form marks the fields instead of doing nothing.
+        * What is finally sent is still assembled outside: the record *and* a
+        * geometry the form knows nothing about.
+        *
+        * `liveValidate` is off because errors that appear while the reader is
+        * still typing are errors about a field nobody has finished. They appear
+        * on the press instead, which is when there is something to be wrong
+        * about.
+        *
+        * The browser's own required check is left on -- there is no
+        * `noHtml5Validate` here -- and it is not belt and braces. A grouppath is
+        * one key holding an object, its `required` lives inside that object, and
+        * nothing above says the object has to exist: an untouched form holds
+        * `{}`, and `{}` answers such a schema with no errors at all. Measured:
+        * with the browser's check off, submitting an untouched form of that
+        * shape calls back with `{}` and every mandatory field missing. With it
+        * on, the browser stops on the first empty field, puts the focus there
+        * and says so beside it.
+        * The one case it cannot see is a mandatory field a row hides --
+        * `ui:widget: 'hidden'` renders an input the browser is told to skip, and
+        * the form's message for it has nowhere to appear -- so a row that hides
+        * a field seeds a value into it or leaves it out of `pick`.
         *
         * A schema a row named rather than wrote arrives one request later than
         * the rest of this row, so `form` without a `schema` is the state above:
@@ -191,16 +262,17 @@ export const DrawBar = ({
       {hasShape && form?.schema && (
         <div className='atlas-panel__drawform'>
           <Form
-            idPrefix='atlas-draw'
+            id={formId}
+            idPrefix={rowId}
             schema={form.schema}
             uiSchema={{ 'ui:submitButtonOptions': { norender: true }, ...form.uiSchema }}
             formData={form.data}
             validator={validator}
             disabled={busy}
-            liveValidate
+            liveValidate={false}
             showErrorList={false}
-            noHtml5Validate
             onChange={({ formData }) => form.onChange?.(formData)}
+            onSubmit={send}
           >
             <></>
           </Form>
@@ -239,15 +311,16 @@ export const DrawBar = ({
       {hasShape && (
         <div className='atlas-panel__drawactions'>
           {savable && (
-          <button
-            type='button'
-            className='atlas-panel__btn atlas-panel__btn--primary'
-            onClick={onSave}
-            disabled={blocked}
-          >
-            <Icon name='IconDeviceFloppy' size={16} stroke={1.75} aria-hidden='true' />
-            {labels.save ?? 'Save'}
-          </button>
+            <button
+              type={submits ? 'submit' : 'button'}
+              form={submits ? formId : undefined}
+              className='atlas-panel__btn atlas-panel__btn--primary'
+              onClick={submits ? undefined : send}
+              disabled={blocked}
+            >
+              <Icon name='IconDeviceFloppy' size={16} stroke={1.75} aria-hidden='true' />
+              {labels.save ?? 'Save'}
+            </button>
           )}
           <button
             type='button'
