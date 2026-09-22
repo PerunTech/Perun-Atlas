@@ -46,6 +46,41 @@ the properties that matter on the package's own class rather than assuming the
 default. A class beats an element regardless of source order, which is the one
 part of the cascade that works in this direction.
 
+## The second case: a form built from a table's schema
+
+`draw.form` renders an RJSF form in the draw row, and a form is the markup these
+deployments have the most CSS for. All of it arrives:
+
+* `label { font-size: 16px; padding-left: 15px; text-indent: -15px }` — the
+  record-form label, three lines tall over a 37px control.
+* `legend { background-color: … !important; color: … !important }` in
+  `systemcolors.css`, plus bootstrap's `legend { width: 100% }` — which together
+  make a schema's grouppath a full-width blue section header, one per group.
+* `.form-control { border: none; border-bottom: 1px solid #385a38 !important }`
+  — three grey sides and a green one on a box this package draws.
+
+The rules are in `panel.css` under `.atlas-panel__drawform`. Two things about
+them are worth keeping in mind before adding more.
+
+**`!important` is the only thing that reaches `!important`,** and it is spent in
+exactly one place: the bottom border. A blue legend is the deployment's colour
+choice arriving somewhere it was not aimed, and it is legible, so it stays; a
+green line along one edge of a four-sided box is not a colour choice about
+anything, and the box is this package's.
+
+**A `<legend>` is never a flex item.** The browser takes a fieldset's first
+legend out of flow and lays the rest of the fieldset's children out in an
+anonymous box, so `flex`, `order` and `align-self` on a legend do nothing —
+`width: auto` is what stops it being a full-width bar. A group therefore costs a
+line. A row that would rather have the space says so in its own `uiSchema`, with
+`"ui:title": ""` on the group.
+
+**The date filter is deliberately not in those selectors.** It is the older form
+on this panel, `aims-assets/assets/styles/atlas-panel.css` styles it field by
+field, and a default written now would either lose to that or win by a property
+the deployment happened not to name. The two forms share the fieldset and legend
+rules above them and nothing else.
+
 ## Reproducing it
 
 A component can look right in isolation and wrong in the app. To see what the

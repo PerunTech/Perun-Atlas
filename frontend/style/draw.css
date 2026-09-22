@@ -173,8 +173,17 @@
  * deployment's, which is the whole reason this is an RJSF form and not a second
  * set of inputs.
  */
+/*
+ * The fields a row described, as one item in this row.
+ *
+ * `0 1 auto`, not `1 1 auto`: a form that grows takes the whole line and puts
+ * the radius, the count and the buttons on lines of their own -- and inside it,
+ * a group stretched to the full width is a group per line. Sized to its content
+ * it is what it is, another control in a row of them, and it wraps as a whole
+ * when the row runs out.
+ */
 .atlas-panel__drawform {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
