@@ -1,5 +1,5 @@
 import { React, elements, validator } from 'perun-core';
-import { bindPath, fillBody, pointIn, postTo, ringIn, unitsPerMetre } from '../data';
+import { bindPath, fillBody, pointIn, postTo, ringIn, unitsPerMetre, withGroups } from '../data';
 import { useFormSchema } from './useFormSchema';
 import { useSelection } from './useSelection';
 
@@ -98,10 +98,15 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
    * It is also the pass that catches a fetched schema arriving with `required`
    * on fields this row did not pick, which is the one way a form from a service
    * can be unanswerable rather than merely wrong.
+   *
+   * Asked of the form with its groups in place -- see `withGroups`. A grouppath
+   * carries its own `required` and nothing above says the group must be there,
+   * so an untouched form answers `{}` and `{}` satisfies a schema every field
+   * of which is mandatory. That is not a validator to gate a save on.
    */
   const formErrors = useMemo(() => {
     if (!fields.schema) return []
-    return validator.validateFormData(formData, fields.schema)?.errors ?? []
+    return validator.validateFormData(withGroups(formData, fields.schema), fields.schema)?.errors ?? []
   }, [formData, fields.schema])
 
   /**

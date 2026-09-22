@@ -183,6 +183,41 @@ export const pickFields = (schema, pick) => {
 };
 
 /**
+ * The form as a schema is about to be read against it.
+ *
+ * A grouppath keeps its own `required` inside the group object, and nothing at
+ * the top of the schema says the group has to be there -- so `{}` is a valid
+ * answer to a form whose every field is mandatory. Which is what an untouched
+ * form is: RJSF computes its defaults into its own state and does not report
+ * them, so the panel holds `{}` until a reader types, and a Save gated on "are
+ * there any errors" is live over a form nobody has filled in.
+ *
+ * Read against a copy with the groups in place, the answer is the true one:
+ * every mandatory field is missing, and it says which. Only for asking -- what
+ * is sent is what was typed, because a group nobody touched has nothing to say
+ * and an empty one in the body means the same thing to the service as no group
+ * at all.
+ *
+ * @param {Object} formData - What the reader has typed, which may be nothing.
+ * @param {Object} schema   - The schema it will be validated against.
+ * @returns {Object} A copy, with an empty object wherever a group is absent.
+ */
+export const withGroups = (formData, schema) => {
+  if (!schema?.properties) return formData ?? {};
+
+  const out = { ...(formData ?? {}) };
+
+  Object.entries(schema.properties).forEach(([name, property]) => {
+    // A node with properties is an object node, whatever it says its type is:
+    // these schemas are generated, and one of them naming no type at all should
+    // not be the difference between a checked group and an unchecked one.
+    if (property?.properties) out[name] = withGroups(out[name], property);
+  });
+
+  return out;
+};
+
+/**
  * The widget names this form can draw, transcribed from RJSF 5.
  *
  * `ui:widget` naming something the form's registry does not have is not a field

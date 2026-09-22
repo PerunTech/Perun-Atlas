@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('perun-core', () => ({ axios: { get: vi.fn() }, utils: {}, elements: {} }));
 
 const { axios } = await import('perun-core');
-const { fetchSchema, fetchUISchema, pickFields, usableUI } = await import('../frontend/data/form');
+const { fetchSchema, fetchUISchema, pickFields, usableUI, withGroups } = await import('../frontend/data/form');
 
 /**
  * A table's schema, in the shape these services actually send one.
@@ -289,5 +289,49 @@ describe('fetchUISchema', () => {
     axios.get.mockResolvedValue({ data: 'x.error.no_session' });
     expect(await fetchUISchema('/Ws/ui/abc')).toBeNull();
     expect(logged.mock.calls.flat().join(' ')).toContain('form layout');
+  });
+});
+
+describe('withGroups', () => {
+  /**
+   * The gap this closes. A grouppath keeps its `required` inside the group and
+   * nothing above says the group has to be there, so `{}` -- which is what an
+   * untouched form is -- satisfies a schema every field of which is mandatory,
+   * and a Save gated on the error count is live over an empty form.
+   */
+  it('puts an empty object where a group is missing, so its required is read', () => {
+    const narrowed = pickFields(SCHEMA, ['subject.info.NAME', 'NOTE']);
+    expect(withGroups({}, narrowed)).toEqual({ 'subject.info': {} });
+  });
+
+  it('leaves what was typed alone', () => {
+    const narrowed = pickFields(SCHEMA, ['subject.info.NAME', 'NOTE']);
+    expect(withGroups({ 'subject.info': { NAME: 'a' }, NOTE: 'b' }, narrowed))
+      .toEqual({ 'subject.info': { NAME: 'a' }, NOTE: 'b' });
+  });
+
+  it('reaches a group inside a group', () => {
+    const schema = {
+      type: 'object',
+      properties: { outer: { type: 'object', properties: { inner: { type: 'object', properties: { X: { type: 'string' } } } } } }
+    };
+    expect(withGroups({}, schema)).toEqual({ outer: { inner: {} } });
+  });
+
+  it('reads a node with properties as a group whatever it says its type is', () => {
+    const schema = { type: 'object', properties: { 'a.b': { properties: { X: { type: 'string' } }, required: ['X'] } } };
+    expect(withGroups({}, schema)).toEqual({ 'a.b': {} });
+  });
+
+  it('does not touch what it was given', () => {
+    const data = { NOTE: 'b' };
+    const narrowed = pickFields(SCHEMA, ['subject.info.NAME', 'NOTE']);
+    withGroups(data, narrowed);
+    expect(data).toEqual({ NOTE: 'b' });
+  });
+
+  it('hands back the form untouched when there is no schema to read', () => {
+    expect(withGroups({ a: 1 }, null)).toEqual({ a: 1 });
+    expect(withGroups(undefined, null)).toEqual({});
   });
 });
