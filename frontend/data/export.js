@@ -10,7 +10,7 @@ import { SYSTEM_FIELDS } from './system';
  * the bytes are the ones the service already sent.
  *
  * Pure on purpose: strings in, strings out, no DOM and no engine. `download` in
- * `components/dom.js` is the half that touches the page.
+ * `lib/dom.js` is the half that touches the page.
  */
 
 /**

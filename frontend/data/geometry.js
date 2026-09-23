@@ -56,8 +56,6 @@ export const fetchGeometry = async (servicePath, context = {}) => {
     return empty;
   }
 
-  // A failed service writes a plain-text error into the stream rather than a
-  // protobuf body, so decoding would throw on something that is really a message.
   const decoded = geobuf.decode(new Pbf(new Uint8Array(response.data)));
 
   if (!decoded || !decoded.type) {

@@ -17,8 +17,8 @@ component API is not finished — that is the signal, not the workaround.
 
 | Path | Contents |
 |---|---|
-| `frontend/index.js` | The whole public surface — see below. |
-| `frontend/client.js` | Registers the package with perun-core's plugin manager. The webpack entry. |
+| `frontend/index.js` | The whole public surface — see below. The webpack entry for a production build. |
+| `frontend/client.js` | Registers the package with perun-core's plugin manager. The webpack entry for `build-dev` and `dev` only; a production bundle is loaded by the shell as an `IPerunPlugin` script instead. |
 | `frontend/spatial.js` | The single point of contact with the map engine. |
 | `frontend/config/` | `SCHEMA` — every environment setting declared once. |
 | `frontend/bootstrap/` | Resolves configuration: overrides → SVAROG_SYS_PARAMS → `window` (deprecated) → defaults. Throws, loudly, on a missing required value. |
