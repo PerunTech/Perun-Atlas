@@ -158,29 +158,20 @@
 }
 
 /*
- * The box the fields a row described sit in.
- *
- * What lays them along the row rather than down it is in `panel.css`, shared
- * with the date filter because both are RJSF and both were getting it wrong the
- * same way. This is only the box's own behaviour in the row.
- *
- * `flex: 1 1 auto` with `min-width: 0` so the form takes the room left after
- * the radius and gives it back when the row wraps -- without the zero minimum a
- * flex item refuses to shrink below its content and a long field pushes the
- * actions off the end.
- *
- * Only layout. The widgets, their labels and their error text are the
- * deployment's, which is the whole reason this is an RJSF form and not a second
- * set of inputs.
- */
-/*
  * The fields a row described, as one item in this row.
+ *
+ * What lays them along the row rather than down it is in `form.css`, shared
+ * with the date filter because both are RJSF and both were getting it wrong the
+ * same way. This is the box's own behaviour in the row, and under it what only
+ * this form needs.
  *
  * `0 1 auto`, not `1 1 auto`: a form that grows takes the whole line and puts
  * the radius, the count and the buttons on lines of their own -- and inside it,
  * a group stretched to the full width is a group per line. Sized to its content
  * it is what it is, another control in a row of them, and it wraps as a whole
- * when the row runs out.
+ * when the row runs out. `min-width: 0` so it still gives room back when the
+ * row wraps -- without the zero minimum a flex item refuses to shrink below its
+ * content and a long field pushes the actions off the end.
  */
 .atlas-panel__drawform {
   flex: 0 1 auto;
@@ -189,6 +180,131 @@
 
 .atlas-panel__drawform .rjsf {
   margin: 0;
+}
+
+/*
+ * A group is a box around fields, and a row of controls has no room for boxes.
+ *
+ * RJSF wraps each grouppath in a `div.form-group.field-object` holding a
+ * fieldset, and that wrapper is a block: as a flex item it takes the whole line
+ * whatever its fields measure, so two groups are two lines and three are three
+ * -- which is the entire reason the fields beside a shape were stacking while
+ * every one of them would have fitted across.
+ *
+ * `display: contents` takes the wrapper's own box away and leaves its children
+ * in the row, so a field is an item of this row no matter how deep the schema
+ * put it. The fieldset inside goes the same way for the same reason.
+ *
+ * It costs the fieldset's grouping, which is a fair trade only because the
+ * titles are hidden -- see `form.css`: a fieldset with no legend has no accessible name to
+ * lose, and every field keeps its own label.
+ */
+.atlas-panel__drawform .rjsf fieldset .form-group.field-object,
+.atlas-panel__drawform .rjsf fieldset fieldset {
+  display: contents;
+}
+
+/*
+ * A field's own label.
+ *
+ * These registries ship `label { display: block; margin-bottom: 3px;
+ * padding-left: 15px; text-indent: -15px }` for their forms, and a form built
+ * from a table's schema is exactly the markup that rule was written for -- it
+ * simply arrived somewhere else. At the record-form size a label is 16px over a
+ * 37px control, which is right on a page and is three times the height of the
+ * row it is in here.
+ *
+ * This and the rules under it name the draw row alone. The date filter is the
+ * other form on this panel and it is older than all of them: a deployment has
+ * had it to style since it shipped, and `atlas-panel.css` styles it -- so a
+ * default written now would either lose to that or, worse, win by a property
+ * the deployment happened not to name. What both forms share is in
+ * `form.css`: the fieldset that flows them along the row, and the legend.
+ */
+.atlas-panel__drawform .rjsf label {
+  display: block;
+  margin: 0 0 2px;
+  padding: 0;
+  text-indent: 0;
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+  color: var(--ap-muted, #6b6f7a);
+}
+
+/*
+ * The controls, drawn as the row's own are.
+ *
+ * The same border, radius, ground and 12px value font as
+ * `.atlas-panel__drawbox` -- from the same tokens, so a deployment restyling
+ * the panel restyles these with it. A field that arrived from a schema should
+ * not be a different-looking control from the radius beside it.
+ */
+.atlas-panel__drawform .rjsf input,
+.atlas-panel__drawform .rjsf select,
+.atlas-panel__drawform .rjsf textarea {
+  height: auto;
+  /* A form control is 100% of its field on a page, where a field is a column.
+     Here a field is as wide as what it holds. */
+  width: auto;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--ap-rule, #d8dde3);
+  border-radius: var(--ap-radius, 8px);
+  background: var(--ap-surface, #ffffff);
+  color: var(--ap-ink, #14161a);
+  font: var(--ap-value-font, 500 12px/1.4 system-ui, sans-serif);
+  box-shadow: none;
+}
+
+.atlas-panel__drawform .rjsf input:focus,
+.atlas-panel__drawform .rjsf select:focus,
+.atlas-panel__drawform .rjsf textarea:focus {
+  outline: 2px solid var(--ap-accent, #4a6a85);
+  outline-offset: 1px;
+}
+
+/*
+ * One edge of a box this package draws, painted green by the app's form sheet.
+ *
+ * `.form-control { border-bottom: 1px solid #385a38 !important }` is the
+ * underline these registries give a record form's inputs, and RJSF puts
+ * `form-control` on every control it renders -- so the box above arrives with
+ * three grey sides and a green one, beside a radius field that has four.
+ *
+ * `!important` is the only thing that reaches a declaration carrying it, and
+ * this is the narrowest place to spend it: the fields beside a drawn shape, and
+ * not the date filter, which a deployment styles for itself and whose inputs
+ * this should keep its hands off.
+ */
+.atlas-panel__drawform .rjsf input,
+.atlas-panel__drawform .rjsf select,
+.atlas-panel__drawform .rjsf textarea {
+  border-bottom: 1px solid var(--ap-rule, #d8dde3) !important;
+}
+
+/* Two lines to start with, and the reader's to drag. A text area sized for a
+   record form is most of this row's height before anything is typed in it. */
+.atlas-panel__drawform .rjsf textarea {
+  min-height: 2.6em;
+  resize: vertical;
+}
+
+/* A field is a box, not a table box. Some of these deployments lay a form group
+   out as one, which shrink-wraps to its widest line and makes a field as wide
+   as the longest error message under it. Said for the draw row only: the date
+   filter has been laid out by these sheets for as long as it has existed, and
+   this is not the change to start moving it with. */
+.atlas-panel__drawform .rjsf .form-group {
+  display: block;
+}
+
+/* What a field is refusing, under the field rather than beside it. Kept to the
+   row's own size; the colour is the deployment's, as every other warning on
+   this screen is. */
+.atlas-panel__drawform .rjsf .error-detail {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
 }
 
 /*

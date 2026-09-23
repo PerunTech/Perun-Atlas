@@ -1,10 +1,11 @@
 The stylesheets, and nothing else.
 
-Seven files, each imported for its side effect by the component it dresses —
-`panel.css` and `draw.css` by `FeaturePanel`, `draw.css` again by
-`CirclePicker`, `features.css` by `FeatureSet`, `legend.css` by `Legend`,
-`picker.css` by `PointPicker`, `controls.css` by `AtlasMap`, `zoom.css` by
-`ZoomRail`.
+Eight files, each imported for its side effect by every component it dresses,
+so a component rendered on its own outside `FeaturePanel` is still styled —
+`panel.css` by `FeaturePanel`, `form.css` by `DateRange` and `DrawBar`,
+`draw.css` by `DrawBar` and `CirclePicker`, `features.css` by `FeatureSet`,
+`legend.css` by `Legend`, `picker.css` by `PointPicker`, `controls.css` by
+`AtlasMap`, `zoom.css` by `ZoomRail`.
 
 They are kept together rather than beside their components because a
 deployment restyles this package from the outside, and one directory is the
@@ -59,7 +60,9 @@ deployments have the most CSS for. All of it arrives:
 * `.form-control { border: none; border-bottom: 1px solid #385a38 !important }`
   — three grey sides and a green one on a box this package draws.
 
-The rules are in `panel.css` under `.atlas-panel__drawform`. Two things about
+The rules are in `draw.css` under `.atlas-panel__drawform`, and the ones the
+date filter shares with it — the fieldset that flows a form along the row, the
+hidden legends, the form-group margin — are in `form.css`. Two things about
 them are worth keeping in mind before adding more.
 
 **`!important` is the only thing that reaches `!important`,** and it is spent in
@@ -80,8 +83,8 @@ brings one for the table and one per grouppath — and `ui:title` in a row's own
 **The date filter is deliberately not in those selectors.** It is the older form
 on this panel, `aims-assets/assets/styles/atlas-panel.css` styles it field by
 field, and a default written now would either lose to that or win by a property
-the deployment happened not to name. The two forms share the fieldset and legend
-rules above them and nothing else.
+the deployment happened not to name. The two forms share what is in `form.css` and
+nothing else.
 
 ## Reproducing it
 

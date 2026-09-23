@@ -1,4 +1,5 @@
 import { Form, React, validator } from 'perun-core';
+import '../style/form.css';
 
 const { useMemo } = React;
 

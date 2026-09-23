@@ -9,7 +9,6 @@ import { LegendControl } from './LegendControl';
 import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../appearance';
 import { useChoropleth, useDateWindow, useDrawnShape, useExport, useRecord } from '../hooks';
 import '../style/panel.css';
-import '../style/draw.css';
 const { useMemo, useState } = React
 
 /**

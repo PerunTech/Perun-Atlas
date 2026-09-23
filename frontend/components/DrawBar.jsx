@@ -1,4 +1,6 @@
 import { Form, React, elements, validator } from 'perun-core';
+import '../style/form.css';
+import '../style/draw.css';
 
 const { Icon } = elements;
 const { useState } = React;

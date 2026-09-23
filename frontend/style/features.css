@@ -77,22 +77,6 @@
 }
 
 /*
- * The date filter is an RJSF form, so it arrives as .form-group children rather
- * than as markup this package controls. Laying them out in a row is the only
- * thing changed here: the widgets, labels and error text stay whatever the
- * deployment's form stylesheet makes them.
- */
-/*
- * The date filter's own spacing. What lays its fields along a row rather than
- * down one is in `panel.css`, with the same rule for the draw row's form --
- * both are RJSF, both put their fields inside a fieldset, and the rule that
- * used to be here flexed the wrong element. See the note there.
- */
-.atlas-date-range .rjsf {
-  margin-bottom: 8px;
-}
-
-/*
  * Popups.
  *
  * Leaflet supplies the frame — the wrapper, the tip, the close button — and these
