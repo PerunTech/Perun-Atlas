@@ -29,6 +29,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape with its save and what it caught, the export, the record pane. |
 | `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `frontend/lib/README.md` lists them. |
 | `build/` | The webpack hook that injects this package's CSS at `head.firstChild`. `frontend/style/README.md` says why that matters. |
+| `docs/menu-row.md` | Every key a menu row may set for `ConfiguredMap`, with its defaults. The contract consuming bundles write rows against. |
 | `test/` | The unit suite, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
 
@@ -43,7 +44,8 @@ import * as atlas from 'perun-atlas';   // atlas.appearance, .bootstrap, .config
 ```
 
 Thirteen components, and four namespaces beside them. `ConfiguredMap` is the one
-most screens want: it reads a menu row and builds the rest.
+most screens want: it reads a menu row and builds the rest. `docs/menu-row.md`
+describes every key a row may set.
 
 `appearance` was called `style` until the stylesheets took that name back.
 

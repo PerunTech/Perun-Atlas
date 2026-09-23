@@ -26,26 +26,10 @@ const { useEffect, useRef } = React;
  * refetching on pan would re-request the same bytes and fight the user. It
  * fetches when the service path or its context changes, and frames the result.
  *
- * Descriptors are a map of descriptor name to:
- *
- *   style   Leaflet path options for lines and polygons
- *   marker  { className, size, style } for points — a class, CSS declarations,
- *           or both; `style` is what a descriptor kept in configuration uses,
- *           since it has no stylesheet of its own to name
- *   label   { field, scale: { min, max }, className, style, direction, offset } —
- *           a permanent label, banded by zoom
- *   popup   { title, fields: [{ label, field }], className, style, titleStyle,
- *           labelStyle, valueStyle } — the detail behind the label, opened on
- *           click; the label names the feature, this explains it
- *   arrow   { pixelSize, repeat, offset, reverse } — direction markers along a
- *           line; `reverse` turns the heads back the way the path came
- *   variants { by, cases } — one column splitting the kind in two, each case
- *           merged over everything above it. See `variantOf`
- *   details { title, exclude, className, style, titleStyle, labelStyle,
- *           valueStyle } — the whole record, for a caller that shows one
- *           somewhere with room. `exclude` names what to leave out on top of
- *           `SYSTEM_FIELDS`, which are never shown. A descriptor carrying this
- *           binds no popup: see `onFeatureClick`
+ * Descriptors are a map of descriptor name to `style`, `marker`, `label`,
+ * `popup`, `arrow`, `variants`, `details` and `legend`; `docs/menu-row.md`
+ * describes each. A descriptor carrying `details` binds no popup: see
+ * `onFeatureClick`.
  *
  * @param {string} servicePath - Path with {token} placeholders.
  * @param {Object} context     - The values those placeholders resolve against.

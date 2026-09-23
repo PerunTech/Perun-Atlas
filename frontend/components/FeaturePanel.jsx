@@ -47,149 +47,45 @@ const { Icon } = elements
  * That is the whole point of it: it is what lets one panel serve every screen
  * that draws a set of features.
  *
+ * A feature whose descriptor declares `details` opens a pane beside the map
+ * carrying its whole record. A pane rather than a popup, because a service that
+ * returns fifteen columns has already decided the answer is long, and a bubble
+ * that size covers the thing it is describing. What it shows is resolved by
+ * `FeatureSet`, which owns the descriptors -- this renders rows and still never
+ * reads one.
+ *
+ * `draw` is one key rather than a mode because that is the honest shape:
+ * everything else on this panel -- the title, the record, the file buttons, the
+ * key, the empty state -- is the same either way, and only the layer under them
+ * differs.
+ *
+ * The props are a menu row's keys, and `docs/menu-row.md` is where each is
+ * described: every option, default and placeholder. The differences from a row
+ * are that words arrive resolved rather than as label codes, and the four below.
+ *
  * @param {string} session      - Session the service is called with.
- * @param {string} servicePath  - Path with {token} placeholders.
+ * @param {string} servicePath  - The row's `service`: a path with {token} placeholders.
  * @param {Object} context      - Extra values those placeholders resolve against.
  * @param {Object} descriptors  - Descriptor name to how it is drawn. Caller-owned.
- * @param {Object} [subject]    - The record the screen is about:
- *                                { id, descriptor, match }. Its descriptor is
- *                                drawn instead of the producer's, so the record
- *                                stands out among the features it arrived with.
- *                                `match: 'parent'` for a service that returns
- *                                the record's children rather than the record --
- *                                then the id worth comparing is the feature's
- *                                `parent_id`. See `matchesIdentity`.
- * @param {Array}  [presets]    - Quick ranges, [{ months, label }], longest last.
- *                                Shown only when the service takes a window; see
- *                                `timeScoped` below.
- * @param {Object} [labels]     - Every other piece of copy on the panel. Any key
- *                                left out falls back to neutral English, so an
- *                                unregistered label code is never shown.
- * @param {Function} [labelResolver] - Resolves a label code carried by a
- *                                descriptor, for the popup field names. Passed
- *                                straight to FeatureSet; descriptors are the one
- *                                part of the configuration this panel does not
- *                                resolve itself, because it never reads them.
- * @param {boolean|number|Object} [cluster] - Collapse the points into counted
- *                                badges rather than a marker each. `true`
- *                                always, a number to cluster only from that many
- *                                points up, or an object for the plugin's own
- *                                options and the badge's look. Off unless asked
- *                                for: it trades every label and every marker
- *                                position for a count, which is the right trade
- *                                only once there are too many of them to read.
- * @param {Object} [map]        - Passed to `AtlasMap`: `layerSwitcher`,
- *                                `zoomControl`, `zoomPosition`, `zoomMarks`,
- *                                `zoomLabels`, `coordinates`,
- *                                `coordinatesPosition`, `measure`,
- *                                `measurePosition`, `measureTools`, `fullscreen`,
- *                                `fullscreenPosition`, `locate`, `locatePosition`,
- *                                `scale`, `scalePosition`, `scaleRatio`,
- *                                `overrides`.
- * @param {Object|boolean} [exportable] - Offer the set as a file. Left out, it is
- *                                offered with the defaults; `false` withholds
- *                                the buttons; { geojson, csv, filename, fields,
- *                                exclude } chooses the formats, names the file,
- *                                fixes the CSV's columns, or drops more of them:
- *                                `SYSTEM_FIELDS` are already out.
- * A feature whose descriptor declares `details` opens a pane beside the map
- * carrying its whole record. The pane is here rather than in a popup because a
- * service that returns fifteen columns has already decided the answer is long,
- * and a bubble that size covers the thing it is describing. What it shows is
- * resolved by `FeatureSet`, which owns the descriptors -- this renders rows and
- * still never reads one.
- *
- * @param {boolean|string} [legend] - `false` withholds the key. On otherwise, and
- *                                it shows itself only when a set drew more than
- *                                one kind of thing -- one kind needs no key, and
- *                                a box saying so is a box over the map for
- *                                nothing. Built from what was drawn, so it needs
- *                                no configuration of its own. A string names the
- *                                corner it sits in instead of `bottomleft`,
- *                                which is worth setting when a screen already
- *                                puts something there.
- *
- * @param {boolean} [notice]    - `false` withholds the card that says a set came
- *                                back empty. On otherwise, and worth turning off
- *                                for a screen whose empty state is its ordinary
- *                                one -- a map opened to draw something new has
- *                                nothing on it yet by definition, and a card
- *                                explaining that sits over the middle of the map
- *                                it is about to be drawn on.
- *
- * @param {Object} [tokens]     - CSS custom properties for the panel's root:
- *                                '--ap-accent' and friends. This is how a screen
- *                                described entirely in configuration carries its
- *                                colours, with no stylesheet of its own.
- * @param {Object} [choropleth] - Draw the set as areas filled by a category
- *                                rather than as features drawn per descriptor:
- *                                { descriptor, field, palette, fallback, join,
- *                                status, tooltip, unknownLabel }. `descriptor`
- *                                names an entry in `descriptors`; `status` is a
- *                                second service path whose rows are joined onto
- *                                the geometry by `join`; `tooltip` names the
- *                                field to show on hover.
- *
- * @param {Object} [draw]       - Let the reader draw a shape and send it to a
- *                                service: { shape, radius, note, save, labels }.
- *                                `save.onSave` is the path it is posted to, and
- *                                it resolves the same placeholders every other
- *                                path here does plus the shape's own, under
- *                                `{draw.*}`: `x`, `y` and `radius` in the
- *                                deployment's stored projection, `lat`, `lng`
- *                                and `metres` on the ground, `ring` -- the
- *                                circle as a ring of vertices in that
- *                                projection, which is the only form a service
- *                                reading an integer radius can take from a
- *                                deployment that stores degrees -- and `geojson`,
- *                                the same circle as a closed GeoJSON polygon.
- *                                `ring: { point, join }` is how the ring is
- *                                spelled, and `points` how many vertices either
- *                                form has.
- *                                `save.body` is a payload template whose strings
- *                                resolve the same way, except that a string
- *                                which is nothing but one placeholder resolves
- *                                to the value rather than to a printing of it --
- *                                which is what lets `"{draw.geojson}"` carry a
- *                                shape and `"{draw.metres}"` carry a number.
- *                                Nothing here knows what the shape means; this
- *                                panel draws a circle and posts numbers.
- *
- *                                `form` is `{ schema, pick, uiSchema, data }`
- *                                -- an RJSF form in the draw row, for the
- *                                fields this panel does not hardcode. `schema`
- *                                is the fields themselves or the path to a
- *                                service that has them, `uiSchema` is the same
- *                                choice for how they are drawn, and `pick`
- *                                names the few of them this row wants, in
- *                                order. Its data
- *                                reaches the save as `{form}`, which `"..."`
- *                                spreads into a body beside the geometry.
- *                                `note` is the one field that was hardcoded and
- *                                stays, for the rows that use it; a row moving
- *                                to `form` should drop it rather than render
- *                                both.
- *
- *                                `select` asks the other question a shape
- *                                answers: which features on screen it covers.
- *                                `true`, or `{ mode, id, join, export }`. The
- *                                count sits beside the radius, the file buttons
- *                                follow it, and the save body gains
- *                                `{draw.selected.*}`. See `useSelection` for
- *                                what that answer is over -- the set the layer
- *                                fetched, which is not the same as the database
- *                                -- and `ConfiguredMap` for how a row spells it.
- *                                A `draw` block carrying `select` and no `save`
- *                                is a screen that draws to look rather than to
- *                                write.
- *
- *                                It is one key rather than a mode because that is
- *                                the honest shape: everything else on this panel
- *                                -- the title, the record, the file buttons, the
- *                                key, the empty state -- is the same either way,
- *                                and only the layer under them differs. The date
- *                                window disappears by itself, because a
- *                                bbox-scoped path names no {from} or {to}.
+ * @param {Object} [subject]    - `{ id, descriptor, match }`: the row's `subject`
+ *                                with the record's own id.
+ * @param {Function} [labelResolver] - Resolves the label codes a descriptor
+ *                                carries. Passed straight to the layer;
+ *                                descriptors are the one part of the
+ *                                configuration this panel never reads.
+ * @param {Object|boolean} [exportable] - The row's `export`.
+ * @param {Array}  [presets]    - `[{ months, label }]`, longest last, labels resolved.
+ * @param {number} [defaultMonths]
+ * @param {Object} [labels]     - The panel's words, resolved. Any key left out
+ *                                falls back to neutral English.
+ * @param {boolean|number|Object} [cluster]
+ * @param {Object} [map]        - Passed to `AtlasMap`, merged over `layerSwitcher: true`.
+ * @param {boolean|string} [legend]
+ * @param {boolean} [notice]
+ * @param {Object} [tokens]     - CSS custom properties for the panel's root.
+ * @param {Object} [choropleth]
+ * @param {Object} [draw]
+ * @param {string} [title]
  */
 
 export const FeaturePanel = ({
