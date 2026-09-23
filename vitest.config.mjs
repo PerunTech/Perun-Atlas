@@ -19,11 +19,22 @@ import path from 'node:path';
  * `.mjs` rather than `.js` because webpack.config.js is CommonJS and this is
  * not. The extension is what lets the two sit in one package without a `type`
  * field that would break whichever of them it was not written for.
+ *
+ * `fsModuleCache` is off, and says so. Vitest suggests turning it on once
+ * transforms pass two seconds of a run, which they do on the shared runner, but
+ * the cache lives under `node_modules/` and the pipeline deletes that before
+ * every install -- so it would be written and thrown away each time. Keeping
+ * it means moving it with `fsModuleCachePath` and persisting that directory
+ * with a GitLab `cache:` entry, for a saving bounded by the transform time: a
+ * couple of seconds, in a job that reinstalls every dependency from scratch.
+ * Setting it at all, to either value, is also what stops Vitest printing the
+ * suggestion on every pipeline.
  */
 export default defineConfig({
   test: {
     include: ['test/**/*.test.js'],
-    environment: 'node'
+    environment: 'node',
+    fsModuleCache: false
   },
   resolve: {
     alias: [
