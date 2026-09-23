@@ -44,7 +44,7 @@ describe('colourBy', () => {
   /**
    * The case a joined row actually arrives in. These services prefix every
    * column with its table, so a joined record is `{ 'AREA_HEALTH.AREA_STATUS':
-   * '2' }` -- one flat key with a dot in it, not two levels. `readPath` tries
+   * '2' }` -- one flat key with a dot in it, not two levels. `data/path` tries
    * the remaining path as a literal own property at each step, which is what
    * makes one configured field name work against both shapes.
    */

@@ -1,20 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { toCSV, toGeoJSON, valueAt } from '../frontend/data/export';
+import { toCSV, toGeoJSON } from '../frontend/data/export';
 
 const point = (properties, coordinates = [33.9, 35.1]) =>
   ({ type: 'Feature', properties, geometry: { type: 'Point', coordinates } });
 const rows = (csv) => csv.split('\r\n');
-
-describe('valueAt', () => {
-  it('walks a dotted path and stops at nothing', () => {
-    expect(valueAt({ a: { b: 'c' } }, 'a.b')).toBe('c');
-    // Whatever stopped it, not a normalised nothing: `null` reached from a
-    // present-but-empty field and `undefined` from an absent one are different
-    // answers, and `cell` writes an empty string for both anyway.
-    expect(valueAt({ a: null }, 'a.b')).toBeNull();
-    expect(valueAt(undefined, 'a')).toBeUndefined();
-  });
-});
 
 describe('toGeoJSON', () => {
   it('writes an empty collection rather than "undefined" when nothing arrived', () => {
@@ -23,6 +12,15 @@ describe('toGeoJSON', () => {
 });
 
 describe('toCSV', () => {
+  // A denormalised reader names a related column `TABLE.COLUMN`, flat. The
+  // column is collected under that name, so the cell has to be read under it
+  // too rather than walked as two levels that are not there.
+  it('fills a column whose name has a dot in it', () => {
+    const csv = toCSV({ features: [point({ 'T.CODE': 'x' })] });
+    expect(rows(csv)[0]).toBe('T.CODE,latitude,longitude');
+    expect(rows(csv)[1].split(',')[0]).toBe('x');
+  });
+
   it('collects columns from every feature, not just the first', () => {
     const csv = toCSV({ features: [point({ A: 1 }), point({ B: 2 })] });
     expect(rows(csv)[0]).toBe('A,B,latitude,longitude');

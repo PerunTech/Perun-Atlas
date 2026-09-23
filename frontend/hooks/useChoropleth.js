@@ -1,5 +1,6 @@
 import { React } from 'perun-core';
-import { fetchRows, valueAt } from '../data';
+import { fetchRows } from '../data';
+import { reader } from '../data/path';
 
 const { useEffect, useMemo, useState } = React
 
@@ -58,13 +59,15 @@ export const useChoropleth = ({ choropleth, bindings, bindingKey }) => {
    * A hover label for a coloured area, built from the field a row names.
    *
    * The layer takes a function because a caller may want anything; a menu row
-   * cannot write one, so it names a field and this is the function. `valueAt`
-   * rather than a property read, so a joined column reads like its own.
+   * cannot write one, so it names a field and this is the function. Read the
+   * way the colouring reads its category, so a field that colours an area can
+   * also name it -- nested or as a flat `TABLE.COLUMN` key alike.
    */
   const tooltip = useMemo(() => {
     const field = choropleth?.tooltip
     if (!field) return undefined
-    return (feature) => valueAt(feature?.properties, field) ?? null
+    const read = reader(field)
+    return (feature) => read(feature?.properties) ?? null
   }, [choropleth])
 
   return { coloured, statusPath, rows, tooltip }

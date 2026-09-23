@@ -1,5 +1,5 @@
 import { axios } from 'perun-core';
-import { bindPath, valueIn } from './geometry';
+import { bindPath, valueAt } from './path';
 
 /**
  * Sending something back.
@@ -153,7 +153,7 @@ export const fillBody = (template, context) => {
   if (typeof template === 'string') {
     const sole = template.match(SOLE_PLACEHOLDER);
     if (sole) {
-      const value = valueIn(sole[1], context);
+      const value = valueAt(context, sole[1]);
       return value === undefined || value === null ? template : value;
     }
     return bindPath(template, context);

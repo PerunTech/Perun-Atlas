@@ -1,5 +1,5 @@
 import { axios } from 'perun-core';
-import { bindPath } from './geometry';
+import { bindPath } from './path';
 
 /**
  * The fields a form is made of, when a row names the service that has them.

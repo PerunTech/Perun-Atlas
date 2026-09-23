@@ -1,9 +1,15 @@
+import { reader } from '../data/path';
+
 /**
  * Colouring features by a categorical attribute.
  *
  * Deliberately categorical rather than a continuous ramp: what these screens
  * colour by is a code list, not a measurement. A sequential scale for numeric
  * attributes is a separate concern and should not be bolted onto this one.
+ *
+ * Every configured name -- the category, and both sides of a join -- is read
+ * through `reader` in `data/path`, so a related field may arrive nested or as a
+ * flat `TABLE.COLUMN` key and the same row describes either.
  */
 
 /**
@@ -12,56 +18,6 @@
  */
 export const DEFAULT_PALETTE = {
   __unknown: '#B8C6CC'
-};
-
-/**
- * One value out of a record, by a path that may or may not be nested.
- *
- * Svarog answers in both shapes and a menu row cannot tell which it will get: a
- * denormalised reader returns a flat key literally called `TABLE.COLUMN`, while
- * a record with its related object attached returns `{ TABLE: { COLUMN } }`. The
- * same configured name describes both, and a row written for one silently joins
- * nothing against the other -- a whole map in the unclassified colour, which
- * reads as a palette mistake rather than a path that missed.
- *
- * So at each step the rest of the path is tried as a literal key before
- * descending. Same tolerance `descriptorOf` and `identityOf` show about casing,
- * for the same reason: the shape belongs to the producer and the caller should
- * not have to know which one it turned out to be.
- *
- * @param {Object} source - The record, or a feature's properties.
- * @param {Array} path    - The configured name, already split on dots.
- */
-const readPath = (source, path) => {
-  let value = source;
-
-  for (let i = 0; i < path.length; i += 1) {
-    if (value === null || value === undefined) return undefined;
-
-    const rest = path.length - i === 1 ? path[i] : path.slice(i).join('.');
-    if (Object.prototype.hasOwnProperty.call(Object(value), rest)) return value[rest];
-
-    value = value[path[i]];
-  }
-
-  return value;
-};
-
-/**
- * A reader for one field, with the path split once.
- *
- * `valueAt` in `data/export` answers a narrower version of the same question and
- * splits the path on every call, which is right where it lives -- a file is
- * written once -- and wrong here. This runs per feature per draw, and a set can
- * be ten thousand of them. Shared between the things in this file that read a
- * configured name, so the hoisting is stated in one place rather than repeated.
- *
- * @param {string} field - Property name, or a path into a joined record.
- * @returns {Function} record -> the value at that path.
- */
-const reader = (field) => {
-  const path = String(field).split('.');
-  return (record) => readPath(record, path);
 };
 
 /**
@@ -165,7 +121,7 @@ export const categoriesDrawn = (features = [], { field, palette = DEFAULT_PALETT
  * @param {Object} collection      - GeoJSON FeatureCollection.
  * @param {Array}  rows            - Status records.
  * @param {Object} keys
- * Both keys are read the way a category is -- see `readPath` -- so a row whose
+ * Both keys are read the way a category is -- see `reader` in `data/path` -- so a row whose
  * key sits under a related object and a row with a flat `TABLE.COLUMN` key join
  * on the same configured name. The two sides of a join arriving in different
  * shapes is the ordinary case here, not the awkward one.

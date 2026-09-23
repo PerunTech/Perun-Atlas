@@ -1,9 +1,11 @@
-export { fetchGeometry, bindPath, descriptorOf, identityOf, matchesIdentity } from './geometry';
+export { fetchGeometry } from './geometry';
+export { descriptorOf, identityOf, matchesIdentity } from './feature';
+export { bindPath, valueAt } from './path';
 export { fetchLayers, firstOf } from './layers';
 export { fetchRows } from './rows';
 export { fetchSchema, fetchUISchema, pickFields, usableUI, withGroups } from './form';
 export { bboxIn, crsFor, latLngOf, pointIn, ringIn, unitsPerMetre } from './project';
 export { identifiersOf, spanTo, withinCircle } from './select';
 export { postTo, fillBody } from './save';
-export { toGeoJSON, toCSV, valueAt } from './export';
+export { toGeoJSON, toCSV } from './export';
 export { SYSTEM_FIELDS } from './system';

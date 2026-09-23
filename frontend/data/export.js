@@ -1,3 +1,4 @@
+import { valueAt } from './path';
 import { SYSTEM_FIELDS } from './system';
 
 /**
@@ -11,10 +12,6 @@ import { SYSTEM_FIELDS } from './system';
  * Pure on purpose: strings in, strings out, no DOM and no engine. `download` in
  * `components/dom.js` is the half that touches the page.
  */
-
-/** A feature property by dotted path, so a joined record's field reads like its own. */
-export const valueAt = (properties, path) =>
-  String(path).split('.').reduce((acc, part) => (acc == null ? acc : acc[part]), properties);
 
 /**
  * The collection, as GeoJSON.

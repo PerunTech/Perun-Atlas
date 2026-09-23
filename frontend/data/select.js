@@ -1,5 +1,5 @@
 import { core } from '../spatial';
-import { bindPath } from './geometry';
+import { bindPath } from './path';
 import { latLngOf } from './project';
 
 const { Map, factory } = core;
