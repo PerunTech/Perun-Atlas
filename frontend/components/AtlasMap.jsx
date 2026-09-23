@@ -126,6 +126,9 @@ export const AtlasMap = ({
   // a line inside the scale bar's own container, and what has to be undone is
   // the listener keeping it current.
   const ratioOffRef = useRef(null);
+  // The same, for the listener that moves the rail's tile ceiling when the
+  // reader picks another basemap.
+  const baseOffRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState(null);
   const [nativeMax, setNativeMax] = useState(null);
@@ -363,7 +366,15 @@ export const AtlasMap = ({
         // tile it got, which reads as missing data rather than as the edge of
         // the data -- so the rail marks it. Null where the provider is not one
         // of the known ones, and then there is nothing honest to draw.
-        setNativeMax(base?.options?.maxNativeZoom ?? null);
+        const readNativeMax = layer => setNativeMax(layer?.options?.maxNativeZoom ?? null);
+        readNativeMax(base);
+
+        // And again whenever the reader picks another basemap, which is the
+        // switcher's `baselayerchange` -- each provider stops at its own depth,
+        // so the mark read off the first one is wrong for any other.
+        const onBaseChange = event => readNativeMax(event.layer);
+        Map.on('baselayerchange', onBaseChange);
+        baseOffRef.current = () => Map.off('baselayerchange', onBaseChange);
 
         // Built here rather than through spatial's app builder, which adds the
         // control and keeps no reference to it. A control is not a layer, so
@@ -436,6 +447,8 @@ export const AtlasMap = ({
       // that outlives this component is a leak by any other name.
       ratioOffRef.current?.();
       ratioOffRef.current = null;
+      baseOffRef.current?.();
+      baseOffRef.current = null;
       clearLayers();
       const element = Map.getContainer();
       if (element && adoptedStyleRef.current) {
