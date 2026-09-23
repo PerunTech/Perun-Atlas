@@ -134,4 +134,97 @@ describe('followClusters', () => {
     expect(raf).not.toHaveBeenCalled();
     expect(many[0].layer.setLatLngs).toHaveBeenLastCalledWith([s.a, s.badge]);
   });
+
+  describe('a move that arrives mid-glide', () => {
+    /** A frame queue the test runs by hand, with cancellation that works. */
+    const clock = () => {
+      const queue = new Map();
+      let next = 0;
+      vi.stubGlobal('requestAnimationFrame', (fn) => { next += 1; queue.set(next, fn); return next; });
+      vi.stubGlobal('cancelAnimationFrame', (id) => { queue.delete(id); });
+      vi.stubGlobal('performance', { now: () => 0 });
+      return {
+        tick: (now) => { const due = [...queue.values()]; queue.clear(); due.forEach((fn) => fn(now)); },
+        pending: () => queue.size
+      };
+    };
+
+    /**
+     * Two lines. The first is collapsed into a badge from the start; the
+     * second's end collapses into another only when `collapseSecond` is called.
+     */
+    const twoLines = (count = 1) => {
+      const a = at(1, 1);
+      const b = at(2, 2);
+      const c = at(3, 3);
+      const d = at(4, 4);
+      const badge = at(9, 9);
+      const otherBadge = at(7, 7);
+      const markerB = marker(b);
+      const markerD = marker(d);
+      let secondCollapsed = false;
+
+      const surface = evented({
+        getVisibleParent: (m) => {
+          if (m === markerB) return marker(badge);
+          if (m === markerD && secondCollapsed) return marker(otherBadge);
+          return m;
+        }
+      });
+      const map = evented();
+      const first = { layer: lineLayer([a, b]), original: [a, b], reverse: false, key: null };
+      const others = Array.from({ length: count }, () =>
+        // Already settled where they were sent, so the first move is the first
+        // line's alone and glides.
+        ({ layer: lineLayer([c, d]), original: [c, d], reverse: false, key: `${placeKey(c)} ${placeKey(d)}` }));
+      const markerAt = Object.assign(Object.create(null), { [placeKey(b)]: markerB, [placeKey(d)]: markerD });
+
+      return {
+        a, badge, otherBadge, map, surface, first, others, markerAt,
+        collapseSecond: () => { secondCollapsed = true; }
+      };
+    };
+
+    it('carries a line still in flight to its badge rather than stranding it', () => {
+      const time = clock();
+      const s = twoLines();
+      followClusters({ map: s.map, surface: s.surface, lines: [s.first, ...s.others], markerAt: s.markerAt, glide: 200 });
+
+      time.tick(100);
+      s.collapseSecond();
+      s.map.fire('moveend');
+      while (time.pending()) time.tick(1000);
+
+      expect(s.first.layer.getLatLngs()).toEqual([s.a, s.badge]);
+      expect(s.others[0].layer.getLatLngs()[1]).toEqual(s.otherBadge);
+    });
+
+    it('goes on from where the line had got to, not from where it started', () => {
+      const time = clock();
+      const s = twoLines();
+      followClusters({ map: s.map, surface: s.surface, lines: [s.first, ...s.others], markerAt: s.markerAt, glide: 200 });
+
+      time.tick(100);
+      const reached = s.first.layer.getLatLngs()[1].lat;
+      s.collapseSecond();
+      s.map.fire('moveend');
+      time.tick(1);
+
+      expect(s.first.layer.getLatLngs()[1].lat).toBeGreaterThanOrEqual(reached);
+    });
+
+    it('lands a line in flight when the next move is placed rather than travelled', () => {
+      const time = clock();
+      const s = twoLines(GLIDE_LIMIT);
+      followClusters({ map: s.map, surface: s.surface, lines: [s.first, ...s.others], markerAt: s.markerAt, glide: 200 });
+
+      time.tick(100);
+      s.collapseSecond();
+      s.map.fire('moveend');
+
+      expect(time.pending()).toBe(0);
+      expect(s.first.layer.getLatLngs()).toEqual([s.a, s.badge]);
+      expect(s.others[0].layer.getLatLngs()[1]).toEqual(s.otherBadge);
+    });
+  });
 });

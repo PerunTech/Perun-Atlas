@@ -76,13 +76,26 @@ export const followClusters = ({ map, surface, lines, markerAt, decoratorOf, gli
 
   let frame = null;
 
+  /**
+   * The moves the glide under way is carrying, until it lands.
+   *
+   * Kept so a glide that has to restart can take them with it. Cancelling the
+   * frame is what a new move has to do -- two glides writing the same layers
+   * would fight -- and on its own it left every line that was mid-flight, and
+   * not part of the new move, stopped where the last frame put it: partway to
+   * a badge, pointing at nothing, until the map next moved.
+   */
+  let flying = [];
+
   const stop = () => {
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
+    flying = [];
   };
 
   const travel = (moves) => {
     stop();
+    flying = moves;
 
     const from = moves.map(({ line }) => line.layer.getLatLngs());
     const began = performance.now();
@@ -100,6 +113,7 @@ export const followClusters = ({ map, surface, lines, markerAt, decoratorOf, gli
         // arithmetic, so a fully zoomed-in map holds the exact coordinates the
         // producer sent.
         frame = null;
+        flying = [];
         moves.forEach((move) => place(move.line, move.next));
       }
     };
@@ -119,10 +133,17 @@ export const followClusters = ({ map, surface, lines, markerAt, decoratorOf, gli
 
     if (!moves.length) return;
 
-    if (!glide || reducedMotion || moves.length > GLIDE_LIMIT) {
-      moves.forEach((move) => place(move.line, move.next));
+    // A line still gliding from the last move keeps its target, unless this
+    // move gave it a new one, and travels on from wherever it has got to.
+    const moving = new Set(moves.map(({ line }) => line));
+    const all = [...flying.filter(({ line }) => !moving.has(line)), ...moves];
+
+    if (!glide || reducedMotion || all.length > GLIDE_LIMIT) {
+      // Placed, so the glide under way must not go on to overwrite them.
+      stop();
+      all.forEach((move) => place(move.line, move.next));
     } else {
-      travel(moves);
+      travel(all);
     }
   };
 
