@@ -9,8 +9,8 @@
  * end at exactly the zooms worth looking at.
  *
  * So the end moves to wherever the cluster is currently drawing it, and moves
- * back as the view opens up. This module is the arithmetic; `FeatureSet` owns
- * the layers and does the applying.
+ * back as the view opens up. This module is the arithmetic; `follow.js` applies
+ * it to the layers `FeatureSet` drew, and animates the move.
  */
 
 /**
@@ -95,3 +95,17 @@ export const between = (from, to, t) => to.map((end, i) => {
     lng: start.lng + (end.lng - start.lng) * t
   };
 });
+
+/**
+ * A path's points, end to end reversed.
+ *
+ * Nested arrays are a line in several parts: each part is reversed and so is
+ * their order, so the whole path still reads from one end through to the other.
+ *
+ * @param {Array} points - A path, or a path in parts.
+ * @returns {Array} A new array; the one passed in is left alone.
+ */
+export const reversed = (points) =>
+  Array.isArray(points?.[0])
+    ? points.map(reversed).reverse()
+    : [...(points ?? [])].reverse();

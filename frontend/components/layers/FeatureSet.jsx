@@ -4,31 +4,13 @@ import { descriptorOf, fetchGeometry } from '../../data';
 import { detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../../appearance';
 import { clusterBadge, clusterSettings } from '../../lib/cluster';
 import { applyStyle, asNode } from '../../lib/dom';
+import { followClusters } from '../../lib/follow';
 import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
-import { between, easeInOut, placeKey, routeEnds } from '../../lib/route';
+import { placeKey, reversed } from '../../lib/route';
 import '../../style/features.css';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
-
-/**
- * A path's points, end to end reversed.
- *
- * Nested arrays are a line in several parts: each part is reversed and so is
- * their order, so the whole path still reads from one end through to the other.
- */
-/**
- * Past this many lines moving at once, they are placed rather than travelled.
- *
- * Redrawing a path and its arrow heads per frame is the cost, and a hundred and
- * fifty lines all sliding at once is not motion a reader can follow anyway.
- */
-const GLIDE_LIMIT = 150;
-
-const reversed = (points) =>
-  Array.isArray(points?.[0])
-    ? points.map(reversed).reverse()
-    : [...(points ?? [])].reverse();
 
 /**
  * A geometry set, fetched once and drawn per descriptor.
@@ -220,20 +202,6 @@ export const FeatureSet = ({
     };
 
     /**
-     * The distinct kinds this draw put on the map.
-     *
-     * Keyed by descriptor and variant case together, since one descriptor with
-     * two cases is two things a reader has to tell apart. Insertion order is the
-     * order the producer sent the features in, which is as much of an order as
-     * there is and is at least stable within a set.
-     *
-     * A null-prototype object rather than a `Map`, because `Map` in this file is
-     * the engine's map singleton destructured from `core` above -- `new Map()`
-     * here builds a Leaflet map, or throws. Null-prototype because the keys are
-     * built from response data and a feature named `constructor` should not
-     * collide with a member of `Object.prototype`.
-     */
-    /**
      * Where each marker is, and where each line thinks its ends are.
      *
      * `lib/route.js` says why the position is the join and what re-aiming an
@@ -254,6 +222,20 @@ export const FeatureSet = ({
     /** Features a menu row says must never be collapsed -- the subject, above all. */
     const isPinned = (feature) => Boolean(pinned?.(feature));
 
+    /**
+     * The distinct kinds this draw put on the map.
+     *
+     * Keyed by descriptor and variant case together, since one descriptor with
+     * two cases is two things a reader has to tell apart. Insertion order is the
+     * order the producer sent the features in, which is as much of an order as
+     * there is and is at least stable within a set.
+     *
+     * A null-prototype object rather than a `Map`, because `Map` in this file is
+     * the engine's map singleton destructured from `core` above -- `new Map()`
+     * here builds a Leaflet map, or throws. Null-prototype because the keys are
+     * built from response data and a feature named `constructor` should not
+     * collide with a member of `Object.prototype`.
+     */
     const drawnKinds = Object.create(null);
 
     const noteKind = (feature) => {
@@ -361,11 +343,6 @@ export const FeatureSet = ({
               if (descriptor.label?.scale) labelledRef.current.push({ layer, descriptor });
             }
 
-            // A descriptor with `details` has somewhere with more room to show
-            // a record, so it gets no bubble -- both would fire on one click,
-            // and the bubble is the one that covers the map. An explicit
-            // `popup` prop still wins: a caller building its own content has
-            // said what it wants.
             /**
              * A line with two ends that can be looked up, kept for re-aiming.
              *
@@ -386,6 +363,11 @@ export const FeatureSet = ({
               }
             }
 
+            // A descriptor with `details` has somewhere with more room to show
+            // a record, so it gets no bubble -- both would fire on one click,
+            // and the bubble is the one that covers the map. An explicit
+            // `popup` prop still wins: a caller building its own content has
+            // said what it wants.
             const content = descriptor.details && !popup ? null : contentFor(feature, descriptor);
             if (content) layer.bindPopup(content, POPUP_OPTIONS);
 
@@ -519,116 +501,20 @@ export const FeatureSet = ({
         /**
          * Lines follow their ends into the badge.
          *
-         * A cluster moves a marker; the line that ends on it does not hear about
-         * it, so it keeps pointing at ground where nothing is drawn. Hiding the
-         * line instead is the obvious fix and the wrong one: the subject of a
-         * movements screen sits among its own partners, so the badge that
-         * swallows a partner usually swallows the subject too, and every line on
-         * the screen would have a collapsed end at exactly the zooms worth
-         * looking at.
-         *
-         * So the end moves to wherever the cluster is currently drawing it.
-         * `getVisibleParent` walks up from a marker until it reaches something
-         * with an icon on screen, which is the badge standing for it -- or the
-         * marker itself, once the view is close enough to draw it. Zoomed right
-         * in, every marker is its own parent and this restores the geometry the
-         * producer sent, exactly.
-         *
-         * Only flat paths. A MultiLineString's nested rings have no single pair
-         * of ends to move, and guessing at one would redraw a shape rather than
-         * re-aim a line.
+         * A cluster moves a marker; the line ending on it does not hear about
+         * it. `followClusters` re-aims each flat line at whatever the cluster is
+         * drawing for its ends, and moves it there -- see `lib/follow.js` and
+         * `lib/route.js` for why the end moves rather than the line hiding.
          */
-        const visibleParentOf = (marker) => surface.getVisibleParent?.(marker);
-
-        /** A line and its decorator, put where the arithmetic says. */
-        const place = (line, points) => {
-          line.layer.setLatLngs(points);
-
-          // The decorator does not read the layer back on its own, and a
-          // reversed one was handed a copy that cannot change at all -- so it
-          // is given the new path rather than asked to redraw.
-          const decorator = decoratorOf.get(line.layer);
-          if (decorator) decorator.setPaths(line.reverse ? reversed(points) : line.layer);
-        };
-
-        /**
-         * The ends travel rather than teleport.
-         *
-         * The cluster slides its markers into the badge over Leaflet's zoom
-         * animation and then fires `animationend`, which is where this starts --
-         * so without a tween the markers glide and the lines snap a beat later,
-         * which reads as two separate things happening rather than one.
-         *
-         * The travel is not decoration: an end that moves tells the reader
-         * *which* badge swallowed it, which is the whole question a collapsed
-         * end raises. A jump leaves them to guess.
-         *
-         * Straight to the answer in three cases. A reader who has asked their
-         * system for less motion gets none. A set past `GLIDE_LIMIT` lines is
-         * both too expensive to redraw per frame and too busy to read as motion
-         * anyway. And a row can turn it off, or set its own duration, with
-         * `cluster: { glide: false }` or `{ glide: 400 }`.
-         */
-        const reducedMotion = typeof window !== 'undefined'
-          && typeof window.matchMedia === 'function'
-          && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-        let frame = null;
-
-        const travel = (moves) => {
-          cancelAnimationFrame(frame);
-
-          const from = moves.map(({ line }) => line.layer.getLatLngs());
-          const began = performance.now();
-
-          const step = (now) => {
-            const t = Math.min(1, (now - began) / settings.glide);
-            const eased = easeInOut(t);
-
-            moves.forEach((move, i) => place(move.line, between(from[i], move.next, eased)));
-
-            if (t < 1) frame = requestAnimationFrame(step);
-            // Land on the target itself rather than on the last frame's
-            // arithmetic, so a fully zoomed-in map holds the exact coordinates
-            // the producer sent.
-            else moves.forEach((move) => place(move.line, move.next));
-          };
-
-          frame = requestAnimationFrame(step);
-        };
-
-        const routeLines = () => {
-          const moves = [];
-
-          routed.forEach((line) => {
-            const change = routeEnds(line, markerAt, visibleParentOf);
-            if (!change) return;
-            line.key = change.key;
-            moves.push({ line, next: change.next });
-          });
-
-          if (!moves.length) return false;
-
-          if (!settings.glide || reducedMotion || moves.length > GLIDE_LIMIT) {
-            moves.forEach((move) => place(move.line, move.next));
-          } else {
-            travel(moves);
-          }
-
-          return true;
-        };
-
         if (clustering && routed.length) {
-          routeLines();
-          // `animationend` is the cluster settling after a zoom; `moveend` covers
-          // a pan, which swaps markers in and out without any animation.
-          surface.on('animationend', routeLines);
-          Map.on('moveend', routeLines);
-          cleanup.push(() => {
-            cancelAnimationFrame(frame);
-            surface.off('animationend', routeLines);
-            Map.off('moveend', routeLines);
-          });
+          cleanup.push(followClusters({
+            map: Map,
+            surface,
+            lines: routed,
+            markerAt,
+            decoratorOf,
+            glide: settings.glide
+          }));
         }
 
         onLegend?.(Object.values(drawnKinds));

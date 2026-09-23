@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, easeInOut, placeKey, routeEnds } from '../frontend/lib/route';
+import { between, easeInOut, placeKey, reversed, routeEnds } from '../frontend/lib/route';
 
 const at = (lat, lng) => ({ lat, lng });
 const marker = (latlng) => ({ getLatLng: () => latlng });
@@ -63,5 +63,22 @@ describe('between', () => {
 
   it('takes the destination when a line gained an end mid-flight', () => {
     expect(between([], [at(3, 4)], 0.5)).toEqual([at(3, 4)]);
+  });
+});
+
+describe('reversed', () => {
+  it('turns a flat path end to end and leaves the one it was given alone', () => {
+    const path = [at(1, 1), at(2, 2), at(3, 3)];
+    expect(reversed(path)).toEqual([at(3, 3), at(2, 2), at(1, 1)]);
+    expect(path[0]).toEqual(at(1, 1));
+  });
+
+  it('reverses a path in parts as one path, parts and all', () => {
+    expect(reversed([[at(1, 1), at(2, 2)], [at(3, 3), at(4, 4)]]))
+      .toEqual([[at(4, 4), at(3, 3)], [at(2, 2), at(1, 1)]]);
+  });
+
+  it('answers nothing with an empty path', () => {
+    expect(reversed(undefined)).toEqual([]);
   });
 });
