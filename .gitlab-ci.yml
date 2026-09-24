@@ -54,7 +54,7 @@ after_script:
       # names and service paths all belong to the caller and arrive as props or
       # configuration. The pattern is deliberately upper-case and word-bounded so
       # that ordinary prose -- "the property holding the category" -- is fine.
-      domain=$(grep -rnE '\b(ANIMAL|ANIMALS|HOLDING|HOLDINGS|MOVEMENT|MOVEMENTS|EAR_TAG|EARTAG|PIC|AREA_HEALTH|SVAROG_SDI_UNITS|QUARANTINE)\b' --include='*.js' --include='*.jsx' --include='*.css' frontend/ || true)
+      domain=$(grep -rnE '\b(ANIMAL|ANIMALS|HOLDING|HOLDINGS|MOVEMENT|MOVEMENTS|EAR_TAG|EARTAG|PIC|AREA_HEALTH|AREA_STATUS|SVAROG_SDI_UNITS|QUARANTINE)\b' --include='*.js' --include='*.jsx' --include='*.css' frontend/ || true)
       endpoints=$(grep -rniE 'WsAims|/SDI/' --include='*.js' --include='*.jsx' --include='*.css' frontend/ || true)
       if [ -n "$domain$endpoints" ]; then
         echo "A caller's domain has leaked into the shared layer:"
