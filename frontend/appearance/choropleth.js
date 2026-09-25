@@ -1,4 +1,5 @@
 import { reader } from '../data/path';
+import { FALLBACK_KEY } from './legend';
 
 /**
  * Colouring features by a categorical attribute.
@@ -110,6 +111,29 @@ export const categoriesDrawn = (features = [], { field, palette = DEFAULT_PALETT
   });
 
   return { values, usedFallback };
+};
+
+/**
+ * Which band of the key a feature is drawn in, by that band's key.
+ *
+ * The keys are `legendFromPalette`'s, so the row a reader switches off and the
+ * areas that go with it are found the same way. A mapped value is its own band.
+ * Anything else -- absent, or a value the palette does not know -- is filled
+ * with the fallback colour, so it belongs to the fallback row. The same
+ * `isMapped` as the fill, for the reason given there.
+ *
+ * @param {Object} options - `field` and `palette`, as `colourBy` was given them.
+ * @returns {Function} A feature -> its band's key.
+ */
+export const bandOf = ({ field, palette = DEFAULT_PALETTE } = {}) => {
+  const readField = reader(field);
+
+  return (feature) => {
+    const value = readField(feature?.properties);
+    return value !== undefined && value !== null && isMapped(palette, value)
+      ? String(value)
+      : FALLBACK_KEY;
+  };
 };
 
 /**

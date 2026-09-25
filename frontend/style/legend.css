@@ -113,6 +113,119 @@
   overflow-wrap: anywhere;
 }
 
+/*
+ * A row as a switch for what it stands for.
+ *
+ * Laid out exactly as a plain row, so a key that filters and one that does not
+ * look the same until someone switches a row off. Every property that matters
+ * is said here rather than inherited, because a deployment's bare `button`
+ * rules reach into this package and win whatever a class does not claim.
+ * `frontend/style/README.md` has the case that taught us.
+ */
+.atlas-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.atlas-legend__item:hover .atlas-legend__label {
+  text-decoration: underline;
+}
+
+.atlas-legend__item:focus-visible {
+  outline: 2px solid #3399ff;
+  outline-offset: 1px;
+}
+
+/*
+ * Switched off: still in the key, so the way back is where the reader left it,
+ * and plainly not on the map.
+ *
+ * The swatch keeps its colour, faded, because the colour is how the reader
+ * finds the row again. The fade is a `filter` rather than `opacity` because a
+ * point's swatch carries its marker's own CSS inline, and an inline `opacity`
+ * in a menu row would win over any class here.
+ */
+.atlas-legend__item[aria-pressed='false'] .atlas-legend__swatch,
+.atlas-legend__item[aria-pressed='false'] .atlas-legend__point {
+  filter: opacity(0.3);
+}
+
+.atlas-legend__item[aria-pressed='false'] .atlas-legend__label {
+  color: #6c757d;
+  text-decoration: line-through;
+}
+
+/* Every row back on, offered only while one is off. */
+.atlas-legend__reset {
+  display: block;
+  margin: 0 8px 6px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: normal;
+  text-transform: none;
+  color: #6c757d;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.atlas-legend__reset:hover {
+  color: #212529;
+}
+
+.atlas-legend__reset:focus-visible {
+  outline: 2px solid #3399ff;
+  outline-offset: 1px;
+}
+
+/*
+ * The key moved to the bottom right, which a row may ask for.
+ *
+ * spatial's `navigation.css` makes every button in that corner absolute,
+ * padded, bordered and round -- `.control-bottomright button:not(.disabled)`,
+ * written for its own navigation buttons. Each of the key's buttons gets its
+ * own box back here, one class more specific than that rule and only in its
+ * four properties.
+ */
+.control-bottomright .atlas-legend .atlas-legend__toggle {
+  position: static;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 0;
+}
+
+.control-bottomright .atlas-legend .atlas-legend__item {
+  position: static;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+}
+
+.control-bottomright .atlas-legend .atlas-legend__reset {
+  position: static;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+
 /* On a narrow map, room to be read matters more than the corner it sits in. */
 @media (max-width: 30rem) {
   .atlas-legend {

@@ -2,15 +2,21 @@ import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { descriptorOf, fetchGeometry } from '../../data';
 import { detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../../appearance';
+import { drawnAs } from '../../appearance/legend';
 import { clusterBadge, clusterSettings } from '../../lib/cluster';
 import { applyStyle, asNode } from '../../lib/dom';
+import { changesFor, restack, shownOf } from '../../lib/filter';
 import { followClusters } from '../../lib/follow';
 import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
 import { placeKey, reversed } from '../../lib/route';
+import { FIT_PADDING } from '../../lib/zoom';
 import '../../style/features.css';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
+
+/** Nothing switched off, as one array rather than a new one per render. */
+const NONE = [];
 
 /**
  * A geometry set, fetched once and drawn per descriptor.
@@ -65,6 +71,20 @@ const { useEffect, useRef } = React;
  *        descriptor -- the one piece of its configuration a panel is not
  *        supposed to know the shape of.
  *
+ * @param {Array} [hidden] - Legend keys switched off: the `key` of each entry
+ *        `legendFrom` built out of `onLegend`'s report. Their features are taken
+ *        off the map without a fetch, and put back the same way. Kept across
+ *        draws, so a kind switched off stays off when the set is fetched again.
+ * @param {Function} [onShown] - Called with the set as the reader now sees it,
+ *        after every draw and every change to `hidden`. The fetched collection
+ *        itself while nothing is hidden; a copy without the hidden features
+ *        otherwise. For whatever reads the set after it is drawn -- a file, a
+ *        circle's count -- so that it reads what is on the screen.
+ * @param {Function} [onExtent] - Called alongside `onShown` with where the shown
+ *        features are, as `[[south, west], [north, east]]` -- plain numbers, so a
+ *        caller holding no engine can keep it and hand it to `AtlasMap` -- or
+ *        null for a set with nothing to frame.
+ *
  * `reload` is a number a caller changes when it knows the service would answer
  * differently now -- after a write, most of all. It reaches no URL and means
  * nothing to this layer beyond "ask again": a set is fetched by path and
@@ -82,8 +102,11 @@ export const FeatureSet = ({
   popup,
   labelResolver,
   pinned,
+  hidden = NONE,
   onFeatureClick,
   onLegend,
+  onShown,
+  onExtent,
   onLoadStart,
   onLoad,
   onError
@@ -94,9 +117,24 @@ export const FeatureSet = ({
   const layersRef = useRef([]);
   const labelledRef = useRef([]);
 
+  /*
+   * What the legend has switched off, as of this render.
+   *
+   * A ref as well as the prop because a draw is asynchronous. The keys it has
+   * to apply are the ones current when the response lands, which may be a
+   * click later than when the request went out.
+   */
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
+
+  // How the draw now on the map applies a new set of keys, or null between
+  // draws. Set by the draw, because only the draw knows where its layers live.
+  const filterRef = useRef(null);
+
   // Contexts are small flat objects rebuilt on every render, so compare by value
   // rather than by identity or the effect would refetch on each keystroke.
   const contextKey = JSON.stringify(context ?? {});
+  const hiddenKey = JSON.stringify(hidden);
 
   useEffect(() => {
     let cancelled = false;
@@ -155,6 +193,12 @@ export const FeatureSet = ({
     const syncLabels = () => {
       const zoom = Map.getZoom();
       labelledRef.current.forEach(({ layer, descriptor }) => {
+        // Not on the map, so not ours to open. Leaflet places a label by
+        // asking the layer where its middle is, and a line or an area answers
+        // that by throwing when it is off the map. Putting it back reopens the
+        // label, and the call after `filter` below corrects it for the band.
+        if (layer._atlasHidden) return;
+
         const wanted = labelVisible(descriptor, zoom);
 
         /**
@@ -222,27 +266,32 @@ export const FeatureSet = ({
      */
     const drawnKinds = Object.create(null);
 
-    const noteKind = (feature) => {
+    /** The legend row a feature is drawn under. See `drawnAs`. */
+    const kindOf = (feature) => {
       const name = nameOf(feature);
-      const configured = descriptors[name];
-      const by = configured?.variants?.by;
-      const raw = by ? feature?.properties?.[by] : undefined;
-
-      // Only a value with a case behind it distinguishes anything: a column
-      // carrying forty values and two cases splits the descriptor in two, not
-      // in forty.
-      const value = raw !== undefined && configured?.variants?.cases?.[raw] ? raw : undefined;
-
-      const key = `${name ?? ''}::${value ?? ''}`;
-      if (key in drawnKinds) return;
-
-      drawnKinds[key] = {
-        name,
-        value,
-        descriptor: entryFor(feature),
-        geometry: feature?.geometry?.type
-      };
+      return drawnAs(name, descriptors[name], feature);
     };
+
+    /** Records the feature's kind for the key, and says which one it was. */
+    const noteKind = (feature) => {
+      const { name, value, key } = kindOf(feature);
+      if (!(key in drawnKinds)) {
+        drawnKinds[key] = {
+          name,
+          value,
+          descriptor: entryFor(feature),
+          geometry: feature?.geometry?.type
+        };
+      }
+      return key;
+    };
+
+    /**
+     * One entry per feature layer, in the order the producer sent them, with
+     * the legend row it belongs to. What the legend's filter works through --
+     * see `lib/filter.js`.
+     */
+    const members = [];
 
     const draw = async () => {
       try {
@@ -289,7 +338,7 @@ export const FeatureSet = ({
           onEachFeature: (feature, layer) => {
             const descriptor = entryFor(feature) ?? {};
 
-            noteKind(feature);
+            members.push({ layer, feature, key: noteKind(feature), hidden: false });
 
             const text = tooltip ? tooltip(feature) : labelFor(descriptor, feature);
             if (text) {
@@ -483,6 +532,104 @@ export const FeatureSet = ({
         });
 
         /**
+         * Where a feature layer lives while it is shown.
+         *
+         * The set itself when nothing clusters. Clustered, the cluster -- or
+         * the pinned group beside it, for the layers a row said must never be
+         * collapsed -- exactly as the layers were shared out above.
+         */
+        const holderOf = (layer) => (clustering && layer._atlasPinned ? pinnedGroup : surface);
+
+        /**
+         * Take the switched-off kinds off the map and put the rest back.
+         *
+         * Off the map rather than faded, so a hidden feature takes no click,
+         * counts in no badge and opens no popup. Its arrow heads go with it,
+         * and so does its label, which Leaflet closes with the layer.
+         *
+         * The cluster is handed its layers in one call each way. Given them one
+         * at a time it re-counts every badge after each, which on the sets it
+         * exists for is the difference between a click and a stall. The plugin
+         * chunks a very large `addLayers` over several frames; the lines are
+         * re-aimed as soon as this returns, so on such a set they catch up with
+         * the last chunk on the next pan.
+         *
+         * @returns {boolean} Whether anything moved.
+         */
+        const filter = (keys) => {
+          const { leaving, returning } = changesFor(members, keys);
+
+          const move = (list, on) => {
+            const clustered = [];
+
+            list.forEach(({ layer }) => {
+              layer._atlasHidden = !on;
+
+              const holder = holderOf(layer);
+              if (clustering && holder === surface) clustered.push(layer);
+              else if (on) holder.addLayer(layer);
+              else holder.removeLayer(layer);
+
+              const decorator = decoratorOf.get(layer);
+              if (decorator && on) arrows.addLayer(decorator);
+              else if (decorator) arrows.removeLayer(decorator);
+            });
+
+            if (!clustered.length) return;
+            if (on) surface.addLayers(clustered);
+            else surface.removeLayers(clustered);
+          };
+
+          move(leaving, false);
+          move(returning, true);
+
+          // Something put back came back on top of everything drawn after it.
+          if (returning.length) restack(members, decoratorOf);
+
+          return leaving.length > 0 || returning.length > 0;
+        };
+
+        /**
+         * Where the shown features are, as plain corners, or null.
+         *
+         * The shown ones, so the frame is around what the reader chose to look
+         * at. Everything, when they have switched all of it off: a frame
+         * around nothing is not a frame, and the data is still there.
+         *
+         * Read off the layers rather than the response, because the layers are
+         * in the map's coordinates and the response is in whatever the
+         * deployment stores. A clustered line's ends may be sitting on a badge
+         * rather than a marker, but a badge stands inside the markers it
+         * counts, and those are in the frame too.
+         */
+        const extentOf = () => {
+          const shown = members.filter((member) => !member.hidden);
+          const bounds = factory.latLngBounds([]);
+
+          (shown.length ? shown : members).forEach(({ layer }) => {
+            if (typeof layer.getBounds === 'function') bounds.extend(layer.getBounds());
+            else if (typeof layer.getLatLng === 'function') bounds.extend(layer.getLatLng());
+          });
+
+          if (!bounds.isValid()) return null;
+
+          const south = bounds.getSouthWest();
+          const north = bounds.getNorthEast();
+          return [[south.lat, south.lng], [north.lat, north.lng]];
+        };
+
+        /** What the panel reads after a draw or a filter: the set as shown, and its frame. */
+        const report = (keys) => {
+          onShown?.(shownOf(collection, keys, (feature) => kindOf(feature).key));
+          onExtent?.(extentOf());
+        };
+
+        // Before the lines are routed and before the frame is taken, so both
+        // see the set the reader asked for. The layers went on the map a few
+        // lines up, in this same task, so nothing hidden is ever painted.
+        filter(hiddenRef.current);
+
+        /**
          * Lines follow their ends into the badge.
          *
          * A cluster moves a marker; the line ending on it does not hear about
@@ -490,15 +637,17 @@ export const FeatureSet = ({
          * drawing for its ends, and moves it there -- see `lib/follow.js` and
          * `lib/route.js` for why the end moves rather than the line hiding.
          */
+        let following = null;
         if (clustering && routed.length) {
-          cleanup.push(followClusters({
+          following = followClusters({
             map: Map,
             surface,
             lines: routed,
             markerAt,
             decoratorOf,
             glide: settings.glide
-          }));
+          });
+          cleanup.push(following);
         }
 
         onLegend?.(Object.values(drawnKinds));
@@ -524,9 +673,25 @@ export const FeatureSet = ({
          */
         if (clustering) Map.on('moveend', syncLabels);
 
-        const bounds = group.getBounds();
-        if (fit && bounds.isValid()) Map.fitBounds(bounds, { padding: [24, 24] });
+        const extent = extentOf();
+        if (fit && extent) Map.fitBounds(extent, { padding: FIT_PADDING });
 
+        /**
+         * A later change to what is switched off, applied to this draw.
+         *
+         * The map does not move. Switching a kind off is a question about what
+         * to look at, not where, and a view that jumped on every click in the
+         * key would lose the place the reader was reading. The frame is
+         * reported instead, for the button that asks for it.
+         */
+        filterRef.current = (keys) => {
+          if (!filter(keys)) return;
+          following?.reroute();
+          syncLabels();
+          report(keys);
+        };
+
+        report(hiddenRef.current);
         onLoad?.(collection);
       } catch (err) {
         if (cancelled) return;
@@ -539,6 +704,7 @@ export const FeatureSet = ({
 
     return () => {
       cancelled = true;
+      filterRef.current = null;
       cleanup.forEach((off) => off());
       Map.off('zoomend', syncLabels);
       // Unconditionally: a draw that never clustered never registered this, and
@@ -548,6 +714,13 @@ export const FeatureSet = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicePath, contextKey, reload]);
+
+  // A click in the key, applied to the set already drawn. Compared by value,
+  // like the context: a caller may build the array afresh on every render.
+  useEffect(() => {
+    filterRef.current?.(hidden);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenKey]);
 
   return null;
 };

@@ -68,6 +68,24 @@
   cursor: pointer;
 }
 
+/*
+ * The same box again, where spatial's `navigation.css` would take it away.
+ *
+ * `.control-bottomright button:not(.disabled)` makes every button in that
+ * corner absolute, padded, bordered and round -- written for spatial's own
+ * navigation buttons, and it reaches every button anyone else puts there. The
+ * bottom right is where the rail sits by default, so without this the `+`, the
+ * `-` and the fit button all pile up at the top of the rail, under the slider,
+ * which then takes their clicks. One class more specific than that rule, and
+ * only its four properties, so everything else stays with the rule above.
+ */
+.control-bottomright .atlas-zoom .atlas-zoom__step {
+  position: static;
+  padding: 0;
+  border: none;
+  border-radius: var(--ap-radius, 3px);
+}
+
 .atlas-zoom__step:hover:not(:disabled) {
   background: var(--ap-rule, rgba(0, 0, 0, 0.08));
 }
@@ -76,6 +94,18 @@
   color: var(--ap-muted, #6c757d);
   opacity: 0.45;
   cursor: default;
+}
+
+/*
+ * The button that frames the data, set a little apart from the `+` under it.
+ * It moves the view to the set rather than one level in, and a reader skimming
+ * the rail should not take it for a third step. A shadow rather than a border,
+ * so the rule costs no height and the button stays the 26 pixels its
+ * neighbours are.
+ */
+.atlas-zoom__fit {
+  margin-bottom: 3px;
+  box-shadow: 0 1px 0 var(--ap-rule, rgba(0, 0, 0, 0.12));
 }
 
 .atlas-zoom__step:focus-visible {

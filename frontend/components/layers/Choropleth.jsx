@@ -2,11 +2,16 @@ import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { bboxIn, fetchGeometry } from '../../data';
 import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions, popupFor } from '../../appearance';
+import { bandOf } from '../../appearance/choropleth';
 import { asNode } from '../../lib/dom';
+import { changesFor, restack, shownOf } from '../../lib/filter';
 import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
+
+/** Nothing switched off, as one array rather than a new one per render. */
+const NONE = [];
 
 /**
  * Polygons fetched by bounding box, filled by a categorical attribute.
@@ -63,6 +68,13 @@ const { useEffect, useRef } = React;
  * `details` resolved from this layer's own descriptor, so a caller can show a
  * record beside the map without reading a descriptor itself.
  *
+ * `hidden` and `onShown` are `FeatureSet`'s, and mean the same here: the key's
+ * rows the reader switched off, by the keys `legendFromPalette` gave them, and
+ * the set as it now reads with those areas taken out. The keys hold across
+ * draws, which on this layer is every pan: a band switched off stays off when
+ * the reader moves on and the bands in view change under it. There is no
+ * `onExtent`. The set is whatever is in view, so there is nothing to go back to.
+ *
  * `reload` is a number a caller changes when it knows the service would answer
  * differently now -- after a write, most of all. It reaches no URL and means
  * nothing to this layer beyond "ask again": a set is fetched by path and
@@ -79,8 +91,10 @@ export const Choropleth = ({
   palette,
   fallback,
   descriptor,
+  hidden = NONE,
   onFeatureClick,
   onLegend,
+  onShown,
   onLoadStart,
   onLoad,
   onError,
@@ -91,11 +105,19 @@ export const Choropleth = ({
   const layerRef = useRef(null);
   const requestRef = useRef(0);
 
+  // As in `FeatureSet`: the keys a draw applies are the ones current when its
+  // response lands, and the draw leaves behind how to apply the next ones.
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
+  const filterRef = useRef(null);
+  const hiddenKey = JSON.stringify(hidden);
+
   useEffect(() => {
     let cancelled = false;
     // `fallback` reaches the key as well as the fill, so a deployment that
     // chose its own unclassified colour sees that colour in both places.
     const fill = colourBy({ field, palette, fallback });
+    const band = bandOf({ field, palette });
 
     const draw = async () => {
       /**
@@ -130,9 +152,15 @@ export const Choropleth = ({
 
         if (layerRef.current) Map.removeLayer(layerRef.current);
 
-        layerRef.current = factory.geoJSON(joined, {
+        // One per area, in draw order, with the band it is filled from. See
+        // `lib/filter.js`.
+        const members = [];
+
+        const group = factory.geoJSON(joined, {
           style: (feature) => pathOptions(descriptor, { fillColor: fill(feature) }),
           onEachFeature: (feature, layer) => {
+            members.push({ layer, feature, key: band(feature), hidden: false });
+
             const text = tooltip?.(feature);
             // A text node, not the string: Leaflet applies string content
             // with innerHTML, and this one comes from a record's field.
@@ -149,13 +177,43 @@ export const Choropleth = ({
               layer.on('click', () => onFeatureClick(feature, detailsFor(descriptor, feature, labelResolver)));
             }
           }
-        }).addTo(Map);
+        });
+
+        /**
+         * Take the switched-off bands out of the set, and put the rest back.
+         *
+         * Out of the group rather than faded, for `FeatureSet`'s reasons: a
+         * hidden area takes no click and no hover. An area put back comes back
+         * on top of its neighbours, so the shown ones are restacked into the
+         * order they were drawn in.
+         */
+        const filter = (keys) => {
+          const { leaving, returning } = changesFor(members, keys);
+          leaving.forEach(({ layer }) => group.removeLayer(layer));
+          returning.forEach(({ layer }) => group.addLayer(layer));
+          if (returning.length) restack(members);
+          return leaving.length > 0 || returning.length > 0;
+        };
+
+        // Before the group goes on the map, so a hidden band is never painted.
+        filter(hiddenRef.current);
+        layerRef.current = group.addTo(Map);
+
+        const report = (keys) => onShown?.(shownOf(joined, keys, band));
+
+        filterRef.current = (keys) => {
+          if (filter(keys)) report(keys);
+        };
 
         // After the draw, and from what was drawn: the join runs first, so a
         // category living on a joined record is there to be read by now. The
         // joined collection goes out too, since it is what is on the screen --
         // a caller offering the set as a file should offer that one.
+        //
+        // The key is built from every area drawn, hidden or not, so a band the
+        // reader switched off stays in it to be switched back on.
         onLegend?.(categoriesDrawn(joined?.features, { field, palette }));
+        report(hiddenRef.current);
         onLoad?.(joined);
       } catch (err) {
         console.error('perun-atlas: choropleth failed to render', err);
@@ -217,6 +275,7 @@ export const Choropleth = ({
 
     return () => {
       cancelled = true;
+      filterRef.current = null;
       clearTimeout(pending);
       Map.off('moveend', later);
       if (layerRef.current) {
@@ -228,6 +287,12 @@ export const Choropleth = ({
     // render, so by identity this would refetch on each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicePath, field, srid, reload, statusRows, JSON.stringify(context ?? {})]);
+
+  // A click in the key, applied to the areas already drawn -- not a fetch.
+  useEffect(() => {
+    filterRef.current?.(hidden);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiddenKey]);
 
   return null;
 };

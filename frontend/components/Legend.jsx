@@ -1,15 +1,9 @@
 import { React, PropTypes } from 'perun-core';
+import { legendShown } from '../appearance/legend';
 import { applyStyle } from '../lib/dom';
 import '../style/legend.css';
 
 const { useEffect, useRef, useState } = React;
-
-/**
- * Below this many rows there is nothing to tell apart, so there is no legend.
- * Shared with `LegendControl`, which uses it to decide whether to put a control
- * on the map at all rather than add an empty one.
- */
-export const MINIMUM_ENTRIES = 2;
 
 /**
  * A point's swatch, drawn the way the marker is.
@@ -106,18 +100,40 @@ Swatch.propTypes = { entry: PropTypes.object.isRequired };
  * This renders them and knows nothing about descriptors, palettes or geometry.
  *
  * Hidden below two entries, deliberately. One kind of thing on a map needs no
- * key, and a box saying so is a box over the map for no reason.
+ * key, and a box saying so is a box over the map for no reason. The exception
+ * is a row that is switched off; see `legendShown`.
+ *
+ * Given `onToggle`, each row is also a switch for what it stands for: pressed
+ * while that kind is on the map, released while it is not. The legend only says
+ * which rows are off and reports clicks. Taking features off the map is the
+ * layer's job, and the keys it goes by are the entries' own. Without `onToggle`
+ * the rows are plain text, as they always were.
  *
  * @param {Array} entries - [{ key, label, kind, path, marker, arrow }].
  * @param {string} [title] - Heading, already resolved. Falls back to neutral English.
  * @param {boolean} [open] - Whether it starts expanded.
+ * @param {Array} [hidden] - Keys of the entries switched off.
+ * @param {Function} [onToggle] - Called with an entry's key when its row is pressed.
+ * @param {Function} [onShowAll] - Called by the button that switches every row
+ *        back on. The button is offered only while some row here is off.
+ * @param {string} [showAllLabel] - That button's word, already resolved.
  */
-export const Legend = ({ entries = [], title, open = true, className = '' }) => {
+export const Legend = ({
+  entries = [],
+  title,
+  open = true,
+  hidden = [],
+  onToggle,
+  onShowAll,
+  showAllLabel,
+  className = ''
+}) => {
   const [expanded, setExpanded] = useState(open);
 
-  if (entries.length < MINIMUM_ENTRIES) return null;
+  if (!legendShown(entries, hidden)) return null;
 
   const heading = title ?? 'Legend';
+  const anyOff = entries.some(entry => hidden.includes(entry.key));
 
   return (
     <div className={`atlas-legend ${className}`.trim()}>
@@ -133,13 +149,38 @@ export const Legend = ({ entries = [], title, open = true, className = '' }) => 
 
       {expanded && (
         <ul className='atlas-legend__list'>
-          {entries.map(entry => (
-            <li className='atlas-legend__row' key={entry.key}>
-              <Swatch entry={entry} />
-              <span className='atlas-legend__label'>{entry.label}</span>
-            </li>
-          ))}
+          {entries.map(entry => {
+            const content = (
+              <>
+                <Swatch entry={entry} />
+                <span className='atlas-legend__label'>{entry.label}</span>
+              </>
+            );
+
+            return (
+              <li className='atlas-legend__row' key={entry.key}>
+                {onToggle
+                  ? (
+                    <button
+                      type='button'
+                      className='atlas-legend__item'
+                      aria-pressed={!hidden.includes(entry.key)}
+                      onClick={() => onToggle(entry.key)}
+                    >
+                      {content}
+                    </button>
+                  )
+                  : content}
+              </li>
+            );
+          })}
         </ul>
+      )}
+
+      {expanded && onShowAll && anyOff && (
+        <button type='button' className='atlas-legend__reset' onClick={onShowAll}>
+          {showAllLabel ?? 'Show all'}
+        </button>
       )}
     </div>
   );
@@ -149,5 +190,9 @@ Legend.propTypes = {
   entries: PropTypes.array,
   title: PropTypes.string,
   open: PropTypes.bool,
+  hidden: PropTypes.array,
+  onToggle: PropTypes.func,
+  onShowAll: PropTypes.func,
+  showAllLabel: PropTypes.string,
   className: PropTypes.string
 };

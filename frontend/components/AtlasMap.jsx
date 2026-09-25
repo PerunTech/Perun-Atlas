@@ -3,7 +3,7 @@ import { core, data, ui } from '../spatial';
 import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
 import { svgMarkup } from '../lib/icons';
-import { formatRatio, ratioFor } from '../lib/zoom';
+import { FIT_PADDING, formatRatio, ratioFor } from '../lib/zoom';
 import { ZoomRail, ZOOM_LABELS } from './ZoomRail';
 import '../style/controls.css';
 
@@ -51,6 +51,15 @@ const SCALE_WIDTH = 140;
  * top left, where it had been the first of four, to the bottom right above the
  * credit, and why the rail carries its level with it.
  *
+ * The zoom control also carries a button that frames the data again, once a
+ * layer has said where the data is: `extent`, as `[[south, west], [north,
+ * east]]`, which `FeatureSet` reports and `FeaturePanel` passes on. It lives in
+ * the zoom control rather than in a corner of its own because it is a zoom --
+ * to a place rather than by a step -- and because a button of its own would
+ * have to line up with a bar it knows nothing about. The plain bar gets it on
+ * top of the `+`; the rail gets it in the same place. `fit: false` turns it off,
+ * and a map with no zoom control has none, since it has nowhere to sit.
+ *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
  * hands it back on unmount. That is the constraint spatial 2.0 lifts — once
@@ -94,6 +103,8 @@ export const AtlasMap = ({
   zoomPosition = 'bottomright',
   zoomMarks,
   zoomLabels,
+  fit = true,
+  extent = null,
   coordinates = true,
   coordinatesPosition = 'bottomcenter',
   measure = true,
@@ -129,6 +140,13 @@ export const AtlasMap = ({
   // The same, for the listener that moves the rail's tile ceiling when the
   // reader picks another basemap.
   const baseOffRef = useRef(null);
+  // The fit button in the plain zoom bar. Not a control either: it sits inside
+  // the zoom control's container and goes when that does.
+  const fitButtonRef = useRef(null);
+  // The frame as of this render, for a button that was built once, in an
+  // effect, and is clicked long after.
+  const extentRef = useRef(extent);
+  extentRef.current = extent;
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState(null);
   const [nativeMax, setNativeMax] = useState(null);
@@ -248,6 +266,45 @@ export const AtlasMap = ({
             zoomInText: svgMarkup('plus'),
             zoomOutText: svgMarkup('minus')
           }).addTo(Map);
+
+          // A third button in the same bar, above the `+`. Put into the zoom
+          // control's own container, like the ratio line below goes into the
+          // scale's: it then shares the bar's column, its look and its
+          // lifetime, and there is nothing to keep aligned by hand.
+          //
+          // Built the way Leaflet builds the two beside it -- an anchor with a
+          // `#` href and the role of a button -- rather than as a `button`. That
+          // is not a taste. spatial's `navigation.css` makes every `button` in
+          // the bottom-right corner absolute, padded and round, for navigation
+          // buttons of its own; an anchor is what that rule leaves alone, and
+          // what `.leaflet-bar a` already draws exactly like the `+` and `-`,
+          // hover and touch sizes included, on every engine this has run on.
+          //
+          // The glyph goes in as markup for the reason `lib/icons.js` gives,
+          // and the words as attributes, never as markup. Hidden, not absent,
+          // while there is no frame to go back to; see the effect that follows
+          // the extent.
+          if (fit) {
+            const words = zoomLabels?.fit ?? ZOOM_LABELS.fit;
+            const bar = zoomRef.current.getContainer();
+            const link = factory.DomUtil.create('a', 'atlas-fit');
+
+            link.href = '#';
+            link.title = words;
+            link.setAttribute('role', 'button');
+            link.setAttribute('aria-label', words);
+            link.innerHTML = svgMarkup('zoom-scan');
+            link.style.display = extentRef.current ? '' : 'none';
+
+            factory.DomEvent.disableClickPropagation(link);
+            factory.DomEvent.on(link, 'click', factory.DomEvent.stop);
+            factory.DomEvent.on(link, 'click', () => {
+              if (extentRef.current) Map.fitBounds(extentRef.current, { padding: FIT_PADDING });
+            });
+
+            bar.insertBefore(link, bar.firstChild);
+            fitButtonRef.current = link;
+          }
         }
 
         // Leaflet's own distance bar rather than spatial's `ScaleControl`, which
@@ -449,6 +506,8 @@ export const AtlasMap = ({
       ratioOffRef.current = null;
       baseOffRef.current?.();
       baseOffRef.current = null;
+      // Gone with the zoom control that held it; only the handle is left.
+      fitButtonRef.current = null;
       clearLayers();
       const element = Map.getContainer();
       if (element && adoptedStyleRef.current) {
@@ -460,6 +519,13 @@ export const AtlasMap = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The plain bar's fit button, shown while there is somewhere to go back to.
+  // Inline, because `.leaflet-bar a` and this package's own centring rule both
+  // set `display`, and either would otherwise keep a dead button on screen.
+  useEffect(() => {
+    if (fitButtonRef.current) fitButtonRef.current.style.display = extent ? '' : 'none';
+  }, [extent]);
 
   /**
    * Leaflet measures its container once and caches the result, so a map that
@@ -544,7 +610,12 @@ export const AtlasMap = ({
           values it was built with. It mounts itself into the map's corner from
           here; see ZoomRail. */}
       {ready && zoomControl === 'rail' && (
-        <ZoomRail position={zoomPosition} marks={marks} labels={zoomLabels} />
+        <ZoomRail
+          position={zoomPosition}
+          marks={marks}
+          labels={zoomLabels}
+          onFit={fit && extent ? () => Map.fitBounds(extent, { padding: FIT_PADDING }) : undefined}
+        />
       )}
       {ready && children}
     </>

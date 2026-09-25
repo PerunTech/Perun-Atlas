@@ -178,10 +178,45 @@ export const FeaturePanel = ({
   const noneDrawn = coloured ? { values: [], usedFallback: false } : []
   const [drawn, setDrawn] = useState(noneDrawn)
 
+  /**
+   * The key's rows the reader has switched off, by the entries' own keys.
+   *
+   * Kept across fetches on purpose. A kind switched off before the date window
+   * moved is still one the reader does not want after it, and on a coloured
+   * map every pan is a fetch -- a filter that reset whenever the view moved
+   * would last until the first drag. A key for something no longer drawn does
+   * nothing until it is drawn again, and then it is still off, and the key says
+   * so.
+   */
+  const [hidden, setHidden] = useState([])
+  const toggleKind = (key) => setHidden((current) => (
+    current.includes(key) ? current.filter((k) => k !== key) : [...current, key]
+  ))
+  const showAll = () => setHidden([])
+
+  /**
+   * The set as the reader sees it, as the layer last reported it: the fetched
+   * collection itself while nothing is switched off, a copy without the hidden
+   * kinds otherwise.
+   *
+   * What a circle counts and what the file buttons write, because both are
+   * about what is on the screen -- the file buttons already follow a circle for
+   * the same reason. `set` stays the whole response, for the one question that
+   * is about the response: whether anything came back at all.
+   *
+   * Null wherever `set` is, so a window that has moved and not yet been fetched
+   * offers nothing rather than the last window's features.
+   */
+  const [shown, setShown] = useState(null)
+  const visible = set === null ? null : (shown ?? set)
+
+  /** Where the shown features are, for the zoom control's button that frames them. */
+  const [extent, setExtent] = useState(null)
+
   const {
     drawable, drawing, shape, selection, note, form, saving, reload,
     setShape, setNote, startDrawing, finishDrawing, clearDrawing, saveShape
-  } = useDrawnShape({ draw, dataSrid, set, bindings, labels })
+  } = useDrawnShape({ draw, dataSrid, set: visible, bindings, labels })
 
   const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing })
 
@@ -211,8 +246,20 @@ export const FeaturePanel = ({
     setDrawn(noneDrawn)
   }
 
+  /**
+   * A fetch failed, so there is no set: nothing to show, count or frame. The
+   * layer reports none of these on a failure, so without this the last good
+   * set's would stay behind the empty one.
+   */
+  const onFetchFailed = () => {
+    setSet({ features: [] })
+    setShown(null)
+    setExtent(null)
+    setLoading(false)
+  }
+
   const { offer, canExport, saveGeoJSON, saveCSV } = useExport({
-    set,
+    set: visible,
     selection,
     exportable,
     labelResolver,
@@ -366,9 +413,12 @@ export const FeaturePanel = ({
               which is JSON and cannot carry a function, so nothing there can be
               shadowing this -- and if a caller ever passes one in code, losing
               the panel's own settings silently would be the worse failure. */}
+          {/* `extent` after the spread for the same reason: it is the layer's
+              report, and nothing in a row can know it. */}
           <AtlasMap
             session={session}
             {...{ layerSwitcher: true, ...map }}
+            extent={extent}
             onReady={({ config }) => setDataSrid(config?.dataSrid ?? null)}
           >
             {/* One layer or the other, never both. The callbacks are the same
@@ -391,11 +441,13 @@ export const FeaturePanel = ({
                   descriptor={descriptors?.[choropleth.descriptor]}
                   labelResolver={labelResolver}
                   tooltip={colourTooltip}
+                  hidden={hidden}
                   onFeatureClick={openRecord}
                   onLegend={setDrawn}
+                  onShown={setShown}
                   onLoadStart={onFetchStart}
                   onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
-                  onError={() => { setSet({ features: [] }); setLoading(false) }}
+                  onError={onFetchFailed}
                 />
               )
               : (
@@ -408,11 +460,14 @@ export const FeaturePanel = ({
                   labelResolver={labelResolver}
                   cluster={cluster}
                   pinned={isPinnedFeature}
+                  hidden={hidden}
                   onFeatureClick={openRecord}
                   onLegend={setDrawn}
+                  onShown={setShown}
+                  onExtent={setExtent}
                   onLoadStart={onFetchStart}
                   onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
-                  onError={() => { setSet({ features: [] }); setLoading(false) }}
+                  onError={onFetchFailed}
                 />
               )}
 
@@ -447,6 +502,10 @@ export const FeaturePanel = ({
                   }, labelResolver)
                   : legendFrom(drawn, labelResolver)}
                 title={labels.legend}
+                hidden={hidden}
+                onToggle={toggleKind}
+                onShowAll={showAll}
+                showAllLabel={labels.showAll}
                 position={typeof legend === 'string' ? legend : undefined}
               />
             )}

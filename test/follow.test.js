@@ -103,6 +103,19 @@ describe('followClusters', () => {
     expect(s.surface.handlers.animationend).toEqual([]);
   });
 
+  it('re-aims its lines when asked, for a change the map fired no event about', () => {
+    const s = scene();
+    const off = follow(s);
+    expect(s.layer.setLatLngs).toHaveBeenLastCalledWith([s.a, s.badge]);
+
+    // The cluster let the marker go -- as it does when the legend takes a kind
+    // off it -- and neither moveend nor animationend fired.
+    s.open();
+    off.reroute();
+
+    expect(s.layer.setLatLngs).toHaveBeenLastCalledWith([s.a, s.b]);
+  });
+
   it('travels over the glide and lands on the target itself', () => {
     const frames = [];
     vi.stubGlobal('requestAnimationFrame', (fn) => frames.push(fn));

@@ -21,7 +21,8 @@
  *
  * Four line segments cannot fail to render and cannot fall out of date: a plus
  * is a plus. Tabler is MIT, and these are `IconPlus`, `IconMinus`,
- * `IconMaximize` and `IconMinimize` at v3.36.0, on the set's 24x24 outline grid.
+ * `IconMaximize`, `IconMinimize` and `IconZoomScan` at v3.36.0, on the set's
+ * 24x24 outline grid.
  */
 
 /** The `d` of each path in the icon, in Tabler's own order. */
@@ -39,6 +40,17 @@ export const GLYPHS = {
     'M15 5v2a2 2 0 0 0 2 2h2',
     'M5 15h2a2 2 0 0 1 2 2v2',
     'M5 9h2a2 2 0 0 0 2 -2v-2'
+  ],
+  // A magnifier inside a frame: zoom to what is framed. It sits in the zoom
+  // control, so it is read beside `plus` and `minus` rather than beside the
+  // fullscreen button, whose frame alone it shares.
+  'zoom-scan': [
+    'M4 8v-2a2 2 0 0 1 2 -2h2',
+    'M4 16v2a2 2 0 0 0 2 2h2',
+    'M16 4h2a2 2 0 0 1 2 2v2',
+    'M16 20h2a2 2 0 0 0 2 -2v-2',
+    'M8 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0',
+    'M16 16l-2.5 -2.5'
   ]
 };
 

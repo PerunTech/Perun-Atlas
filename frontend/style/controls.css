@@ -94,8 +94,10 @@
  * Three buttons on this map are Leaflet's rather than this package's -- the two
  * zoom buttons and the fullscreen toggle -- and all three now hold a Tabler
  * icon instead of a character or a sprite, so that the corner they share with
- * spatial's locate and measure controls reads as one instrument. `lib/icons.js`
- * says why the icons are transcribed rather than taken from `elements.Icon`.
+ * spatial's locate and measure controls reads as one instrument. The fit button
+ * above the `+` is this package's, built the way Leaflet builds the other two,
+ * so it takes the same rule. `lib/icons.js` says why the icons are transcribed
+ * rather than taken from `elements.Icon`.
  *
  * Centred as a grid, which is what spatial's `toolbar.css` already does for the
  * bar's `button` elements and for the same reason it gives there: what goes in
@@ -110,7 +112,8 @@
  */
 .leaflet-bar a.leaflet-control-zoom-in,
 .leaflet-bar a.leaflet-control-zoom-out,
-.leaflet-bar a.leaflet-control-zoom-fullscreen {
+.leaflet-bar a.leaflet-control-zoom-fullscreen,
+.leaflet-bar a.atlas-fit {
   display: grid;
   place-items: center;
   line-height: 1;

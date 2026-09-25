@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { categoriesDrawn, colourBy, DEFAULT_PALETTE, joinStatus } from '../frontend/appearance/choropleth';
+import { bandOf, categoriesDrawn, colourBy, DEFAULT_PALETTE, joinStatus } from '../frontend/appearance/choropleth';
+import { legendFromPalette } from '../frontend/appearance/legend';
 
 const feature = (properties) => ({ type: 'Feature', properties });
 const PALETTE = { 0: '#2e7d32', 1: '#f9a825', 2: '#c62828' };
@@ -71,6 +72,37 @@ describe('categoriesDrawn', () => {
 
   it('is empty rather than throwing when nothing was drawn', () => {
     expect(categoriesDrawn(undefined, { field: 'S' })).toEqual({ values: [], usedFallback: false });
+  });
+});
+
+describe('bandOf', () => {
+  const band = bandOf({ field: 'LEVEL', palette: PALETTE });
+
+  it('files an area under the key its row in the legend goes by', () => {
+    const rows = legendFromPalette({ palette: PALETTE, values: ['2', 7], fallback: '#eee', usedFallback: true });
+    const keys = rows.map((row) => row.key);
+
+    expect(keys).toContain(band(feature({ LEVEL: '2' })));
+    expect(keys).toContain(band(feature({ LEVEL: 7 })));
+    expect(keys).toContain(band(feature({})));
+  });
+
+  it('puts a number and its string under one key, as the palette does', () => {
+    expect(band(feature({ LEVEL: 2 }))).toBe(band(feature({ LEVEL: '2' })));
+  });
+
+  it('sends an unmapped or absent value to the fallback band, where the fill put it', () => {
+    expect(band(feature({ LEVEL: 7 }))).toBe(band(feature({ LEVEL: null })));
+    expect(band(feature({ LEVEL: 7 }))).not.toBe(band(feature({ LEVEL: '0' })));
+  });
+
+  it('does not take an inherited name for a band', () => {
+    expect(band(feature({ LEVEL: 'toString' }))).toBe(band(feature({})));
+  });
+
+  it('reads a joined field the way the fill reads it', () => {
+    const joined = bandOf({ field: 'status.LEVEL', palette: PALETTE });
+    expect(joined(feature({ status: { LEVEL: '1' } }))).toBe('1');
   });
 });
 

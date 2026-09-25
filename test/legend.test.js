@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { legendFrom, legendFromPalette } from '../frontend/appearance/legend';
+import { drawnAs, kindKey, legendFrom, legendFromPalette, legendShown } from '../frontend/appearance/legend';
 
 describe('legendFrom', () => {
   const drawn = [
@@ -59,5 +59,45 @@ describe('legendFromPalette', () => {
       (code) => (code === 'x.none' ? 'No data' : null)
     );
     expect(rows[0].label).toBe('No data');
+  });
+});
+
+describe('drawnAs', () => {
+  const LINK = { variants: { by: 'DIRECTION', cases: { IN: {}, OUT: {} } } };
+  const link = (DIRECTION) => ({ properties: { DIRECTION } });
+
+  it('files a feature under the key its row in the legend goes by', () => {
+    const { name, value, key } = drawnAs('LINK', LINK, link('IN'));
+    const [row] = legendFrom([{ name, value, geometry: 'LineString', descriptor: {} }]);
+    expect(row.key).toBe(key);
+  });
+
+  it('splits a descriptor by its cases and by nothing else', () => {
+    expect(drawnAs('LINK', LINK, link('IN')).key).not.toBe(drawnAs('LINK', LINK, link('OUT')).key);
+    expect(drawnAs('LINK', LINK, link('SIDEWAYS')).key).toBe(drawnAs('LINK', LINK, link(undefined)).key);
+    expect(drawnAs('LINK', LINK, link('SIDEWAYS')).value).toBeUndefined();
+  });
+
+  it('keys a descriptor with no variants by its name alone', () => {
+    expect(drawnAs('SITE', {}, { properties: {} }).key).toBe(kindKey('SITE'));
+  });
+});
+
+describe('legendShown', () => {
+  const one = [{ key: 'A::' }];
+  const two = [{ key: 'A::' }, { key: 'B::' }];
+
+  it('shows a key for two kinds or more, and none for one', () => {
+    expect(legendShown(two)).toBe(true);
+    expect(legendShown(one)).toBe(false);
+    expect(legendShown([])).toBe(false);
+  });
+
+  it('keeps a single row up while it is switched off, so it can be switched back on', () => {
+    expect(legendShown(one, ['A::'])).toBe(true);
+  });
+
+  it('is not kept up by a key for something this set does not have', () => {
+    expect(legendShown(one, ['GONE::'])).toBe(false);
   });
 });

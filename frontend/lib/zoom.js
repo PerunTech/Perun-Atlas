@@ -1,7 +1,7 @@
 /**
  * The zoom ladder as arithmetic: where a level sits on a rail, which of the
- * map's own thresholds fall inside the range, and what the view's scale is when
- * written as a ratio.
+ * map's own thresholds fall inside the range, what the view's scale is when
+ * written as a ratio, and the margin a set is framed with.
  *
  * Here rather than in the control because none of it needs a map, a DOM or a
  * projection -- a range, a level and a ground distance are the whole input. That
@@ -161,3 +161,12 @@ export const formatRatio = (n) => {
   const whole = String(Math.max(Math.round(rounded), 1));
   return `1:${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}`;
 };
+
+/**
+ * The margin, in pixels, left around a set when the map is framed on it.
+ *
+ * One value for both times that happens: when a set is first drawn and when the
+ * reader asks for the frame back. If the two differed, the button would never
+ * quite return the view the reader started from.
+ */
+export const FIT_PADDING = [24, 24];

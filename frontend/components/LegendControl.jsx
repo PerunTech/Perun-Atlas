@@ -1,6 +1,7 @@
 import { React, ReactDOM, PropTypes } from 'perun-core';
 import { core } from '../spatial';
-import { Legend, MINIMUM_ENTRIES } from './Legend';
+import { legendShown } from '../appearance/legend';
+import { Legend } from './Legend';
 
 const { control, factory } = core;
 const { useEffect, useState } = React;
@@ -25,6 +26,11 @@ const { useEffect, useState } = React;
  * @param {Array} entries - As `appearance/legend.js` builds them.
  * @param {string} [title] - Heading, already resolved.
  * @param {boolean} [open] - Whether it starts expanded.
+ * @param {Array} [hidden] - Passed to `Legend`, as are the next three, which
+ *        makes its rows switches when given `onToggle`.
+ * @param {Function} [onToggle]
+ * @param {Function} [onShowAll]
+ * @param {string} [showAllLabel]
  * @param {string} [position] - Any corner spatial's `control` accepts. Defaults
  *        to the bottom left, which is where a map key conventionally goes and
  *        which holds only the scale bar now that the coordinate readout has its
@@ -33,7 +39,16 @@ const { useEffect, useState } = React;
  *        and top right made the collapsed layer switcher share a column with
  *        the widest thing on the map.
  */
-export const LegendControl = ({ entries = [], title, open, position = 'bottomleft' }) => {
+export const LegendControl = ({
+  entries = [],
+  title,
+  open,
+  hidden = [],
+  onToggle,
+  onShowAll,
+  showAllLabel,
+  position = 'bottomleft'
+}) => {
   /**
    * The container the control is handed, made once and kept.
    *
@@ -53,9 +68,10 @@ export const LegendControl = ({ entries = [], title, open, position = 'bottomlef
     return node;
   });
 
-  // Below the threshold `Legend` renders nothing, and a control holding nothing
-  // is still a margin in the corner. Take it off the map instead.
-  const shown = entries.length >= MINIMUM_ENTRIES;
+  // Where `Legend` renders nothing, a control holding nothing is still a margin
+  // in the corner. Take it off the map instead -- by the same rule, so a key
+  // kept up for a row that is switched off has a control to sit in.
+  const shown = legendShown(entries, hidden);
 
   useEffect(() => {
     if (!shown) return undefined;
@@ -69,7 +85,15 @@ export const LegendControl = ({ entries = [], title, open, position = 'bottomlef
   }, [shown, position, host]);
 
   return ReactDOM.createPortal(
-    <Legend entries={entries} title={title} open={open} />,
+    <Legend
+      entries={entries}
+      title={title}
+      open={open}
+      hidden={hidden}
+      onToggle={onToggle}
+      onShowAll={onShowAll}
+      showAllLabel={showAllLabel}
+    />,
     host
   );
 };
@@ -78,5 +102,9 @@ LegendControl.propTypes = {
   entries: PropTypes.array,
   title: PropTypes.string,
   open: PropTypes.bool,
+  hidden: PropTypes.array,
+  onToggle: PropTypes.func,
+  onShowAll: PropTypes.func,
+  showAllLabel: PropTypes.string,
   position: PropTypes.string
 };

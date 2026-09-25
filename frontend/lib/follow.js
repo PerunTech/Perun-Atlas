@@ -55,6 +55,8 @@ export const GLIDE_LIMIT = 150;
  * @param {WeakMap} [params.decoratorOf] - Line layer -> its arrow decorator.
  * @param {number|false} params.glide - Milliseconds for the travel, or false.
  * @returns {Function} Takes every handler off and stops any travel in flight.
+ *        Its `reroute` re-aims the lines now, for a change neither event
+ *        reports; see the end of this function.
  */
 export const followClusters = ({ map, surface, lines, markerAt, decoratorOf, glide }) => {
   const visibleParentOf = (marker) => surface.getVisibleParent?.(marker);
@@ -151,9 +153,22 @@ export const followClusters = ({ map, surface, lines, markerAt, decoratorOf, gli
   surface.on('animationend', routeLines);
   map.on('moveend', routeLines);
 
-  return () => {
+  const off = () => {
     stop();
     surface.off('animationend', routeLines);
     map.off('moveend', routeLines);
   };
+
+  /*
+   * For a caller that changed what the cluster holds without moving the map.
+   * The legend taking a kind off it is the case: the cluster re-counts its
+   * badges and moves them, and fires neither of the events above, so the lines
+   * would go on pointing at where the badges used to be until the next pan.
+   *
+   * Hung on the teardown rather than returned beside it, so every caller that
+   * only ever wanted the teardown keeps getting exactly that.
+   */
+  off.reroute = routeLines;
+
+  return off;
 };

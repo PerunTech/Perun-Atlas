@@ -35,6 +35,11 @@ describe('svgMarkup', () => {
     expect(svgMarkup('plus', { size: 24, stroke: 2 })).toContain('stroke-width="2"');
   });
 
+  it('draws the fit button as a frame with a magnifier in it', () => {
+    expect(svgMarkup('zoom-scan').match(/<path /g)).toHaveLength(6);
+    expect(svgMarkup('zoom-scan')).toContain('class="atlas-icon atlas-icon--zoom-scan"');
+  });
+
   it('gives nothing at all for a name with no glyph, rather than an empty box', () => {
     expect(svgMarkup('nothing-like-this')).toBe('');
     expect(svgMarkup(undefined)).toBe('');

@@ -44,6 +44,10 @@ const { useEffect, useMemo, useState } = React;
  *        what it means.
  * @param {Object} [labels] - The control's own copy. Any key left out falls back
  *        to neutral English, so an unresolved label code is never shown.
+ * @param {Function} [onFit] - Frames the map on the data again. Given, the rail
+ *        carries a button for it at the top, above the `+`, the way the plain
+ *        zoom bar carries its own; left out, there is no button. `AtlasMap`
+ *        passes it only while a layer has reported somewhere to go back to.
  */
 
 /** Neutral English, for a caller that resolves no copy of its own. */
@@ -51,7 +55,8 @@ export const ZOOM_LABELS = {
   in: 'Zoom in',
   out: 'Zoom out',
   level: 'Zoom level',
-  upscaled: 'Above here the basemap is enlarged, not sharper'
+  upscaled: 'Above here the basemap is enlarged, not sharper',
+  fit: 'Zoom to the data'
 };
 
 /**
@@ -94,7 +99,7 @@ const Glyph = ({ name }) => (
 
 Glyph.propTypes = { name: PropTypes.oneOf(Object.keys(GLYPHS)).isRequired };
 
-export const ZoomRail = ({ position = 'bottomright', marks = [], labels }) => {
+export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }) => {
   const copy = { ...ZOOM_LABELS, ...labels };
 
   /**
@@ -159,6 +164,18 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels }) => {
 
   return ReactDOM.createPortal(
     <div className='atlas-zoom'>
+      {onFit && (
+        <button
+          type='button'
+          className='atlas-zoom__step atlas-zoom__fit'
+          onClick={onFit}
+          title={copy.fit}
+          aria-label={copy.fit}
+        >
+          <Glyph name='zoom-scan' />
+        </button>
+      )}
+
       <button
         type='button'
         className='atlas-zoom__step'
@@ -244,5 +261,6 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels }) => {
 ZoomRail.propTypes = {
   position: PropTypes.string,
   marks: PropTypes.array,
-  labels: PropTypes.object
+  labels: PropTypes.object,
+  onFit: PropTypes.func
 };

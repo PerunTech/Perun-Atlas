@@ -21,6 +21,65 @@ import { BASE_STYLE, pathOptions } from './descriptor';
 /** Separates a descriptor name from its variant case in an entry's key. */
 const KEY_SEPARATOR = '::';
 
+/**
+ * Below this many rows there is nothing to tell apart, so there is no legend --
+ * unless a row is switched off, which `legendShown` adds.
+ */
+export const MINIMUM_ENTRIES = 2;
+
+/**
+ * Whether there is a key to show.
+ *
+ * Two rows or more -- or any row the reader has switched off, however few rows
+ * there are. A kind switched off beside others can come back as the only thing
+ * in the next set. Under the plain count its key would go with it, and nothing
+ * on screen would say why the map was empty or offer the way back.
+ *
+ * Asked by `Legend`, which renders nothing without a key, and by
+ * `LegendControl`, which then takes its control off the map rather than leave
+ * an empty one in the corner. One rule for both, so the two cannot disagree.
+ *
+ * @param {Array} entries - As `legendFrom` or `legendFromPalette` built them.
+ * @param {Array} [hidden] - The keys switched off.
+ * @returns {boolean}
+ */
+export const legendShown = (entries = [], hidden = []) =>
+  entries.length >= MINIMUM_ENTRIES || entries.some(entry => hidden.includes(entry.key));
+
+/**
+ * The key a legend row goes by: a descriptor, and the variant case it matched.
+ *
+ * Spelled in one place because two things have to agree on it. The row a
+ * reader clicks is one; the features a layer takes off the map for that click
+ * are the other. Two copies of one template string agreeing today is how a row
+ * that hides nothing arrives later.
+ */
+export const kindKey = (name, value) => `${name ?? ''}${KEY_SEPARATOR}${value ?? ''}`;
+
+/** The fallback band's key, which no category value can spell. */
+export const FALLBACK_KEY = `${KEY_SEPARATOR}fallback`;
+
+/**
+ * Which legend row a feature is drawn under.
+ *
+ * Its descriptor, and the variant case it matched. Only a value with a case
+ * behind it distinguishes anything: a column carrying forty values and two
+ * cases splits the descriptor in two, not in forty.
+ *
+ * @param {string} name - The descriptor the feature is drawn with.
+ * @param {Object} [descriptor] - That descriptor as configured, before any case
+ *        is merged into it -- the cases are what is being read.
+ * @param {Object} feature
+ * @returns {{ name: string, value: *, key: string }}
+ */
+export const drawnAs = (name, descriptor, feature) => {
+  const by = descriptor?.variants?.by;
+  const raw = by ? feature?.properties?.[by] : undefined;
+  const value = raw !== undefined && descriptor?.variants?.cases?.[raw] ? raw : undefined;
+
+  return { name, value, key: kindKey(name, value) };
+};
+
 /** Which shape a swatch draws, from the geometry it stands for. */
 const kindOf = (geometry = '') => {
   if (/Point$/.test(geometry)) return 'point';
@@ -67,7 +126,7 @@ const entryFor = (drawn, resolveLabel) => {
   const descriptor = drawn.descriptor ?? {};
 
   return {
-    key: `${drawn.name ?? ''}${KEY_SEPARATOR}${drawn.value ?? ''}`,
+    key: kindKey(drawn.name, drawn.value),
     label: labelFor(drawn, resolveLabel),
     kind,
     // Resolved through the same function the map draws with, so a legend cannot
@@ -141,7 +200,7 @@ export const legendFromPalette = (
   if (!usedFallback || !fallback) return rows;
 
   return [...rows, {
-    key: `${KEY_SEPARATOR}fallback`,
+    key: FALLBACK_KEY,
     label: resolveLabel?.(unknownLabel) || 'Not classified',
     kind: 'area',
     path: swatch(fallback),

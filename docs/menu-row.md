@@ -167,6 +167,7 @@ code that is not registered, shows the default.
 | `loading`, `saving` | Loading… · Saving… |
 | `labels` | Labels (the toggle for permanent labels) |
 | `legend` | Legend (the key's heading) |
+| `showAll` | Show all (the key's button that switches every row back on) |
 | `details`, `close` | Details · Close |
 | `exportGeoJSON`, `exportCsv` | GeoJSON · CSV |
 | `draw` | Draw an area (the button that arms the map) |
@@ -188,7 +189,8 @@ it off, and each one's position takes a Leaflet corner (`topleft`,
 | `layerSwitcher` | `true` on a configured screen |
 | `zoomControl`, `zoomPosition` | on, `bottomright`. `"rail"` replaces the two buttons with a zoom ladder. |
 | `zoomMarks` | `[{ from, to, kind, label }]`: bands on the rail. `kind` becomes a CSS class; leave out `to` for a line instead of a band. The basemap's own tile ceiling is marked without being asked. |
-| `zoomLabels` | `{ in, out, level, upscaled }`: the rail's own words. |
+| `zoomLabels` | `{ in, out, level, upscaled, fit }`: the rail's own words. `fit` also names the `fit` button in the plain two-button bar, which otherwise keeps Leaflet's own titles. These are words, not label codes. |
+| `fit` | on. A button in the zoom control, above the `+`, that frames the map on the features again, with the same margin the first view had. It frames what is shown, so a kind switched off in the key is left out. It appears once a feature set has drawn something. A choropleth has no such button: its set is whatever is in view, so there is nothing to go back to. With `zoomControl: false` there is no button either, since it has nowhere to sit. |
 | `coordinates`, `coordinatesPosition` | on, `bottomcenter` (falls back to `bottomleft` on an older engine) |
 | `measure`, `measurePosition`, `measureTools` | on, `topleft`. `measureTools` narrows which tools the control offers. |
 | `fullscreen`, `fullscreenPosition` | on, `topleft` |
@@ -208,6 +210,9 @@ An object chooses what is offered:
 | `fields` | `[{ field, label }]` fixes the CSV's columns, their order and their headers. It also brings back system fields, if named. |
 | `exclude` | Columns to drop on top of the system fields, when `fields` is not given. |
 
+The buttons write what is on the map. A kind switched off in the key is left
+out of the file, as is everything outside a drawn circle when `select` is set.
+
 Without `fields`, every flat property in the set except the system fields
 becomes a column. Point
 coordinates are added as `latitude, longitude`, and any non-point shape as a WKT
@@ -219,6 +224,18 @@ coordinates are added as `latitude, longitude`, and any non-point shape as a WKT
   one kind of thing, and it lists only kinds that are actually on the map.
   `false` withholds it; a corner name (`"topright"`) moves it from
   `bottomleft`.
+
+  Each row is also a switch. Pressing it takes that kind off the map, and
+  pressing it again puts it back, with no request to the service. A row that is
+  off stays in the key, struck through, and a **Show all** button appears under
+  the rows. A switched-off kind stays off when the set is fetched again: when
+  the date window moves, and on a choropleth whenever the map moves. The key
+  stays up while any of its rows is off, even when only that one kind is left.
+  Otherwise the way back would vanish with it.
+
+  What is switched off is also left out of the files (see [export](#export)),
+  out of a circle's count, and out of `{draw.selected.*}`. It is not in the
+  frame the zoom control's `fit` button returns to.
 - **`notice`**: `false` withholds the card saying a set came back empty. The
   card is never shown while a circle is being drawn.
 - **`tokens`**: CSS custom properties on the panel's root, which is how a row
@@ -381,7 +398,8 @@ keys kept whole.
 | `export` | on | `false` keeps the file buttons writing the whole set instead of what the circle caught. |
 
 The count appears beside the radius and updates as the radius changes. The
-answer is computed in the browser over the set the layer fetched. For a feature
+answer is computed in the browser over the set the layer fetched, less any kind
+switched off in the key. For a feature
 set that is the whole of it. A choropleth holds only what is in view, so
 `select` there only covers the visible part of any circle reaching past the map
 edge.
