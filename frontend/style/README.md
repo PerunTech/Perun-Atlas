@@ -1,11 +1,12 @@
 The stylesheets, and nothing else.
 
-Eight files, each imported for its side effect by every component it dresses,
+Nine files, each imported for its side effect by every component it dresses,
 so a component rendered on its own outside `FeaturePanel` is still styled —
 `panel.css` by `FeaturePanel`, `form.css` by `DateRange` and `DrawBar`,
 `draw.css` by `DrawBar` and `CirclePicker`, `features.css` by `FeatureSet`,
 `legend.css` by `Legend`, `picker.css` by `PointPicker`, `controls.css` by
-`AtlasMap`, `zoom.css` by `ZoomRail`.
+`AtlasMap`, `zoom.css` by `ZoomRail`, `overlay.css` by `FileOverlay` and
+`FeaturePanel`.
 
 They are kept together rather than beside their components because a
 deployment restyles this package from the outside, and one directory is the

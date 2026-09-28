@@ -60,6 +60,15 @@ export const kindKey = (name, value) => `${name ?? ''}${KEY_SEPARATOR}${value ??
 export const FALLBACK_KEY = `${KEY_SEPARATOR}fallback`;
 
 /**
+ * The key of the row for a file the reader opened.
+ *
+ * Kept in `hidden` like any other row's, so the key switches the file off the
+ * way it switches a kind off. No feature in a fetched set is ever drawn under
+ * it, so neither layer takes anything off the map for it.
+ */
+export const FILE_KEY = `${KEY_SEPARATOR}file`;
+
+/**
  * Which legend row a feature is drawn under.
  *
  * Its descriptor, and the variant case it matched. Only a value with a case

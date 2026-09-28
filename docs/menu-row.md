@@ -91,6 +91,7 @@ instead of silently sending an empty segment.
 | `labels` | object | The panel's other words. See [labels](#labels). |
 | `map` | object | The map's controls. See [map](#map). |
 | `export` | false / object | The file buttons. See [export](#export). |
+| `overlay` | false | Withhold the button that opens a file over the map. See [overlay](#overlay). |
 | `legend` | false / corner | The key. See [legend, notice, tokens](#legend-notice-tokens). |
 | `notice` | false | Withhold the "nothing to show" card. |
 | `tokens` | object | CSS custom properties for the panel. |
@@ -170,6 +171,9 @@ code that is not registered, shows the default.
 | `showAll` | Show all (the key's button that switches every row back on) |
 | `details`, `close` | Details · Close |
 | `exportGeoJSON`, `exportCsv`, `exportKml` | GeoJSON · CSV · KML |
+| `openFile`, `closeFile` | Open file · Close file |
+| `fileFeature`, `fileFeatures` | {count} feature · {count} features |
+| `fileUnreadable`, `fileEmpty`, `fileNotDegrees`, `fileTooLarge`, `fileTooManyPoints` | Why a file did not open. See [overlay](#overlay). |
 | `draw` | Draw an area (the button that arms the map) |
 | `drawing` | Click a centre, then an edge |
 | `radius`, `metres`, `caught` | Radius · m · inside |
@@ -233,6 +237,48 @@ the deployment stores geometry in. That covers the GeoJSON, the KML, the CSV's
 `latitude` and `longitude`, and its WKT column. A row cannot ask for the stored
 projection instead.
 
+A file opened over the map (see [overlay](#overlay)) is never in these files.
+
+## overlay
+
+An **Open file** button, on unless a row sets `"overlay": false`. It draws a
+GeoJSON, KML or GPX file over the map. Nothing is sent anywhere: the file is
+read in the browser and is gone when the screen closes.
+
+- **One file at a time.** Opening another replaces it. While a file is open, a
+  chip beside the button shows its name, how many features it drew, and a
+  button that closes it. The map frames the file when it opens.
+- **One look.** Every file is drawn the same way, whatever styles it carries:
+  a dashed outline, a faint fill for areas, and small rings for points, drawn
+  above the set's markers. The colour is the `--ap-overlay` token (see
+  [tokens](#legend-notice-tokens)).
+- **In the key.** The file gets a row named after it. Pressing the row switches
+  the file off and on, like any other row. A new file always opens switched on.
+- **Clicking a feature** opens the record pane with every property the feature
+  carries, headed by its `name` or else the file's name. Column names are tried
+  as label codes, as they are for a record, so a KML this panel exported reads
+  back under the same headers. Styles in a KML are ignored, and do not appear
+  as properties.
+- **Not part of the set.** The file is left out of the export files, out of a
+  circle's count and `{draw.selected.*}`, and out of the frame the zoom
+  control's `fit` button returns to.
+
+The file is recognised by its contents, not its extension. A file is refused,
+with the reason under the toolbar, when it:
+
+| Label key | Reason |
+|---|---|
+| `fileUnreadable` | Is not GeoJSON, KML or GPX, or does not parse. |
+| `fileEmpty` | Has no feature with a geometry. Features without one are dropped from a file that has others. |
+| `fileNotDegrees` | Has a coordinate outside ±180 / ±90, which means a projected file. GeoJSON, KML and GPX are longitude and latitude by definition. |
+| `fileTooLarge` | Is over 20 MB. It is refused before it is read. |
+| `fileTooManyPoints` | Has more than 200,000 positions in all. A day's GPS track at one fix a second is about 86,000. |
+
+The wording takes placeholders, filled in after the label is resolved: `{name}`
+in all five, `{size}` and `{limit}` in `fileTooLarge`, and `{count}` and
+`{limit}` in `fileTooManyPoints`. A refused file does not replace the one
+already open.
+
 ## legend, notice, tokens
 
 - **`legend`**: on by default. The key appears only when a set drew more than
@@ -252,12 +298,14 @@ projection instead.
   out of a circle's count, and out of `{draw.selected.*}`. It is not in the
   frame the zoom control's `fit` button returns to.
 - **`notice`**: `false` withholds the card saying a set came back empty. The
-  card is never shown while a circle is being drawn.
+  card is never shown while a circle is being drawn, or while a file is open
+  over the map, since it would sit on top of the file.
 - **`tokens`**: CSS custom properties on the panel's root, which is how a row
   sets colours with no stylesheet of its own: `--ap-accent`, `--ap-ink`,
   `--ap-muted`, `--ap-rule`, `--ap-surface`, `--ap-radius`, `--ap-label-font`,
-  `--ap-value-font`, `--ap-map-height`. A deployment stylesheet loaded later
-  still wins over these.
+  `--ap-value-font`, `--ap-map-height`, and `--ap-overlay` for a file opened over
+  the map (default `#e8590c`). A deployment stylesheet loaded later still wins
+  over these.
 
 ## choropleth
 

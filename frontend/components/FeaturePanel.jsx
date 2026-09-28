@@ -5,12 +5,17 @@ import { DrawBar, DrawTool } from './DrawBar';
 import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
+import { FileOverlay } from './layers/FileOverlay';
+import { LineSwatch } from './Legend';
 import { LegendControl } from './LegendControl';
 import { DEFAULT_PALETTE, legendFrom, legendFromPalette, variantOf } from '../appearance';
+import { FILE_KEY } from '../appearance/legend';
+import { OVERLAY_STYLE, countText, overlayEntry } from '../appearance/overlay';
 import { descriptorOf } from '../data';
-import { useChoropleth, useDateWindow, useDrawnShape, useExport, useRecord } from '../hooks';
+import { useChoropleth, useDateWindow, useDrawnShape, useExport, useFileOverlay, useRecord } from '../hooks';
 import '../style/panel.css';
-const { useMemo, useState } = React
+import '../style/overlay.css';
+const { useEffect, useMemo, useState } = React
 
 /**
  * Tabler, through perun-core rather than as a dependency of this package.
@@ -75,6 +80,8 @@ const { Icon } = elements
  *                                descriptors are the one part of the
  *                                configuration this panel never reads.
  * @param {Object|boolean} [exportable] - The row's `export`.
+ * @param {boolean} [overlay]   - The row's `overlay`: `false` withholds the
+ *                                button that opens a file over the map.
  * @param {Array}  [presets]    - `[{ months, label }]`, longest last, labels resolved.
  * @param {number} [defaultMonths]
  * @param {Object} [labels]     - The panel's words, resolved. Any key left out
@@ -102,6 +109,7 @@ export const FeaturePanel = ({
   labels = {},
   map,
   exportable,
+  overlay,
   legend = true,
   notice = true,
   tokens,
@@ -225,6 +233,29 @@ export const FeaturePanel = ({
   const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing })
 
   /**
+   * A file the reader opened over the map, and the key's row for it.
+   *
+   * A new file comes in switched on, whatever the reader did with the last
+   * one's row: they opened it to look at it.
+   */
+  const {
+    offered: fileOffered, file, refusal: fileRefusal, inputRef: fileInput,
+    choose: chooseFile, onPicked: onFilePicked, close: closeFile, failed: fileFailed, dismiss: dismissRefusal
+  } = useFileOverlay({
+    overlay,
+    labels,
+    onChange: () => setHidden((current) => current.filter((key) => key !== FILE_KEY))
+  })
+
+  // A record read from a file goes with the file. What the pane holds is a copy,
+  // so nothing else would take it down, and a pane describing a file that is no
+  // longer on the map is describing nothing.
+  useEffect(() => {
+    if (record?.file && record.file !== file) closeRecord()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file])
+
+  /**
    * A fetch is starting.
    *
    * The open record deliberately survives it. What the pane holds is a resolved
@@ -298,7 +329,7 @@ export const FeaturePanel = ({
    * that draws is a screen whose empty state is its ordinary one anyway.
    */
   const nothingFound = !loading && set !== null && (set.features?.length ?? 0) === 0
-  const empty = nothingFound && notice !== false && !drawing && !shape
+  const empty = nothingFound && notice !== false && !drawing && !shape && !file
 
   return (
     <div
@@ -369,7 +400,7 @@ export const FeaturePanel = ({
             the date window and the label switch, which change what is shown.
             Two clusters said otherwise and lined up differently as the toolbar
             wrapped. A second tool is another button in here. */}
-        {(drawable || canExport) && (
+        {(drawable || canExport || fileOffered) && (
           <div className='atlas-panel__actions'>
             {drawable && (
               <DrawTool
@@ -401,7 +432,64 @@ export const FeaturePanel = ({
                 {labels.exportKml ?? 'KML'}
               </button>
             )}
+
+            {/* The other direction: a file in, drawn over the map and nowhere
+                else. Last, so the buttons that write files stay together. The
+                input is never shown; the button opens it. */}
+            {fileOffered && (
+              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={chooseFile}>
+                <Icon name='IconFolderOpen' size={16} stroke={1.75} aria-hidden='true' />
+                {labels.openFile ?? 'Open file'}
+              </button>
+            )}
+            {fileOffered && (
+              <input
+                ref={fileInput}
+                type='file'
+                className='atlas-panel__fileinput'
+                accept='.geojson,.json,.kml,.gpx'
+                tabIndex={-1}
+                aria-hidden='true'
+                onChange={onFilePicked}
+              />
+            )}
+
+            {/* The open file, beside the button that opened it: the overlay's
+                own swatch, the file's name, what it drew, and the way to close
+                it. The key carries the same swatch and name. */}
+            {file && (
+              <div className='atlas-panel__file'>
+                <LineSwatch path={OVERLAY_STYLE} />
+                <span className='atlas-panel__filename' title={file.name}>{file.name}</span>
+                <span className='atlas-panel__filecount'>{countText(file.count, labels)}</span>
+                <button
+                  type='button'
+                  className='atlas-panel__fileclose'
+                  aria-label={labels.closeFile ?? 'Close file'}
+                  title={labels.closeFile ?? 'Close file'}
+                  onClick={closeFile}
+                >
+                  ×
+                </button>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Why the last file picked did not open, until the reader dismisses it
+            or a file does open. */}
+        {fileRefusal && (
+          <p className='atlas-panel__filerefused' role='alert'>
+            <span>{fileRefusal}</span>
+            <button
+              type='button'
+              className='atlas-panel__fileclose'
+              aria-label={labels.close ?? 'Close'}
+              onClick={dismissRefusal}
+            >
+              ×
+            </button>
+          </p>
         )}
 
         {/* The tool's own row, under everything else, and only while it has
@@ -495,6 +583,19 @@ export const FeaturePanel = ({
                 />
               )}
 
+            {/* A file the reader opened, over the set and under the shape being
+                drawn. Its row in the key switches it off like any other. */}
+            {file && (
+              <FileOverlay
+                file={file}
+                srid={dataSrid}
+                hidden={hidden.includes(FILE_KEY)}
+                labelResolver={labelResolver}
+                onFeatureClick={openRecord}
+                onError={fileFailed}
+              />
+            )}
+
             {/* The shape the reader is drawing, over everything the service
                 returned. `drawing` arms the map; once a shape exists the tool is
                 disarmed and the handles take over, so a second circle is drawn
@@ -517,14 +618,17 @@ export const FeaturePanel = ({
                 key find it still collapsed afterwards. */}
             {legend !== false && (
               <LegendControl
-                entries={coloured
-                  ? legendFromPalette({
-                    palette: choropleth.palette,
-                    fallback: choropleth.fallback ?? DEFAULT_PALETTE.__unknown,
-                    unknownLabel: choropleth.unknownLabel,
-                    ...drawn
-                  }, labelResolver)
-                  : legendFrom(drawn, labelResolver)}
+                entries={[
+                  ...(coloured
+                    ? legendFromPalette({
+                      palette: choropleth.palette,
+                      fallback: choropleth.fallback ?? DEFAULT_PALETTE.__unknown,
+                      unknownLabel: choropleth.unknownLabel,
+                      ...drawn
+                    }, labelResolver)
+                    : legendFrom(drawn, labelResolver)),
+                  ...(file ? [overlayEntry(file.name)] : [])
+                ]}
                 title={labels.legend}
                 hidden={hidden}
                 onToggle={toggleKind}

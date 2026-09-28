@@ -15,6 +15,7 @@ export { useChoropleth } from './useChoropleth';
 export { useDateWindow } from './useDateWindow';
 export { useDrawnShape } from './useDrawnShape';
 export { useExport } from './useExport';
+export { useFileOverlay } from './useFileOverlay';
 export { useFormSchema } from './useFormSchema';
 export { useRecord } from './useRecord';
 export { useSelection } from './useSelection';

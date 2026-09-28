@@ -8,6 +8,7 @@
     "url": "https://gitlab.prtech.mk/svarog4/perun-atlas.git"
   },
   "dependencies": {
+    "@tmcw/togeojson": "^7.1.2",
     "perun-core": "git+https://git@gitlab.prtech.mk/svarog4/perun-core#dev",
     "spatial": "git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#dev"
   },
@@ -15,6 +16,7 @@
     "node": ">=22.12.0"
   },
   "devDependencies": {
+    "@xmldom/xmldom": "^0.9.12",
     "oxlint": "^1.85.0",
     "vite": "^8.3.0",
     "vitest": "^5.0.1"

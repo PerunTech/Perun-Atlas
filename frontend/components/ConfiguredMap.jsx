@@ -114,6 +114,7 @@ export const ConfiguredMap = (props, context) => {
       choropleth={objConfig?.choropleth}
       draw={objConfig?.draw}
       exportable={objConfig?.export}
+      overlay={objConfig?.overlay}
       legend={objConfig?.legend}
       notice={objConfig?.notice}
       tokens={objConfig?.tokens}

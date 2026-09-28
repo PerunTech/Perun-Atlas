@@ -45,8 +45,13 @@ PointSwatch.propTypes = { marker: PropTypes.object };
  * The arrow is drawn when the descriptor has one, at the end the map would put
  * it -- `reverse` points a movement back at the record the screen is about, and
  * a key that omitted that would be describing a different map.
+ *
+ * The path's `className` goes on the line too, so a colour a stylesheet sets
+ * for that class -- an open file's, from `--ap-overlay` -- reaches the swatch
+ * the way it reaches the map. Exported for the panel's file chip, which shows
+ * the same swatch as the key.
  */
-const LineSwatch = ({ path, arrow }) => {
+export const LineSwatch = ({ path, arrow }) => {
   const colour = path?.color ?? '#4A5C66';
   const dash = Array.isArray(path?.dashArray) ? path.dashArray.join(' ') : path?.dashArray;
   const head = arrow?.reverse ? '3,6 9,3 9,9' : '21,6 15,3 15,9';
@@ -54,6 +59,7 @@ const LineSwatch = ({ path, arrow }) => {
   return (
     <svg className='atlas-legend__swatch' width='24' height='12' viewBox='0 0 24 12' aria-hidden='true'>
       <line
+        className={path?.className}
         x1='2' y1='6' x2='22' y2='6'
         stroke={colour}
         strokeWidth={Math.min(path?.weight ?? 1, 4)}

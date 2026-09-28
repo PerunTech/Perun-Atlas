@@ -160,6 +160,27 @@ export const inDegrees = (collection, srid) => mapPositions(collection, (positio
 });
 
 /**
+ * A collection in longitude and latitude, as stored units.
+ *
+ * The inverse of `inDegrees`, for a file coming in rather than going out. It is
+ * needed for the same reason: spatial's GeoJSON layer installs its own
+ * `coordsToLatLng` on every `addData`, which reads each position as stored
+ * units, and ignores the one a caller passes. A file in degrees drawn straight
+ * through it lands in the right place only where the deployment stores 4326. So
+ * the file is converted into what the engine expects, with `pointIn`, the
+ * inverse of the conversion the engine then makes. The overlay is then the same
+ * kind of collection as a fetched set.
+ *
+ * @param {Object|null} collection - A GeoJSON FeatureCollection in degrees.
+ * @param {string|number} [srid] - The EPSG code the deployment stores.
+ * @returns {Object|null} A copy in stored units; the original is not touched.
+ */
+export const fromDegrees = (collection, srid) => mapPositions(collection, (position) => {
+  const { x, y } = pointIn({ lat: position[1], lng: position[0] }, srid);
+  return [x, y, ...position.slice(2)];
+});
+
+/**
  * How many units of a projection go to a metre on the ground, at a place.
  *
  * A distance drawn on the map is in metres, because that is what the reader

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { toCSV, toGeoJSON, toKML } from '../frontend/data/export';
-import { inDegrees } from '../frontend/data/project';
+import { fromDegrees, inDegrees } from '../frontend/data/project';
 import { download } from '../frontend/lib/dom';
 import { useExport } from '../frontend/hooks/useExport';
 import { resetView } from './stubs/spatial.js';
@@ -260,6 +260,48 @@ describe('inDegrees', () => {
 
     expect(toGeoJSON(inDegrees(stored, 4326))).toBe(toGeoJSON(stored));
     expect(toCSV(inDegrees(stored, 4326))).toBe(toCSV(stored));
+  });
+});
+
+/**
+ * The same conversion the other way, for a file the reader opens: degrees in,
+ * stored units out, so the engine's own unprojection puts it back where it was.
+ */
+describe('fromDegrees', () => {
+  beforeEach(() => resetView());
+
+  const inFile = (coordinates, type = 'Point') => ({
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', properties: { A: 1 }, geometry: { type, coordinates } }]
+  });
+
+  it('turns a point in degrees into Web Mercator metres', () => {
+    const [x, y] = fromDegrees(inFile([CENTRE.lng, CENTRE.lat]), 3857).features[0].geometry.coordinates;
+    const [mx, my] = mercator(CENTRE);
+    expect(x).toBeCloseTo(mx, 6);
+    expect(y).toBeCloseTo(my, 6);
+  });
+
+  it('is undone by inDegrees, hole and altitude included', () => {
+    const ring = [CENTRE, EAST, NORTH, CENTRE].map(({ lat, lng }) => [lng, lat, 7]);
+    const hole = [EAST, NORTH, CENTRE, EAST].map(({ lat, lng }) => [lng, lat]);
+    const file = inFile([[ring, hole]], 'MultiPolygon');
+
+    const back = inDegrees(fromDegrees(file, 3857), 3857).features[0].geometry.coordinates[0];
+    back[0].forEach((position, i) => expectDegrees(position, [CENTRE, EAST, NORTH, CENTRE][i]));
+    back[1].forEach((position, i) => expectDegrees(position, [EAST, NORTH, CENTRE, EAST][i]));
+    expect(back[0][0][2]).toBe(7);
+  });
+
+  it('changes nothing for a deployment that stores 4326', () => {
+    const file = inFile([[33.9, 35.1], [34, 35.2]], 'LineString');
+    expect(fromDegrees(file, 4326)).toEqual(file);
+  });
+
+  it('leaves the file it was given alone', () => {
+    const file = inFile([CENTRE.lng, CENTRE.lat]);
+    fromDegrees(file, 3857);
+    expect(file.features[0].geometry.coordinates).toEqual([CENTRE.lng, CENTRE.lat]);
   });
 });
 
