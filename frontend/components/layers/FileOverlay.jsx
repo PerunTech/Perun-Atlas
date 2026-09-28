@@ -48,10 +48,13 @@ const pointPane = () => {
  * @param {Function} [labelResolver] - Passed to `overlayRecord`.
  * @param {Function} [onFeatureClick] - Called with `(feature, details)`, in the
  *        shape `FeatureSet` calls it, so the panel opens the same pane.
+ * @param {Function} [onDrawn] - Called once the file is on the map and framed,
+ *        which on a large file is well after it was read. The panel's loading
+ *        card waits for this.
  * @param {Function} [onError] - Called when the engine refuses to draw the
  *        file: a geometry the reader passed as well-formed and Leaflet did not.
  */
-export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatureClick, onError }) => {
+export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatureClick, onDrawn, onError }) => {
   const groupRef = useRef(null);
 
   // Read when the file draws and when a feature is clicked, not when either is
@@ -59,7 +62,7 @@ export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatu
   const hiddenRef = useRef(hidden);
   hiddenRef.current = hidden;
   const handlers = useRef({});
-  handlers.current = { labelResolver, onFeatureClick, onError };
+  handlers.current = { labelResolver, onFeatureClick, onDrawn, onError };
 
   // The file the map was last framed on, so a redraw for a new `srid` does not
   // move a view the reader has moved since.
@@ -106,6 +109,8 @@ export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatu
       const bounds = group.getBounds();
       if (bounds.isValid()) Map.fitBounds(bounds, { padding: FIT_PADDING });
     }
+
+    handlers.current.onDrawn?.();
 
     return () => {
       Map.removeLayer(group);

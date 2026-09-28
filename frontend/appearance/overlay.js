@@ -133,6 +133,16 @@ export const countText = (count, labels = {}) => bindPath(
   { count: number(count) }
 );
 
+/**
+ * What the loading card says while a file is read and drawn.
+ *
+ * @param {string} name - The file's name.
+ * @param {Object} [labels] - The panel's resolved words. `fileOpening`, with a
+ *        `{name}` placeholder.
+ */
+export const openingText = (name, labels = {}) =>
+  bindPath(labels.fileOpening ?? 'Opening {name}…', { name });
+
 /** The words for each refusal, by the reason `readFile` and `sizeRefusal` give. */
 const REFUSALS = {
   unreadable: ['fileUnreadable', '{name} could not be read as GeoJSON, KML or GPX.'],

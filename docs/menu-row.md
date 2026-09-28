@@ -173,6 +173,7 @@ code that is not registered, shows the default.
 | `exportGeoJSON`, `exportCsv`, `exportKml` | GeoJSON · CSV · KML |
 | `openFile`, `closeFile` | Open file · Close file |
 | `fileFeature`, `fileFeatures` | {count} feature · {count} features |
+| `fileOpening` | Opening {name}… (the loading card, while a file is read and drawn) |
 | `fileUnreadable`, `fileEmpty`, `fileNotDegrees`, `fileTooLarge`, `fileTooManyPoints` | Why a file did not open. See [overlay](#overlay). |
 | `draw` | Draw an area (the button that arms the map) |
 | `drawing` | Click a centre, then an edge |
@@ -248,6 +249,8 @@ read in the browser and is gone when the screen closes.
 - **One file at a time.** Opening another replaces it. While a file is open, a
   chip beside the button shows its name, how many features it drew, and a
   button that closes it. The map frames the file when it opens.
+- **While it opens,** the loading card over the map names the file. It stays
+  until the file is drawn, which for a long GPS track can be a second or two.
 - **One look.** Every file is drawn the same way, whatever styles it carries:
   a dashed outline, a faint fill for areas, and small rings for points, drawn
   above the set's markers. The colour is the `--ap-overlay` token (see

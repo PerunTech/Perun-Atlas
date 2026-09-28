@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OVERLAY_STYLE, countText, overlayEntry, overlayRecord, refusalText } from '../frontend/appearance/overlay';
+import { OVERLAY_STYLE, countText, openingText, overlayEntry, overlayRecord, refusalText } from '../frontend/appearance/overlay';
 import { FILE_KEY, kindKey, legendShown } from '../frontend/appearance/legend';
 
 describe('overlayEntry', () => {
@@ -65,6 +65,16 @@ describe('countText', () => {
 
   it('fills the count into a deployment wording', () => {
     expect(countText(3, { fileFeatures: 'objekti: {count}' })).toBe('objekti: 3');
+  });
+});
+
+describe('openingText', () => {
+  it('names the file being opened', () => {
+    expect(openingText('visit.gpx')).toBe('Opening visit.gpx\u2026');
+  });
+
+  it("fills the name into a deployment's wording", () => {
+    expect(openingText('visit.gpx', { fileOpening: 'Се отвора {name}' })).toBe('Се отвора visit.gpx');
   });
 });
 

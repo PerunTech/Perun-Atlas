@@ -10,7 +10,7 @@ import { LineSwatch } from './Legend';
 import { LegendControl } from './LegendControl';
 import { DEFAULT_PALETTE, legendFrom, legendFromPalette, variantOf } from '../appearance';
 import { FILE_KEY } from '../appearance/legend';
-import { OVERLAY_STYLE, countText, overlayEntry } from '../appearance/overlay';
+import { OVERLAY_STYLE, countText, openingText, overlayEntry } from '../appearance/overlay';
 import { descriptorOf } from '../data';
 import { useChoropleth, useDateWindow, useDrawnShape, useExport, useFileOverlay, useRecord } from '../hooks';
 import '../style/panel.css';
@@ -239,8 +239,9 @@ export const FeaturePanel = ({
    * one's row: they opened it to look at it.
    */
   const {
-    offered: fileOffered, file, refusal: fileRefusal, inputRef: fileInput,
-    choose: chooseFile, onPicked: onFilePicked, close: closeFile, failed: fileFailed, dismiss: dismissRefusal
+    offered: fileOffered, file, refusal: fileRefusal, opening: fileOpening, inputRef: fileInput,
+    choose: chooseFile, onPicked: onFilePicked, close: closeFile, drawn: fileDrawn, failed: fileFailed,
+    dismiss: dismissRefusal
   } = useFileOverlay({
     overlay,
     labels,
@@ -592,6 +593,7 @@ export const FeaturePanel = ({
                 hidden={hidden.includes(FILE_KEY)}
                 labelResolver={labelResolver}
                 onFeatureClick={openRecord}
+                onDrawn={fileDrawn}
                 onError={fileFailed}
               />
             )}
@@ -640,24 +642,29 @@ export const FeaturePanel = ({
           </AtlasMap>
         </div>
 
-        {/* A request is out, and which kind it is only changes the word. A
-            write says so rather than inheriting `loading`, because the two do
-            not mean the same thing to a reader waiting on one: a fetch will
-            redraw the map, a save will have changed the server. `saving` wins
-            the word where both could be true, being the more specific event.
+        {/* Something is under way, and which kind it is only changes the
+            word. A write says so rather than inheriting `loading`, because the
+            two do not mean the same thing to a reader waiting on one: a fetch
+            will redraw the map, a save will have changed the server. A file
+            being opened names the file, since the reader has just picked it and
+            a large one takes a second or two to read and draw. The more
+            specific event wins the word where two could be true: `saving`,
+            then the file, then `loading`.
 
             Not the button, which said `Saving…` in place of `Save` until now.
             That put the report in the corner the reader had just pressed and
             looked away from, and it said the button was busy when what is busy
             is the service. */}
-        {(loading || saving) && (
+        {(loading || saving || fileOpening) && (
           <div className='atlas-panel__loading' role='status' aria-live='polite'>
             <div className='atlas-panel__loadingcard'>
               <div className='atlas-panel__spinner' aria-hidden='true' />
               <span>
                 {saving
                   ? (labels.saving ?? 'Saving\u2026')
-                  : (labels.loading ?? 'Loading\u2026')}
+                  : fileOpening
+                    ? openingText(fileOpening, labels)
+                    : (labels.loading ?? 'Loading\u2026')}
               </span>
             </div>
           </div>
