@@ -8,7 +8,7 @@ import path from 'node:path';
  * `window['perun-atlas']`, so the format and the global's name are the contract.
  * `perun-core` and `spatial` are the shell's, published as window globals by
  * their own bundles, and are never bundled: a second copy of spatial would mean
- * a second Leaflet alongside lpis, otscm and pdna.
+ * a second Leaflet alongside the other bundles that draw maps.
  *
  * UMD cannot code-split. A dynamic `import()` is folded into this one file, so a
  * library meant to load on demand has to be built as a module of its own and

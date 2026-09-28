@@ -68,8 +68,8 @@ const verifyCrs = (declared) => {
  * of 0,0. It fails silently: the layer draws, `fitBounds` frames it, and the map
  * shows the Gulf of Guinea.
  *
- * Every bundle drawing a map has had to do this for itself — this is the copy in
- * lpis, made shared, which is the whole point of this package.
+ * Every bundle drawing a map has had to do this for itself — this is that copy,
+ * made shared, which is the whole point of this package.
  */
 const applyDataCrs = (srid) => {
   if (!srid) return;
