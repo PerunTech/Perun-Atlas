@@ -1,0 +1,153 @@
+// Written by @oxlint/migrate 1.85.0 from the eslint.config.mjs this replaced,
+// then commented. The rule list is eslint's `recommended` set and
+// eslint-plugin-react's and react-hooks' recommended sets, rule for rule, so
+// `correctness` is off: oxlint's own default set is a different selection, and
+// this file says exactly what is checked rather than inheriting it.
+//
+// The `eslint-disable-next-line` comments in the source are honoured as they
+// are, under their eslint rule names. Each one was checked to silence its own
+// warning and nothing else.
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "categories": {
+    "correctness": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  // The committed build artifact. Consumers resolve package.json's `main` out
+  // of the checkout, so it lives in the repository -- but it is generated, and
+  // linting it says nothing about this source.
+  "ignorePatterns": [
+    "backend/www/**"
+  ],
+  "rules": {
+    "constructor-super": "error",
+    "for-direction": "error",
+    "getter-return": "error",
+    "no-async-promise-executor": "error",
+    "no-case-declarations": "error",
+    "no-class-assign": "error",
+    "no-compare-neg-zero": "error",
+    "no-cond-assign": "error",
+    "no-const-assign": "error",
+    "no-constant-binary-expression": "error",
+    "no-constant-condition": "error",
+    "no-control-regex": "error",
+    "no-debugger": "error",
+    "no-delete-var": "error",
+    "no-dupe-class-members": "error",
+    "no-dupe-else-if": "error",
+    "no-dupe-keys": "error",
+    "no-duplicate-case": "error",
+    "no-empty": "error",
+    "no-empty-character-class": "error",
+    "no-empty-pattern": "error",
+    "no-empty-static-block": "error",
+    "no-ex-assign": "error",
+    "no-extra-boolean-cast": "error",
+    "no-fallthrough": "error",
+    "no-func-assign": "error",
+    "no-global-assign": "error",
+    "no-import-assign": "error",
+    "no-invalid-regexp": "error",
+    "no-irregular-whitespace": "error",
+    "no-loss-of-precision": "error",
+    "no-misleading-character-class": "error",
+    "no-new-native-nonconstructor": "error",
+    "no-nonoctal-decimal-escape": "error",
+    "no-obj-calls": "error",
+    "no-prototype-builtins": "error",
+    "no-redeclare": "error",
+    "no-regex-spaces": "error",
+    "no-self-assign": "error",
+    "no-setter-return": "error",
+    "no-shadow-restricted-names": "error",
+    "no-sparse-arrays": "error",
+    "no-this-before-super": "error",
+    // Still in oxlint's nursery, so the migration left it out -- but it is the
+    // rule the `env` blocks below exist for, and without it a browser global in
+    // a test or a typo'd name in the bundle goes unreported. Clean on this
+    // source, and it caught all three planted mistakes when it was turned on.
+    "no-undef": "error",
+    "no-unexpected-multiline": "error",
+    "no-unreachable": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-negation": "error",
+    "no-unsafe-optional-chaining": "error",
+    "no-unused-labels": "error",
+    "no-unused-private-class-members": "error",
+    "no-unused-vars": "error",
+    "no-useless-backreference": "error",
+    "no-useless-catch": "error",
+    "no-useless-escape": "error",
+    "no-with": "error",
+    "require-yield": "error",
+    "use-isnan": "error",
+    "valid-typeof": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "frontend/**/*.{js,jsx}"
+      ],
+      "rules": {
+        "react/display-name": "error",
+        "react/jsx-key": "error",
+        "react/jsx-no-comment-textnodes": "error",
+        "react/jsx-no-duplicate-props": "error",
+        "react/jsx-no-target-blank": "error",
+        "react/jsx-no-undef": "error",
+        "react/no-children-prop": "error",
+        "react/no-danger-with-children": "error",
+        "react/no-direct-mutation-state": "error",
+        "react/no-find-dom-node": "error",
+        "react/no-is-mounted": "error",
+        "react/no-render-return-value": "error",
+        "react/no-string-refs": "error",
+        "react/no-unescaped-entities": "error",
+        "react/no-unknown-property": "error",
+        "react/no-unsafe": "off",
+        "react/react-in-jsx-scope": "error",
+        // eslint 9 flipped no-unused-vars' `caughtErrors` default from 'none'
+        // to 'all', so `catch (_e)` began reporting. The third pattern keeps
+        // the repo's existing `^_` convention answering for all three
+        // positions rather than rewriting the source to suit it.
+        "no-unused-vars": [
+          "error",
+          {
+            "argsIgnorePattern": "^_",
+            "varsIgnorePattern": "^_",
+            "caughtErrorsIgnorePattern": "^_"
+          }
+        ],
+        "react/rules-of-hooks": "warn",
+        "react/exhaustive-deps": "warn"
+      },
+      "env": {
+        "es2021": true,
+        "browser": true
+      },
+      "plugins": [
+        "react"
+      ]
+    },
+    {
+      // The test suite and its two stubs. Node rather than a browser: these
+      // run under vitest, outside a page, and the block above deliberately
+      // matches `frontend/` only so that what ships and what checks it are
+      // held to their own environments. Vitest's own names are imported by
+      // each file rather than declared global, which is why none are listed
+      // here -- a test that forgot the import should say so.
+      "files": [
+        "test/**/*.js",
+        "vitest.config.mjs"
+      ],
+      "env": {
+        "es2022": true,
+        "node": true
+      }
+    }
+  ]
+}
