@@ -1,5 +1,6 @@
 import { core } from '../spatial';
 import { bindPath } from './path';
+import { positionsOf } from './positions';
 import { latLngOf } from './project';
 
 const { Map, factory } = core;
@@ -28,33 +29,6 @@ const { Map, factory } = core;
  * uses, which is what makes "3 km" here the same 3 km the scale bar draws and
  * the same one `unitsPerMetre` converts for a save.
  */
-
-/**
- * Every position in a geometry, whatever shape it is.
- *
- * GeoJSON nests coordinates by type -- a position, an array of them, an array of
- * those -- and the depth is the only difference between a point and a
- * multipolygon. So the depth is what this walks, rather than switching on
- * `type`, and a geometry type nobody thought of still yields its positions.
- *
- * `GeometryCollection` is the one that carries geometries instead of
- * coordinates, so it is named.
- */
-const positionsOf = (geometry) => {
-  if (!geometry) return [];
-
-  if (geometry.type === 'GeometryCollection') {
-    return (geometry.geometries ?? []).flatMap(positionsOf);
-  }
-
-  const walk = (node) => {
-    if (!Array.isArray(node)) return [];
-    // A position is a pair of numbers; anything else is a level of nesting.
-    return typeof node[0] === 'number' ? [node] : node.flatMap(walk);
-  };
-
-  return walk(geometry.coordinates);
-};
 
 /**
  * The ground distance from a centre to the nearest part of a feature, and to its

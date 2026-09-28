@@ -16,9 +16,11 @@ import { SYSTEM_FIELDS } from './system';
 /**
  * The collection, as GeoJSON.
  *
- * Verbatim and indented. This is the format the service already speaks, so the
- * only decision here is that a person may open the file, which is what the
- * indentation is for.
+ * Verbatim and indented. The only decision here is that a person may open the
+ * file, which is what the indentation is for. The positions are whatever the
+ * caller hands over, and RFC 7946 says they are WGS 84 longitude and latitude:
+ * `useExport` converts the set with `inDegrees` before it gets here, because a
+ * projection is exactly what this file refuses to know.
  */
 export const toGeoJSON = (collection) =>
   JSON.stringify(collection ?? { type: 'FeatureCollection', features: [] }, null, 2);

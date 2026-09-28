@@ -1,4 +1,4 @@
-import { toCSV, toGeoJSON } from '../data';
+import { inDegrees, toCSV, toGeoJSON } from '../data';
 import { download } from '../lib/dom';
 import { today } from '../lib/dates';
 
@@ -21,8 +21,12 @@ import { today } from '../lib/dates';
  * @param {Function} [params.labelResolver]
  * @param {boolean} params.timeScoped  - Whether the screen has a date window.
  * @param {{from: string, to: string}} params.range
+ * @param {number} [params.srid]       - The projection the set is stored in.
+ *        Every file is written in WGS 84 longitude and latitude, so the set is
+ *        converted out of this first. The map's own projection is assumed
+ *        without one, as `latLngOf` assumes it.
  */
-export const useExport = ({ set, selection, exportable, labelResolver, timeScoped, range }) => {
+export const useExport = ({ set, selection, exportable, labelResolver, timeScoped, range, srid }) => {
   /**
    * How this set is offered as a file, or nothing.
    *
@@ -67,8 +71,22 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
     timeScoped ? `${range.from}_${range.to}` : today()
   ].filter(Boolean).join('-')
 
-  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(source), 'application/geo+json')
-  const saveCSV = () => download(`${filename}.csv`, toCSV(source, { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
+  /**
+   * The set as the files hold it: in degrees.
+   *
+   * Converted once, here, before any writer sees it, so the writers stay
+   * strings in and strings out and none of them has to know a projection. The
+   * CSV's latitude and longitude and its WKT column come out in degrees with
+   * no change to `toCSV`.
+   *
+   * On the click rather than on every render: the panel renders far more often
+   * than anyone saves a file, and a copy of the whole set each time would be
+   * work thrown away.
+   */
+  const written = () => inDegrees(source, srid)
+
+  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(written()), 'application/geo+json')
+  const saveCSV = () => download(`${filename}.csv`, toCSV(written(), { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
 
   return { offer, canExport, saveGeoJSON, saveCSV }
 }

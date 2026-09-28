@@ -218,6 +218,11 @@ becomes a column. Point
 coordinates are added as `latitude, longitude`, and any non-point shape as a WKT
 `geometry` column.
 
+Every file is in WGS 84 longitude and latitude (EPSG:4326), whatever projection
+the deployment stores geometry in. That covers the GeoJSON, the CSV's
+`latitude` and `longitude`, and its WKT column. A row cannot ask for the stored
+projection instead.
+
 ## legend, notice, tokens
 
 - **`legend`**: on by default. The key appears only when a set drew more than

@@ -1,4 +1,5 @@
 import { core } from '../spatial';
+import { mapPositions } from './positions';
 
 const { Map, factory } = core;
 
@@ -134,6 +135,29 @@ export const latLngOf = (position, srid) => {
   const { lat, lng } = crs.projection.unproject(factory.point(x, y));
   return { lat, lng };
 };
+
+/**
+ * A stored collection, as longitude and latitude.
+ *
+ * What a file written out of the browser has to hold. RFC 7946 defines a GeoJSON
+ * position as WGS 84 longitude and latitude, and so does KML; a CSV's columns
+ * say `latitude` and `longitude` in their headers. The collection the panel
+ * holds is in stored units, so on a deployment that stores Web Mercator every
+ * one of those files would carry metres where degrees are declared.
+ *
+ * `latLngOf` for each position, turned round into GeoJSON's `[lng, lat]`, so a
+ * file and the map cannot disagree about where a feature is. A third number,
+ * an altitude, is carried through as it was. In 4326 the conversion is the
+ * identity and the copy holds the same numbers as the original.
+ *
+ * @param {Object|null} collection - A GeoJSON FeatureCollection in stored units.
+ * @param {string|number} [srid] - The EPSG code it is stored in.
+ * @returns {Object|null} A copy in degrees; the original is not touched.
+ */
+export const inDegrees = (collection, srid) => mapPositions(collection, (position) => {
+  const { lat, lng } = latLngOf(position, srid);
+  return [lng, lat, ...position.slice(2)];
+});
 
 /**
  * How many units of a projection go to a metre on the ground, at a place.

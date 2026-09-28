@@ -125,6 +125,9 @@ export const FeaturePanel = ({
    * it renders them only once it is ready -- so a path naming it is never sent
    * with the placeholder still in it.
    *
+   * The file buttons convert out of it too, because every file is written in
+   * longitude and latitude whatever the deployment stores.
+   *
    * Not the same question as which projection the bounding box is *in*: that is
    * the map's CRS, and where the two disagree the engine converts incoming
    * geometry and nothing converts the box going out. That is worth knowing
@@ -264,7 +267,8 @@ export const FeaturePanel = ({
     exportable,
     labelResolver,
     timeScoped,
-    range
+    range,
+    srid: dataSrid
   })
 
   /**
