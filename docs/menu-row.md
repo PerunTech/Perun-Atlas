@@ -302,7 +302,10 @@ already open.
   frame the zoom control's `fit` button returns to.
 - **`notice`**: `false` withholds the card saying a set came back empty. The
   card is never shown while a circle is being drawn, or while a file is open
-  over the map, since it would sit on top of the file.
+  over the map, since it would sit on top of the file. Its close button (label
+  key `close`) takes it away until the question changes: a new date window or
+  another record brings it back if that set is empty too. A reload after a
+  save does not, and neither does panning a coloured map.
 - **`tokens`**: CSS custom properties on the panel's root, which is how a row
   sets colours with no stylesheet of its own: `--ap-accent`, `--ap-ink`,
   `--ap-muted`, `--ap-rule`, `--ap-surface`, `--ap-radius`, `--ap-label-font`,

@@ -222,6 +222,18 @@ export const FeaturePanel = ({
   const [shown, setShown] = useState(null)
   const visible = set === null ? null : (shown ?? set)
 
+  /**
+   * The question the reader closed the empty card on, as its `bindingKey`.
+   *
+   * The card covers the middle of the map, and a reader who has read it may
+   * want the map back without changing anything. Closed, it stays closed for
+   * as long as the question is the same one -- through a reload after a save,
+   * and through every pan on a coloured map, whose box is not part of the key.
+   * A different window, or a different record, is a new question, and an empty
+   * answer to it is news again.
+   */
+  const [emptyClosedFor, setEmptyClosedFor] = useState(null)
+
   /** Where the shown features are, for the zoom control's button that frames them. */
   const [extent, setExtent] = useState(null)
 
@@ -330,7 +342,8 @@ export const FeaturePanel = ({
    * that draws is a screen whose empty state is its ordinary one anyway.
    */
   const nothingFound = !loading && set !== null && (set.features?.length ?? 0) === 0
-  const empty = nothingFound && notice !== false && !drawing && !shape && !file
+  const empty = nothingFound && notice !== false && !drawing && !shape && !file &&
+    emptyClosedFor !== bindingKey
 
   return (
     <div
@@ -686,6 +699,17 @@ export const FeaturePanel = ({
                   {[labels.widen ?? 'Try', longest.label].filter(Boolean).join(' ')}
                 </button>
               )}
+              {/* Last, so a keyboard reaches the message and the offer to widen
+                  before the way out of it. It sits in the corner all the same. */}
+              <button
+                type='button'
+                className='atlas-panel__close'
+                aria-label={labels.close ?? 'Close'}
+                title={labels.close ?? 'Close'}
+                onClick={() => setEmptyClosedFor(bindingKey)}
+              >
+                ×
+              </button>
             </div>
           </div>
         )}
