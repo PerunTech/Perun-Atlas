@@ -17,8 +17,7 @@ component API is not finished — that is the signal, not the workaround.
 
 | Path | Contents |
 |---|---|
-| `frontend/index.js` | The whole public surface — see below. The webpack entry for a production build. |
-| `frontend/client.js` | Registers the package with perun-core's plugin manager. The webpack entry for `build-dev` and `dev` only; a production bundle is loaded by the shell as an `IPerunPlugin` script instead. |
+| `frontend/index.js` | The whole public surface — see below. The build's entry: `vite.config.mjs` makes it one UMD file, `backend/www/perun-atlas.js`, which the shell loads as an `IPerunPlugin` script. |
 | `frontend/spatial.js` | The single point of contact with the map engine. |
 | `frontend/config/` | `SCHEMA` — every environment setting declared once. |
 | `frontend/bootstrap/` | Resolves configuration: overrides → SVAROG_SYS_PARAMS → `window` (deprecated) → defaults. Throws, loudly, on a missing required value. |
@@ -28,7 +27,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. |
 | `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape with its save and what it caught, the export, the record pane. |
 | `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `frontend/lib/README.md` lists them. |
-| `build/` | The webpack hook that injects this package's CSS at `head.firstChild`. `frontend/style/README.md` says why that matters. |
+| `build/` | The function that injects this package's CSS at `head.firstChild`, one `<style>` per sheet; `vite.config.mjs` puts it beside every stylesheet import. `frontend/style/README.md` says why that matters. |
 | `docs/menu-row.md` | Every key a menu row may set for `ConfiguredMap`, with its defaults. The contract consuming bundles write rows against. |
 | `test/` | The unit suite, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
@@ -48,6 +47,20 @@ most screens want: it reads a menu row and builds the rest. `docs/menu-row.md`
 describes every key a row may set.
 
 `appearance` was called `style` until the stylesheets took that name back.
+
+## Building
+
+```
+pnpm run build     # backend/www/perun-atlas.js, which is committed
+pnpm run dev       # the same build, again on every save
+```
+
+Vite, in library mode: one UMD file publishing `window['perun-atlas']`, with
+`perun-core` and `spatial` left to the shell's own globals. Each consumer's dev
+server serves this file from a sibling checkout, so `dev` and a reload of the
+consumer's page are the whole loop. UMD cannot code-split, so a library meant to
+load on demand is built as a module of its own and loaded with the browser's
+`import()`.
 
 ## Tests
 
@@ -80,7 +93,7 @@ Structure ships here; the look is the deployment's. Every colour in
 these registries that is `aims-assets/assets/styles/atlas-panel.css`, which also
 has to be listed in `assets/js/stylesheets.js` or the panel draws unstyled.
 
-The cascade runs the deployment's way on purpose: webpack injects this package's
+The cascade runs the deployment's way on purpose: the build injects this package's
 CSS at `document.head.firstChild`, so every one of the deployment's stylesheets
 loads after it and wins on equal specificity. That has a sharp edge — a bare
 element selector over there reaches in here, and an inherited property carries

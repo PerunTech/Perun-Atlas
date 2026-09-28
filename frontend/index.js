@@ -1,4 +1,5 @@
-import pkg from '../package.json';
+// Named, so the bundle carries these two fields rather than the whole manifest.
+import { name as packageName, version as packageVersion } from '../package.json';
 
 import * as appearance from './appearance';
 import * as bootstrap from './bootstrap';
@@ -16,8 +17,8 @@ import { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, 
  * Loaded by the shell as an IPerunPlugin script. Its sort order must place it
  * after spatial, whose global this bundle resolves as it evaluates.
  */
-export const name = pkg.name;
-export const version = pkg.version;
+export const name = packageName;
+export const version = packageVersion;
 
 export { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, DrawTool, FeaturePanel, FeatureSet, Legend, LegendControl, PointPicker, ZoomRail };
 export { appearance, bootstrap, config, data };

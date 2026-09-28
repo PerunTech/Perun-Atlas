@@ -149,7 +149,7 @@ after_script:
     - url_host=`git remote get-url origin | sed -e "s/https:\/\/gitlab-ci-token:.*@//g"`
     - git remote set-url origin "https://gitlab-ci-token:${K8S_SECRET_GITLABCI_TOKEN}@${url_host}"
     - git remote -v
-    - git add backend/www/*.js backend/www/*.LICENSE.txt
+    - git add backend/www/perun-atlas.js
     - git commit -m "Auto commit of perun-atlas bundle for npm" || exit 0
     - git push origin HEAD:$CI_COMMIT_REF_NAME
   only:

@@ -4,9 +4,9 @@ import path from 'node:path';
 /**
  * Unit tests for the parts of this package that do not need a map.
  *
- * `perun-core` and `spatial` are the shell's, not this package's: webpack marks
- * both `externals` in a production build, so they are resolved from globals the
- * shell has already loaded. Neither can be installed here, so a test run points
+ * `perun-core` and `spatial` are the shell's, not this package's: the build
+ * leaves both external, so they are resolved from globals the shell has already
+ * loaded. Neither can be installed here, so a test run points
  * the two bare specifiers at stubs. Exact matches only -- `../spatial` is this
  * package's own shim and must go on resolving to the real file, which is what
  * keeps the one-caller rule under test with everything else.
@@ -16,9 +16,9 @@ import path from 'node:path';
  * `ringIn` is nothing but coordinate literals -- under `frontend/` the suite
  * would fail the build it is meant to protect.
  *
- * `.mjs` rather than `.js` because webpack.config.js is CommonJS and this is
- * not. The extension is what lets the two sit in one package without a `type`
- * field that would break whichever of them it was not written for.
+ * `.mjs` rather than `.js` because this package has no `type` field, so a `.js`
+ * config would be read as CommonJS. vite.config.mjs is the same for the same
+ * reason. The build's config is not merged in here: a run needs none of it.
  *
  * `fsModuleCache` is off, and says so. Vitest suggests turning it on once
  * transforms pass two seconds of a run, which they do on the shared runner, but

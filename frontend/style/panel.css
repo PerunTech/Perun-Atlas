@@ -11,11 +11,11 @@
  * shadows, spacing. That lives in the deployment's own `atlas-panel.css`, which
  * is how the look of every map screen changes without releasing a bundle.
  *
- * For that to work the deployment's sheet has to win, and it does: `style-loader`
- * is configured to insert this at the *top* of `<head>`, before the links the
- * page adds for its own stylesheets. Appending -- its default -- would have put
- * this last and made the package the final word on a look it should not have an
- * opinion about. See the `insert` option in webpack.config.js.
+ * For that to work the deployment's sheet has to win, and it does: the build
+ * inserts this at the *top* of `<head>`, before the links the page adds for its
+ * own stylesheets. Appending would have put this last and made the package the
+ * final word on a look it should not have an opinion about. See
+ * `stylesAtTopOfHead` in vite.config.mjs.
  *
  * Everything stays scoped under `.atlas-panel`. The Leaflet container is a single
  * instance borrowed from spatial and handed back, so a bare `.leaflet-container`

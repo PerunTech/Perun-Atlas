@@ -21,7 +21,7 @@ the rest of the look.
 
 ## The cascade runs the other way
 
-webpack injects these at `document.head.firstChild` (`build/style-insert.js`),
+The build injects these at `document.head.firstChild` (`build/style-insert.js`),
 so **every one of the deployment's stylesheets loads after them and wins on
 equal specificity.** That is deliberate — the deployment owns the look — but it
 has a consequence worth knowing before debugging one of these:

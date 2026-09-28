@@ -9,4 +9,3 @@
 # GitLab's own diff view. Neither changes what is committed or served.
 backend/www/perun-atlas.js       -diff linguist-generated
 backend/www/perun-atlas.js.map   -diff linguist-generated
-backend/www/perun-atlas.js.LICENSE.txt -diff linguist-generated
