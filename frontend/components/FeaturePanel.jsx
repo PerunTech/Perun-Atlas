@@ -251,9 +251,9 @@ export const FeaturePanel = ({
    * one's row: they opened it to look at it.
    */
   const {
-    offered: fileOffered, file, refusal: fileRefusal, opening: fileOpening, inputRef: fileInput,
+    offered: fileOffered, file, refusal: fileRefusal, note: fileNote, opening: fileOpening, inputRef: fileInput,
     choose: chooseFile, onPicked: onFilePicked, close: closeFile, drawn: fileDrawn, failed: fileFailed,
-    dismiss: dismissRefusal
+    dismiss: dismissRefusal, dismissNote: dismissFileNote
   } = useFileOverlay({
     overlay,
     labels,
@@ -461,7 +461,7 @@ export const FeaturePanel = ({
                 ref={fileInput}
                 type='file'
                 className='atlas-panel__fileinput'
-                accept='.geojson,.json,.kml,.gpx'
+                accept='.geojson,.json,.kml,.gpx,.zip,.shp'
                 tabIndex={-1}
                 aria-hidden='true'
                 onChange={onFilePicked}
@@ -488,6 +488,22 @@ export const FeaturePanel = ({
               </div>
             )}
           </div>
+        )}
+
+        {/* What to know about the open file, until the reader dismisses it or
+            the file closes. */}
+        {fileNote && (
+          <p className='atlas-panel__filenote' role='status'>
+            <span>{fileNote}</span>
+            <button
+              type='button'
+              className='atlas-panel__fileclose'
+              aria-label={labels.close ?? 'Close'}
+              onClick={dismissFileNote}
+            >
+              ×
+            </button>
+          </p>
         )}
 
         {/* Why the last file picked did not open, until the reader dismisses it

@@ -27,6 +27,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. |
 | `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape with its save and what it caught, the export, the record pane. |
 | `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `frontend/lib/README.md` lists them. |
+| `frontend/modules/` | Libraries loaded on demand, each built by `vite.modules.config.mjs` as an ES module of its own beside the bundle: `shp.js`, the shapefile reader, is `backend/www/shp.perun-atlas.js`. Bytes in, plain data out; nothing here imports the engine or perun-core. |
 | `build/` | The function that injects this package's CSS at `head.firstChild`, one `<style>` per sheet; `vite.config.mjs` puts it beside every stylesheet import. `frontend/style/README.md` says why that matters. |
 | `docs/menu-row.md` | Every key a menu row may set for `ConfiguredMap`, with its defaults. The contract consuming bundles write rows against. |
 | `test/` | The unit suite, and the two stubs standing in for the shell. |
@@ -51,16 +52,25 @@ describes every key a row may set.
 ## Building
 
 ```
-pnpm run build     # backend/www/perun-atlas.js, which is committed
-pnpm run dev       # the same build, again on every save
+pnpm run build     # backend/www/perun-atlas.js and the modules beside it, all committed
+pnpm run dev       # the same, then perun-atlas.js again on every save
 ```
 
 Vite, in library mode: one UMD file publishing `window['perun-atlas']`, with
 `perun-core` and `spatial` left to the shell's own globals. Each consumer's dev
 server serves this file from a sibling checkout, so `dev` and a reload of the
-consumer's page are the whole loop. UMD cannot code-split, so a library meant to
-load on demand is built as a module of its own and loaded with the browser's
-`import()`.
+consumer's page are the whole loop.
+
+UMD cannot code-split, so a library too large for every screen is built as an
+ES module of its own by `vite.modules.config.mjs`, into the same directory, and
+`frontend/lib/modules.js` loads it with the browser's `import()` from beside
+the bundle. The jar, the CI job that commits the build and each consumer's dev
+server all take the whole directory, so a module needs nothing from any of
+them. The bundle asks for each module with a version taken from its contents,
+which is why `build` runs the modules first, and why `dev` does not rebuild them
+on a save: change one and run `build`. A module has to arrive with a JavaScript
+content type, since a browser refuses to run a module script served as
+anything else.
 
 ## Tests
 
@@ -72,7 +82,9 @@ pnpm run lint      # what CI asks; lint:fix repairs your working tree instead
 
 Vitest, no DOM. Everything under test is the half of this package that does not
 need a map: projections and rings, descriptors and palettes, the join, the CSV
-and the KML, the save body and its verdict.
+and the KML, the save body and its verdict, and the files a reader opens. The
+shapefiles among those are in `test/fixtures/shapefiles/`, made by GDAL with the
+script beside them.
 
 Two things make that possible. `perun-core` and `spatial` are the shell's and
 are `externals` in a production build, so a run points those two bare specifiers

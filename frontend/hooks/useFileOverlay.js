@@ -1,6 +1,7 @@
 import { React } from 'perun-core';
-import { readFile, sizeRefusal } from '../data';
-import { refusalText } from '../appearance/overlay';
+import { FILE_LIMITS, fileKind, readFile, readLayers, sizeRefusal } from '../data';
+import { loadModule } from '../lib/modules';
+import { assumedText, refusalText } from '../appearance/overlay';
 
 const { useRef, useState } = React
 
@@ -19,6 +20,29 @@ const { useRef, useState } = React
 const afterPaint = () => new Promise((resolve) => {
   requestAnimationFrame(() => setTimeout(resolve, 0))
 })
+
+/**
+ * A picked file's contents, read by whichever reader its first bytes ask for.
+ *
+ * Text goes to `readFile`. A zip or a `.shp` goes to the shapefile reader, which
+ * is fetched from beside the bundle the first time one is opened. The loading
+ * card is already up by then, so the reader sees one wait, for the file.
+ */
+const readPicked = async (picked) => {
+  const bytes = await picked.arrayBuffer()
+  const kind = fileKind(bytes, picked.name)
+  if (kind === 'text') return readFile(new TextDecoder().decode(bytes))
+  if (kind === 'part') return { refused: 'shapefilePart' }
+
+  let reader
+  try {
+    reader = await loadModule('shp')
+  } catch (err) {
+    console.warn('perun-atlas: the shapefile reader could not be loaded', err)
+    return { refused: 'readerUnavailable' }
+  }
+  return readLayers(await reader.readShapefile(bytes, { kind, limit: FILE_LIMITS.bytes }))
+}
 
 /**
  * A file the reader opened over the map, or why one was not opened.
@@ -47,6 +71,12 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
 
   /** What to tell the reader about the last file that did not open. */
   const [refusal, setRefusal] = useState(null)
+
+  /**
+   * What to tell the reader about the file that is open: that a shapefile with
+   * no `.prj` was read as longitude and latitude. It goes with the file.
+   */
+  const [note, setNote] = useState(null)
 
   /**
    * The name of the file being read and drawn, or null.
@@ -81,7 +111,7 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
       if (ticket !== latest.current) return
 
       try {
-        result = readFile(await picked.text())
+        result = await readPicked(picked)
       } catch (err) {
         console.warn('perun-atlas: a file could not be read', err)
         result = { refused: 'unreadable' }
@@ -98,6 +128,7 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
     // `opening` stays set: the overlay draws this after the render, and says
     // when it has through `drawn`.
     setRefusal(null)
+    setNote(result.assumed ? assumedText(picked.name, labels) : null)
     setFile({ name: picked.name, collection: result.collection, count: result.collection.features.length })
     onChange?.()
   }
@@ -118,6 +149,7 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
   const close = () => {
     latest.current += 1
     setOpening(null)
+    setNote(null)
     setFile(null)
     onChange?.()
   }
@@ -136,6 +168,7 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
     offered,
     file,
     refusal,
+    note,
     opening,
     inputRef,
     choose,
@@ -143,6 +176,7 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
     close,
     drawn,
     failed,
-    dismiss: () => setRefusal(null)
+    dismiss: () => setRefusal(null),
+    dismissNote: () => setNote(null)
   }
 }

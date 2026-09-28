@@ -21,4 +21,5 @@ out of.
 | `dates.js` | The date window as the wire writes it. Deliberately not a date library. |
 | `icons.js` | The glyphs the map's controls are drawn with. Tabler's path data, transcribed — `elements.Icon` resolves through a dynamic import and two of the three controls that need these are Leaflet's, which take their contents as a string. |
 | `filter.js` | Kinds switched off from the legend, applied to what a layer drew: which features move, the order the shown ones are drawn in, and what the set reads as with the rest taken out. The layer does the moving. |
+| `modules.js` | Loading a module this package builds beside the bundle rather than into it: where the bundle was loaded from, read while it evaluates, and the browser's `import()` from there. |
 | `zoom.js` | The zoom ladder as arithmetic: where a level sits on a rail, which thresholds fall inside the range, the view's scale as a ratio, and the margin a set is framed with. No map, no DOM, no projection — which is what puts the numbers the rail draws with under test. |

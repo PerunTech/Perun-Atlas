@@ -19,13 +19,20 @@ import { positionsOf } from './positions';
  * `@tmcw/togeojson` does the KML and GPX. It has no dependencies of its own and
  * walks a parsed document rather than parsing one, so the parser is the
  * browser's `DOMParser` and a test can hand it another.
+ *
+ * Shapefiles are the exception to text in. Their reader is `modules/shp.js`,
+ * loaded only when one is opened, which hands back layers already converted from
+ * their `.prj` to longitude and latitude. `readLayers` gives those the same
+ * checks `readFile` gives text.
  */
 
 /**
  * The largest file that is read at all, and the most positions one may draw.
  *
  * The size is checked before a byte is read, so a file far too large is turned
- * away without the tab first holding all of it as a string. The positions are
+ * away without the tab first holding all of it as a string. A zip is checked
+ * twice: as it is, and again on the shapes and attributes it holds once
+ * unzipped, since those are what is parsed. The positions are
  * the real cost: every one becomes a vertex the renderer draws and redraws on
  * each zoom. A day's GPS track at one fix a second is about 86,000 of them, and
  * fits with room to spare.
@@ -176,17 +183,67 @@ const positionState = (position) => {
 };
 
 /**
+ * What a picked file is, before any of it is parsed.
+ *
+ * A zip and a `.shp` are told apart by their first bytes, as the text formats
+ * are by their first character: a zip starts `PK`, and a `.shp` with its file
+ * code, 9994 as a big-endian integer. Neither can be read as text, and both need
+ * the shapefile reader, which is loaded only for them.
+ *
+ * A shapefile's other parts are told apart by name, since none of them has a
+ * signature. Each is refused with its own reason: none holds a shape.
+ *
+ * @param {ArrayBuffer} bytes - The file's contents.
+ * @param {string} [name] - The file's name.
+ * @returns {string} `zip`, `shp`, `part` or `text`.
+ */
+export const fileKind = (bytes, name = '') => {
+  const head = new Uint8Array(bytes, 0, Math.min(4, bytes.byteLength));
+  // A zip's first entry, or the end record of a zip with no entries.
+  if (head[0] === 0x50 && head[1] === 0x4b && ((head[2] === 3 && head[3] === 4) || (head[2] === 5 && head[3] === 6))) {
+    return 'zip';
+  }
+  if (head[0] === 0 && head[1] === 0 && head[2] === 0x27 && head[3] === 0x0a) return 'shp';
+  if (/\.(dbf|shx|prj|cpg)$/i.test(name)) return 'part';
+  return 'text';
+};
+
+/**
+ * A collection that was read, checked the way every file is: `{ format,
+ * collection, positions }`, or the refusal.
+ *
+ * The checks, in the order a reader would want to hear them: it holds nothing to
+ * draw, it is too large to draw, it is not in longitude and latitude. Features
+ * without a geometry are dropped rather than refused, since nothing about them
+ * can be drawn and the rest of the file can.
+ */
+const checked = ({ format, collection }, limits) => {
+  const drawable = collection.features
+    .map(feature => ({ feature, positions: positionsOf(feature.geometry) }))
+    .filter(({ positions }) => positions.length > 0);
+  if (drawable.length === 0) return { refused: 'empty' };
+
+  const positions = drawable.reduce((sum, each) => sum + each.positions.length, 0);
+  if (positions > limits.positions) return { refused: 'tooManyPoints', count: positions, limit: limits.positions };
+
+  for (const each of drawable) {
+    for (const position of each.positions) {
+      const state = positionState(position);
+      if (state) return { refused: state };
+    }
+  }
+
+  const features = drawable.map(({ feature }) => feature);
+  return { format, collection: { type: 'FeatureCollection', features }, positions };
+};
+
+/**
  * A file's text as a collection in degrees, or the reason it cannot be one.
  *
  * Told apart by what the text is rather than by the file's name: a `.json` saved
  * from one tool and a `.geojson` from another are the same thing, and a file
  * whose extension lies is read for what it holds. The first character decides,
  * since a GeoJSON text is an object and an XML one starts with a tag.
- *
- * The checks, in the order a reader would want to hear them: it could not be
- * read, it holds nothing to draw, it is too large to draw, it is not in
- * longitude and latitude. Features without a geometry are dropped rather than
- * refused, since nothing about them can be drawn and the rest of the file can.
  *
  * @param {string} text - The file's contents.
  * @param {Object} [options]
@@ -217,21 +274,54 @@ export const readFile = (text, { parse = parseXML, limits = FILE_LIMITS } = {}) 
   }
   if (!read) return { refused: 'unreadable' };
 
-  const drawable = read.collection.features
-    .map(feature => ({ feature, positions: positionsOf(feature.geometry) }))
-    .filter(({ positions }) => positions.length > 0);
-  if (drawable.length === 0) return { refused: 'empty' };
+  return checked(read, limits);
+};
 
-  const positions = drawable.reduce((sum, each) => sum + each.positions.length, 0);
-  if (positions > limits.positions) return { refused: 'tooManyPoints', count: positions, limit: limits.positions };
+/**
+ * The name of the column a zip's layer goes in: `layer`, unless the file already
+ * has a column by that name, in which case `layer_2`, and so on. The file's own
+ * columns are never written over.
+ */
+const layerColumn = (layers) => {
+  const taken = new Set(layers.flatMap(({ collection }) =>
+    collection.features.flatMap(feature => Object.keys(feature?.properties ?? {}))));
+  let column = 'layer';
+  for (let n = 2; taken.has(column); n += 1) column = `layer_${n}`;
+  return column;
+};
 
-  for (const each of drawable) {
-    for (const position of each.positions) {
-      const state = positionState(position);
-      if (state) return { refused: state };
-    }
-  }
+/**
+ * What the shapefile reader returned, as one collection in degrees, or the
+ * reason it cannot be one.
+ *
+ * A zip can hold several layers. They open together, as one file, since the zip
+ * is one file to the reader who picked it, and each feature says which layer it
+ * came from in a column the record pane shows. A zip with one layer gets no such
+ * column: it would only repeat the file's name.
+ *
+ * A layer with no `.prj` was read as it is stored. Coordinates in range are
+ * taken to be longitude and latitude, and the result says so in `assumed`, which
+ * the panel tells the reader. Coordinates out of range are refused as `noPrj`
+ * rather than `notDegrees`, because the fix is different: the file is in some
+ * grid, and without its `.prj` nothing says which.
+ *
+ * @param {Object} read - `readShapefile`'s answer: `{ layers }` or a refusal.
+ * @param {Object} [options]
+ * @param {Object} [options.limits] - `FILE_LIMITS` unless given.
+ * @returns {Object} `{ format: 'shapefile', collection, positions, assumed }`,
+ *          or `{ refused, ...details }`.
+ */
+export const readLayers = (read, { limits = FILE_LIMITS } = {}) => {
+  if (read.refused) return read;
 
-  const features = drawable.map(({ feature }) => feature);
-  return { format: read.format, collection: { type: 'FeatureCollection', features }, positions };
+  const column = read.layers.length > 1 ? layerColumn(read.layers) : null;
+  const features = read.layers.flatMap(({ name, collection }) => collection.features.map((feature) => {
+    const one = asFeature(feature);
+    return column ? { ...one, properties: { [column]: name, ...one.properties } } : one;
+  }));
+
+  const assumed = read.layers.some(layer => layer.assumed);
+  const result = checked({ format: 'shapefile', collection: { type: 'FeatureCollection', features } }, limits);
+  if (result.refused === 'notDegrees' && assumed) return { refused: 'noPrj' };
+  return result.refused ? result : { ...result, assumed };
 };

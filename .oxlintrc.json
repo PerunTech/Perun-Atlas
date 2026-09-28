@@ -16,6 +16,11 @@
   "env": {
     "builtin": true
   },
+  // Filled in by vite.config.mjs's `define` at build time: each module loaded
+  // on demand, with its version. `frontend/lib/modules.js` reads it.
+  "globals": {
+    "__ATLAS_MODULES__": "readonly"
+  },
   // The committed build artifact. Consumers resolve package.json's `main` out
   // of the checkout, so it lives in the repository -- but it is generated, and
   // linting it says nothing about this source.

@@ -1,5 +1,8 @@
 import { defineConfig } from 'vite';
+import { createHash } from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
+import { MODULES } from './vite.modules.config.mjs';
 
 /**
  * The production bundle: one UMD file, `backend/www/perun-atlas.js`.
@@ -11,8 +14,9 @@ import path from 'node:path';
  * a second Leaflet alongside the other bundles that draw maps.
  *
  * UMD cannot code-split. A dynamic `import()` is folded into this one file, so a
- * library meant to load on demand has to be built as a module of its own and
- * loaded with the browser's `import()` from beside this file.
+ * library meant to load on demand is built as a module of its own by
+ * `vite.modules.config.mjs`, and loaded with the browser's `import()` from beside
+ * this file.
  *
  * `.mjs` for the same reason vitest.config.mjs is: this package has no `type`
  * field, so a `.js` here would be read as CommonJS.
@@ -58,8 +62,27 @@ function stylesAtTopOfHead() {
   };
 }
 
+/**
+ * Each module loaded on demand, as the bundle asks for it: its file, with a
+ * version taken from the file's contents.
+ *
+ * The version is what keeps a cached module from running against a newer
+ * bundle, since the file's name never changes. It is read from what the modules'
+ * build wrote, so that build has to run first, and one that has not is a build
+ * that stops here rather than a bundle that asks for a file that is not there.
+ */
+const moduleFiles = () => Object.fromEntries(Object.entries(MODULES).map(([name, { file }]) => {
+  const built = path.resolve('backend/www', file);
+  if (!fs.existsSync(built)) {
+    throw new Error(`${file} is not built. \`pnpm run build\` builds it before perun-atlas.js.`);
+  }
+  const version = createHash('sha256').update(fs.readFileSync(built)).digest('hex').slice(0, 12);
+  return [name, `${file}?v=${version}`];
+}));
+
 export default defineConfig({
   publicDir: false,
+  define: { __ATLAS_MODULES__: JSON.stringify(moduleFiles()) },
   plugins: [stylesAtTopOfHead()],
   // Classic JSX: `React.createElement`, with React imported from perun-core. The
   // automatic runtime would import `react/jsx-runtime`, which is not installed

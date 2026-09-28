@@ -175,6 +175,8 @@ code that is not registered, shows the default.
 | `fileFeature`, `fileFeatures` | {count} feature · {count} features |
 | `fileOpening` | Opening {name}… (the loading card, while a file is read and drawn) |
 | `fileUnreadable`, `fileEmpty`, `fileNotDegrees`, `fileTooLarge`, `fileTooManyPoints` | Why a file did not open. See [overlay](#overlay). |
+| `fileTooLargeUnzipped`, `fileNoShapefile`, `fileShapefilePart`, `fileNoPrj`, `fileUnknownProjection`, `fileNoDatumShift`, `fileReaderUnavailable` | Why a shapefile did not open. See [shapefiles](#shapefiles). |
+| `fileAssumedDegrees` | {name} has no .prj, so its coordinates were read as longitude and latitude (WGS 84). |
 | `draw` | Draw an area (the button that arms the map) |
 | `drawing` | Click a centre, then an edge |
 | `radius`, `metres`, `caught` | Radius · m · inside |
@@ -243,8 +245,8 @@ A file opened over the map (see [overlay](#overlay)) is never in these files.
 ## overlay
 
 An **Open file** button, on unless a row sets `"overlay": false`. It draws a
-GeoJSON, KML or GPX file over the map. Nothing is sent anywhere: the file is
-read in the browser and is gone when the screen closes.
+GeoJSON, KML or GPX file, or a shapefile, over the map. Nothing is sent
+anywhere: the file is read in the browser and is gone when the screen closes.
 
 - **One file at a time.** Opening another replaces it. While a file is open, a
   chip beside the button shows its name, how many features it drew, and a
@@ -271,7 +273,7 @@ with the reason under the toolbar, when it:
 
 | Label key | Reason |
 |---|---|
-| `fileUnreadable` | Is not GeoJSON, KML or GPX, or does not parse. |
+| `fileUnreadable` | Is not GeoJSON, KML, GPX or a shapefile, or does not parse. A zip cut short is unreadable. |
 | `fileEmpty` | Has no feature with a geometry. Features without one are dropped from a file that has others. |
 | `fileNotDegrees` | Has a coordinate outside ±180 / ±90, which means a projected file. GeoJSON, KML and GPX are longitude and latitude by definition. |
 | `fileTooLarge` | Is over 20 MB. It is refused before it is read. |
@@ -281,6 +283,45 @@ The wording takes placeholders, filled in after the label is resolved: `{name}`
 in all five, `{size}` and `{limit}` in `fileTooLarge`, and `{count}` and
 `{limit}` in `fileTooManyPoints`. A refused file does not replace the one
 already open.
+
+### shapefiles
+
+A shapefile opens as a `.zip` holding its parts, or as a lone `.shp`. Its
+reader is not in `perun-atlas.js`: it is `shp.perun-atlas.js`, beside it, and
+the browser fetches it the first time a shapefile is opened (see the
+[README](../README.md#building)). The loading card covers that wait too.
+
+- **A zip is one file.** All its layers open together, as one overlay with one
+  chip and one row in the key. When it holds more than one, each feature gets a
+  `layer` column naming the layer it came from, with its folder in the zip
+  (`data/roads`). A file that already has a `layer` column keeps it, and the
+  new column is `layer_2`, or the next free number. Folders Finder adds to a
+  zip (`__MACOSX`) are skipped.
+- **The `.prj` decides where it lands.** A layer is converted from the
+  projection its `.prj` names to longitude and latitude, if that projection is
+  on WGS 84 or ETRS89, or if the `.prj` itself says how to shift to WGS 84 (a
+  `TOWGS84`). Any other datum is refused. GDAL, QGIS and ArcGIS write `.prj`
+  files with no shift in them, and reading one anyway would put the file in
+  the wrong place without saying so. For a file on MGI 1901 (Gauss-Krüger zone
+  7, EPSG 6316) that is about 1.2 km. The message asks for the file saved in
+  WGS 84, which each of those tools does in one step.
+- **No `.prj`,** as with a lone `.shp`: coordinates within ±180 / ±90 are read
+  as longitude and latitude, and a note under the toolbar says so until the
+  reader closes it or the file. Coordinates outside that range are refused.
+- **Attributes** come from the `.dbf`, decoded in the encoding the `.cpg`
+  names, or as UTF-8 when there is no `.cpg`. A lone `.shp` has none.
+- **Size.** The 20 MB limit applies to the zip, and again to the shapes and
+  attributes it holds once unzipped, since those are what is read.
+
+| Label key | Reason |
+|---|---|
+| `fileTooLargeUnzipped` | Holds over 20 MB of `.shp` and `.dbf` once unzipped. `{limit}`, twice in the English. |
+| `fileNoShapefile` | Is a zip with no `.shp` in it. |
+| `fileShapefilePart` | Is a `.dbf`, `.shx`, `.prj` or `.cpg` on its own: a part of a shapefile that holds no shapes. |
+| `fileNoPrj` | Has no `.prj`, and coordinates outside ±180 / ±90. |
+| `fileUnknownProjection` | Has a `.prj` that cannot be read. |
+| `fileNoDatumShift` | Is on a datum other than WGS 84 or ETRS89, and its `.prj` gives no shift to WGS 84. `{crs}` is the projection's name as the `.prj` gives it. |
+| `fileReaderUnavailable` | Could not be read because `shp.perun-atlas.js` did not load. Trying again asks the network again. |
 
 ## legend, notice, tokens
 

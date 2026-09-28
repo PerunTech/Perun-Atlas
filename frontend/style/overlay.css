@@ -123,3 +123,26 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
+
+/*
+ * Something to know about the file that did open: a shapefile with no .prj was
+ * read as longitude and latitude. Laid out like a refusal, with a dashed mark
+ * and quieter ink, since nothing went wrong and the file is on the map.
+ */
+.atlas-panel__filenote {
+  flex-basis: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 4px 4px 10px;
+  border-left: 3px dashed var(--ap-overlay, #e8590c);
+  font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
+  color: var(--ap-muted, #6b6f7a);
+}
+
+.atlas-panel__filenote > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

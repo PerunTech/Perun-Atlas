@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OVERLAY_STYLE, countText, openingText, overlayEntry, overlayRecord, refusalText } from '../frontend/appearance/overlay';
+import { OVERLAY_STYLE, assumedText, countText, openingText, overlayEntry, overlayRecord, refusalText } from '../frontend/appearance/overlay';
 import { FILE_KEY, kindKey, legendShown } from '../frontend/appearance/legend';
 
 describe('overlayEntry', () => {
@@ -78,9 +78,19 @@ describe('openingText', () => {
   });
 });
 
+describe('assumedText', () => {
+  it('says a shapefile with no .prj was read as longitude and latitude', () => {
+    expect(assumedText('sites.zip')).toBe('sites.zip has no .prj, so its coordinates were read as longitude and latitude (WGS 84).');
+  });
+
+  it("uses the deployment's wording", () => {
+    expect(assumedText('sites.zip', { fileAssumedDegrees: '{name}: WGS 84' })).toBe('sites.zip: WGS 84');
+  });
+});
+
 describe('refusalText', () => {
   it('names the file and the reason', () => {
-    expect(refusalText({ refused: 'unreadable' }, 'notes.txt')).toBe('notes.txt could not be read as GeoJSON, KML or GPX.');
+    expect(refusalText({ refused: 'unreadable' }, 'notes.txt')).toBe('notes.txt could not be read as GeoJSON, KML, GPX or a shapefile.');
     expect(refusalText({ refused: 'empty' }, 'a.kml')).toBe('a.kml has nothing in it to draw.');
     expect(refusalText({ refused: 'notDegrees' }, 'b.geojson')).toMatch(/^b\.geojson is not in longitude and latitude/);
   });
@@ -98,6 +108,27 @@ describe('refusalText', () => {
     const labels = { fileTooLarge: 'Limit {limit}; {name} ima {size}.' };
     expect(refusalText({ refused: 'tooLarge', size: 30 * 1024 * 1024, limit: 20 * 1024 * 1024 }, 'x.kml', labels))
       .toBe('Limit 20 MB; x.kml ima 30 MB.');
+  });
+
+  it('names the projection a shapefile would need shifting from, and says how to fix it', () => {
+    expect(refusalText({ refused: 'noDatumShift', crs: 'MGI 1901 Balkans zone 7' }, 'parcels.zip')).toBe(
+      'parcels.zip is in MGI 1901 Balkans zone 7, and its .prj does not say how to shift that to WGS 84, ' +
+      'so it would land in the wrong place. Save it in WGS 84 (EPSG:4326) and open it again.'
+    );
+    expect(refusalText({ refused: 'unknownProjection' }, 'a.zip')).toMatch(/Save it in WGS 84 \(EPSG:4326\)/);
+  });
+
+  it('gives the limit a zip passed once unzipped', () => {
+    const text = refusalText({ refused: 'tooLargeUnzipped', limit: 20 * 1024 * 1024 }, 'big.zip');
+    expect(text).toBe('big.zip is over 20 MB once unzipped, and 20 MB is the most that can be opened.');
+  });
+
+  it("has words for each of a shapefile's own refusals", () => {
+    ['noShapefile', 'shapefilePart', 'noPrj', 'readerUnavailable'].forEach((refused) => {
+      const text = refusalText({ refused }, 'x.zip');
+      expect(text).toMatch(/x\.zip/);
+      expect(text).not.toMatch(/could not be read as/);
+    });
   });
 
   it('falls back to unreadable for a reason it does not know', () => {

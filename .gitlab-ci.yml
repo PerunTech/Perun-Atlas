@@ -131,9 +131,12 @@ after_script:
 # backend/www/perun-atlas.js is committed, because consumers install this
 # package from git and resolve package.json's `main` out of the checkout. That
 # makes it the one build artifact that can go stale: change frontend/ without
-# rebuilding and consumers keep getting the previous bundle.
+# rebuilding and consumers keep getting the previous bundle. The modules it
+# loads on demand sit beside it -- shp.perun-atlas.js so far -- and the bundle
+# asks for each by a version taken from its contents, so they are committed
+# together.
 #
-# This regenerates and commits it, the same way spatial and perun-core do.
+# This regenerates and commits them, the same way spatial and perun-core do.
 # Manual on purpose -- it writes to the repository, so it should be a decision
 # rather than something every pipeline does.
 1_perun-atlas-generate-js:
@@ -149,7 +152,7 @@ after_script:
     - url_host=`git remote get-url origin | sed -e "s/https:\/\/gitlab-ci-token:.*@//g"`
     - git remote set-url origin "https://gitlab-ci-token:${K8S_SECRET_GITLABCI_TOKEN}@${url_host}"
     - git remote -v
-    - git add backend/www/perun-atlas.js
+    - git add backend/www/*.js
     - git commit -m "Auto commit of perun-atlas bundle for npm" || exit 0
     - git push origin HEAD:$CI_COMMIT_REF_NAME
   only:
