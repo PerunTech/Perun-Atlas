@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { toCSV, toGeoJSON } from '../frontend/data/export';
+import { toCSV, toGeoJSON, toKML } from '../frontend/data/export';
 import { inDegrees } from '../frontend/data/project';
 import { download } from '../frontend/lib/dom';
 import { useExport } from '../frontend/hooks/useExport';
@@ -75,6 +75,123 @@ describe('toCSV', () => {
 
   it('leaves a cell empty for a missing value rather than writing null', () => {
     expect(rows(toCSV({ features: [point({ A: 1 }), point({ B: 2 })] }))[1]).toBe('1,,35.1,33.9');
+  });
+});
+
+describe('toKML', () => {
+  const shape = (type, coordinates, properties = {}) => ({ type: 'Feature', properties, geometry: { type, coordinates } });
+  const placemarks = (kml) => kml.match(/<Placemark>[\s\S]*?<\/Placemark>/g) ?? [];
+  const only = (feature, options) => placemarks(toKML({ features: [feature] }, options))[0];
+
+  it('writes a document with one placemark per feature, a feature without a shape included', () => {
+    const kml = toKML({ features: [point({ A: 1 }), { type: 'Feature', properties: { A: 2 }, geometry: null }] });
+    expect(kml.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">')).toBe(true);
+    expect(placemarks(kml)).toHaveLength(2);
+    expect(placemarks(kml)[1]).not.toMatch(/<Point|<coordinates/);
+  });
+
+  it('writes an empty document rather than "undefined" when nothing arrived', () => {
+    expect(placemarks(toKML(undefined))).toHaveLength(0);
+    expect(toKML(undefined)).toMatch(/<Document>\s*<\/Document>/);
+  });
+
+  it('writes a point as lng,lat, keeping an altitude', () => {
+    expect(only(point({}))).toMatch('<Point><coordinates>33.9,35.1</coordinates></Point>');
+    expect(only(point({}, [33.9, 35.1, 120]))).toMatch('<coordinates>33.9,35.1,120</coordinates>');
+  });
+
+  it('writes a line as a tessellated run of positions separated by spaces', () => {
+    expect(only(shape('LineString', [[0, 0], [1, 1], [2, 0]])))
+      .toMatch('<LineString><tessellate>1</tessellate><coordinates>0,0 1,1 2,0</coordinates></LineString>');
+  });
+
+  it('writes a polygon hole as its own innerBoundaryIs', () => {
+    const outer = [[0, 0], [4, 0], [4, 4], [0, 0]];
+    const holes = [[[1, 1], [2, 1], [2, 2], [1, 1]], [[3, 1], [3.5, 1], [3.5, 2], [3, 1]]];
+    expect(only(shape('Polygon', [outer, ...holes]))).toMatch(
+      '<Polygon><tessellate>1</tessellate>' +
+      '<outerBoundaryIs><LinearRing><coordinates>0,0 4,0 4,4 0,0</coordinates></LinearRing></outerBoundaryIs>' +
+      '<innerBoundaryIs><LinearRing><coordinates>1,1 2,1 2,2 1,1</coordinates></LinearRing></innerBoundaryIs>' +
+      '<innerBoundaryIs><LinearRing><coordinates>3,1 3.5,1 3.5,2 3,1</coordinates></LinearRing></innerBoundaryIs>' +
+      '</Polygon>'
+    );
+  });
+
+  it('writes each Multi type as a MultiGeometry of its parts', () => {
+    expect(only(shape('MultiPoint', [[0, 0], [1, 1]])))
+      .toMatch('<MultiGeometry><Point><coordinates>0,0</coordinates></Point><Point><coordinates>1,1</coordinates></Point></MultiGeometry>');
+
+    const lines = only(shape('MultiLineString', [[[0, 0], [1, 1]], [[2, 2], [3, 3]]]));
+    expect(lines).toMatch(/<MultiGeometry>(<LineString>.*?<\/LineString>){2}<\/MultiGeometry>/);
+    expect(lines).toMatch('<coordinates>2,2 3,3</coordinates>');
+
+    const ring = [[0, 0], [1, 0], [1, 1], [0, 0]];
+    const hole = [[0.2, 0.2], [0.4, 0.2], [0.4, 0.4], [0.2, 0.2]];
+    const areas = only(shape('MultiPolygon', [[ring, hole], [ring]]));
+    expect(areas).toMatch(/<MultiGeometry>(<Polygon>.*?<\/Polygon>){2}<\/MultiGeometry>/);
+    expect(areas.match(/<innerBoundaryIs>/g)).toHaveLength(1);
+  });
+
+  it('writes no shape for a geometry it does not know, or one with no positions', () => {
+    expect(only(shape('GeometryCollection', undefined))).not.toMatch(/<coordinates/);
+    expect(only(shape('LineString', []))).not.toMatch(/<LineString/);
+  });
+
+  it('carries the columns and headers the CSV would, every one on every placemark', () => {
+    const features = [point({ A: 1, pkid: 9 }), point({ B: 'two' })];
+    const kml = toKML({ features }, { labelResolver: (code) => (code === 'a' ? 'Aye' : null) });
+    const [first, second] = placemarks(kml);
+
+    expect(first).toMatch('<Data name="A"><displayName>Aye</displayName><value>1</value></Data>');
+    expect(first).toMatch('<Data name="B"><displayName>B</displayName><value></value></Data>');
+    expect(second).toMatch('<Data name="A"><displayName>Aye</displayName><value></value></Data>');
+    expect(kml).not.toMatch('pkid');
+  });
+
+  it('takes named fields in the order given, headers and all', () => {
+    const one = only(point({ A: 1, B: 2 }), {
+      fields: [{ field: 'B', label: 'x.b' }, { field: 'A' }],
+      labelResolver: (c) => (c === 'x.b' ? 'Bee' : null)
+    });
+    expect(one.indexOf('name="B"')).toBeLessThan(one.indexOf('name="A"'));
+    expect(one).toMatch('<displayName>Bee</displayName><value>2</value>');
+  });
+
+  it('writes no ExtendedData for a set with no columns', () => {
+    expect(only(point({}))).not.toMatch('ExtendedData');
+  });
+
+  it('names a placemark by what nameOf answers, and leaves it unnamed on nothing', () => {
+    const features = [point({ N: 'North' }), point({ N: '' }), point({})];
+    const nameOf = (feature) => feature.properties.N ?? null;
+    const [named, blank, none] = placemarks(toKML({ features }, { nameOf }));
+
+    expect(named).toMatch(/<Placemark>\n {6}<name>North<\/name>\n/);
+    expect(blank).not.toMatch('<name>');
+    expect(none).not.toMatch('<name>');
+    expect(placemarks(toKML({ features }))[0]).not.toMatch('<name>');
+  });
+
+  /**
+   * These values are whatever a registry's free-text field holds. Unescaped, a
+   * `<` ends an element and a `&` starts an entity, and one such record makes
+   * the whole file unreadable.
+   */
+  it('escapes every text node and attribute', () => {
+    const nasty = `<b class="x">Tom & 'Jerry'</b>`;
+    const escaped = '&lt;b class=&quot;x&quot;&gt;Tom &amp; &apos;Jerry&apos;&lt;/b&gt;';
+    const one = only(point({ [nasty]: nasty }), { labelResolver: () => nasty, nameOf: () => nasty });
+
+    expect(one).toMatch(`<name>${escaped}</name>`);
+    expect(one).toMatch(`<Data name="${escaped}"><displayName>${escaped}</displayName><value>${escaped}</value></Data>`);
+    expect(one).not.toMatch(/<b|'Jerry'|"x"/);
+  });
+
+  // XML 1.0 has no way to write these at all, and a parser that meets one
+  // refuses the document.
+  it('drops the control characters XML cannot hold, and keeps tab and newline', () => {
+    const one = only(point({ A: 'a\u0000b\u000Cc\td\ne' }));
+    expect(one).toMatch('<value>abc\td\ne</value>');
   });
 });
 
@@ -192,5 +309,44 @@ describe('useExport', () => {
   it('leaves the set the map drew in stored units', () => {
     offer().saveGeoJSON();
     expect(stored.features[0].geometry.coordinates).toEqual(mercator(CENTRE));
+  });
+  it('writes the KML in degrees, as a .kml of the Google Earth type', () => {
+    offer().saveKML();
+    const [filename, , type] = download.mock.calls[0];
+    expect(filename).toMatch(/\.kml$/);
+    expect(type).toBe('application/vnd.google-earth.kml+xml');
+
+    const [lng, lat] = written().match(/<Point><coordinates>([^<]+)</)[1].split(',').map(Number);
+    expectDegrees([lng, lat], CENTRE);
+  });
+
+  describe('naming placemarks', () => {
+    const set = {
+      type: 'FeatureCollection',
+      features: [
+        point({ DESCRIPTOR: 'SITE', NAME: 'Site one', CODE: 'S1' }),
+        point({ DESCRIPTOR: 'SITE', CODE: 'S2' }),
+        { type: 'Feature', properties: { DESCRIPTOR: 'LINE', REF: 'L1' }, geometry: { type: 'LineString', coordinates: [[0, 0], [1, 1]] } }
+      ]
+    };
+    const descriptors = { SITE: { label: { field: 'CODE' } }, LINE: { popup: { title: 'REF' } } };
+    const drawnWith = (feature) => descriptors[feature.properties.DESCRIPTOR];
+    const names = (exportable) => {
+      useExport({ set, exportable, drawnWith, timeScoped: false, range: {}, srid: 4326 }).saveKML();
+      return (written().match(/<Placemark>[\s\S]*?<\/Placemark>/g)).map(p => p.match(/<name>(.*)<\/name>/)?.[1] ?? null);
+    };
+
+    it("takes the row's name field first, and the descriptor where a feature has none", () => {
+      expect(names({ name: 'NAME' })).toEqual(['Site one', 'S2', 'L1']);
+    });
+
+    it('takes the descriptor alone when the row names no field', () => {
+      expect(names(true)).toEqual(['S1', 'S2', 'L1']);
+    });
+
+    it('leaves a placemark unnamed when neither says', () => {
+      useExport({ set, exportable: true, timeScoped: false, range: {}, srid: 4326 }).saveKML();
+      expect(written()).not.toMatch('<name>');
+    });
   });
 });

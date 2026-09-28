@@ -6,7 +6,8 @@ import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
 import { LegendControl } from './LegendControl';
-import { DEFAULT_PALETTE, legendFrom, legendFromPalette } from '../appearance';
+import { DEFAULT_PALETTE, legendFrom, legendFromPalette, variantOf } from '../appearance';
+import { descriptorOf } from '../data';
 import { useChoropleth, useDateWindow, useDrawnShape, useExport, useRecord } from '../hooks';
 import '../style/panel.css';
 const { useMemo, useState } = React
@@ -261,14 +262,26 @@ export const FeaturePanel = ({
     setLoading(false)
   }
 
-  const { offer, canExport, saveGeoJSON, saveCSV } = useExport({
+  /**
+   * The descriptor a feature is drawn with, in the steps the mounted layer
+   * takes: a coloured map's one descriptor, or else the record's own override,
+   * then the name the producer stamped, with the variant case merged in, as
+   * `FeatureSet` does. The KML export reads it so a placemark has the name the
+   * feature has on the map.
+   */
+  const drawnWith = (feature) => (coloured
+    ? descriptors?.[choropleth.descriptor]
+    : variantOf(descriptors?.[descriptorFor(feature) ?? descriptorOf(feature)], feature))
+
+  const { offer, canExport, saveGeoJSON, saveCSV, saveKML } = useExport({
     set: visible,
     selection,
     exportable,
     labelResolver,
     timeScoped,
     range,
-    srid: dataSrid
+    srid: dataSrid,
+    drawnWith
   })
 
   /**
@@ -379,6 +392,13 @@ export const FeaturePanel = ({
               <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveCSV}>
                 <Icon name='IconFileTypeCsv' size={16} stroke={1.75} aria-hidden='true' />
                 {labels.exportCsv ?? 'CSV'}
+              </button>
+            )}
+
+            {canExport && offer.kml !== false && (
+              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveKML}>
+                <Icon name='IconWorld' size={16} stroke={1.75} aria-hidden='true' />
+                {labels.exportKml ?? 'KML'}
               </button>
             )}
           </div>

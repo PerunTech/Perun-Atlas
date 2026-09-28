@@ -112,6 +112,31 @@ export const labelFor = (descriptor, feature) => {
 };
 
 /**
+ * What a feature is called, per its descriptor, or nothing.
+ *
+ * A descriptor names the field that names its feature in up to three places:
+ * the permanent label, the popup's title and the record pane's heading. They are
+ * asked in that order, the label first because a label is nothing but a name;
+ * the other two are headings over something longer. The first with a value
+ * answers. A file that has to call each feature something, such as a KML
+ * placemark, asks here, so a feature has the same name in the file as on the
+ * map.
+ *
+ * @param {Object} descriptor - The descriptor the feature is drawn with, its
+ *        variant already merged in.
+ * @param {Object} feature    - The GeoJSON feature.
+ * @returns {string|null}
+ */
+export const nameFor = (descriptor, feature) => {
+  const read = (field) => {
+    const value = field ? feature?.properties?.[field] : undefined;
+    return value === undefined || value === null || value === '' ? null : String(value);
+  };
+
+  return read(descriptor?.label?.field) ?? read(descriptor?.popup?.title) ?? read(descriptor?.details?.title);
+};
+
+/**
  * The rows of a feature's popup, per its descriptor.
  *
  * A label names a feature; a popup explains it. That division is already assumed

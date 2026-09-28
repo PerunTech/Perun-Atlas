@@ -8,5 +8,5 @@ export { bboxIn, crsFor, inDegrees, latLngOf, pointIn, ringIn, unitsPerMetre } f
 export { mapPositions, positionsOf } from './positions';
 export { identifiersOf, spanTo, withinCircle } from './select';
 export { postTo, fillBody } from './save';
-export { toGeoJSON, toCSV } from './export';
+export { toGeoJSON, toCSV, toKML } from './export';
 export { SYSTEM_FIELDS } from './system';

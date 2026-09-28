@@ -58,8 +58,8 @@ pnpm run lint      # what CI asks; lint:fix repairs your working tree instead
 ```
 
 Vitest, no DOM. Everything under test is the half of this package that does not
-need a map: projections and rings, descriptors and palettes, the join, the CSV,
-the save body and its verdict.
+need a map: projections and rings, descriptors and palettes, the join, the CSV
+and the KML, the save body and its verdict.
 
 Two things make that possible. `perun-core` and `spatial` are the shell's and
 are `externals` in a production build, so a run points those two bare specifiers

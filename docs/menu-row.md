@@ -49,10 +49,10 @@ everything in `labels`, a descriptor's `legend`, popup field labels and
 `labelDomain`. A code that has not been registered shows the panel's own
 neutral English wording, never the raw message id.
 
-Column names are tried as codes too. The record pane, the CSV headers and the
-legend each look up the column or descriptor name, lowercased, as a code. If no
-such code is registered, the name itself is shown. So a bare `VILLAGE_CODE` on
-screen means `village_code` needs registering.
+Column names are tried as codes too. The record pane, the CSV and KML headers
+and the legend each look up the column or descriptor name, lowercased, as a
+code. If no such code is registered, the name itself is shown. So a bare
+`VILLAGE_CODE` on screen means `village_code` needs registering.
 
 ## Placeholders
 
@@ -169,7 +169,7 @@ code that is not registered, shows the default.
 | `legend` | Legend (the key's heading) |
 | `showAll` | Show all (the key's button that switches every row back on) |
 | `details`, `close` | Details · Close |
-| `exportGeoJSON`, `exportCsv` | GeoJSON · CSV |
+| `exportGeoJSON`, `exportCsv`, `exportKml` | GeoJSON · CSV · KML |
 | `draw` | Draw an area (the button that arms the map) |
 | `drawing` | Click a centre, then an edge |
 | `radius`, `metres`, `caught` | Radius · m · inside |
@@ -200,15 +200,16 @@ it off, and each one's position takes a Leaflet corner (`topleft`,
 
 ## export
 
-Left out, the set is offered as GeoJSON and CSV. `false` withholds the buttons.
-An object chooses what is offered:
+Left out, the set is offered as GeoJSON, CSV and KML. `false` withholds the
+buttons. An object chooses what is offered:
 
 | Key | Meaning |
 |---|---|
-| `geojson`, `csv` | `false` drops that button. |
+| `geojson`, `csv`, `kml` | `false` drops that button. |
 | `filename` | The file name's stem (default `features`). The date range, or today's date, is appended, as is `within-<radius>` when a drawn circle narrowed the set. |
-| `fields` | `[{ field, label }]` fixes the CSV's columns, their order and their headers. It also brings back system fields, if named. |
+| `fields` | `[{ field, label }]` fixes the CSV's and the KML's columns, their order and their headers. It also brings back system fields, if named. |
 | `exclude` | Columns to drop on top of the system fields, when `fields` is not given. |
+| `name` | The field that names each KML placemark. See below. |
 
 The buttons write what is on the map. A kind switched off in the key is left
 out of the file, as is everything outside a drawn circle when `select` is set.
@@ -218,8 +219,17 @@ becomes a column. Point
 coordinates are added as `latitude, longitude`, and any non-point shape as a WKT
 `geometry` column.
 
+The KML has one placemark per feature, with the same columns and headers as the
+CSV in its `ExtendedData`, and no styles, so Google Earth draws its defaults. A
+placemark is called by the row's `name` field when the feature has a value
+there. Otherwise it takes the name its descriptor shows on the map: the
+`label` field, then the `popup` title, then the `details` title. A feature with
+none of these is written without a name. So on a screen of sites and lines, a
+`name` that only sites carry names the sites, and each line keeps its own
+descriptor's name, if it has one.
+
 Every file is in WGS 84 longitude and latitude (EPSG:4326), whatever projection
-the deployment stores geometry in. That covers the GeoJSON, the CSV's
+the deployment stores geometry in. That covers the GeoJSON, the KML, the CSV's
 `latitude` and `longitude`, and its WKT column. A row cannot ask for the stored
 projection instead.
 

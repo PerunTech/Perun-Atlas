@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BASE_STYLE, detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf
+  BASE_STYLE, detailsFor, labelFor, labelVisible, nameFor, pathOptions, popupFor, variantOf
 } from '../frontend/appearance/descriptor';
 
 const feature = (properties) => ({ type: 'Feature', properties });
@@ -76,6 +76,31 @@ describe('labelFor', () => {
   it('is null when there is no field or no value', () => {
     expect(labelFor({ label: {} }, feature({ N: 1 }))).toBeNull();
     expect(labelFor({ label: { field: 'N' } }, feature({}))).toBeNull();
+  });
+});
+
+describe('nameFor', () => {
+  const all = { label: { field: 'L' }, popup: { title: 'P' }, details: { title: 'D' } };
+
+  it('asks the label, then the popup title, then the pane title', () => {
+    expect(nameFor(all, feature({ L: 'label', P: 'popup', D: 'pane' }))).toBe('label');
+    expect(nameFor(all, feature({ P: 'popup', D: 'pane' }))).toBe('popup');
+    expect(nameFor(all, feature({ D: 'pane' }))).toBe('pane');
+  });
+
+  // An empty string is a field with nothing in it, not a name.
+  it('passes over an empty value to the next place', () => {
+    expect(nameFor(all, feature({ L: '', P: 'popup' }))).toBe('popup');
+  });
+
+  it('writes a number as text', () => {
+    expect(nameFor({ popup: { title: 'ID' } }, feature({ ID: 4471 }))).toBe('4471');
+  });
+
+  it('is null with no descriptor, or nothing that names the feature', () => {
+    expect(nameFor(undefined, feature({ L: 'x' }))).toBeNull();
+    expect(nameFor({ popup: { fields: [{ field: 'L' }] } }, feature({ L: 'x' }))).toBeNull();
+    expect(nameFor(all, feature({}))).toBeNull();
   });
 });
 

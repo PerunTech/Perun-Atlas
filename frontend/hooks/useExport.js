@@ -1,4 +1,5 @@
-import { inDegrees, toCSV, toGeoJSON } from '../data';
+import { inDegrees, toCSV, toGeoJSON, toKML, valueAt } from '../data';
+import { nameFor } from '../appearance';
 import { download } from '../lib/dom';
 import { today } from '../lib/dates';
 
@@ -8,7 +9,7 @@ import { today } from '../lib/dates';
  * No state of its own: everything here is decided from the set that arrived and
  * the row that asked for the buttons, which is why it reads as a handful of
  * derivations rather than a hook. It is one because the panel should not have to
- * hold two filenames and a pair of writers to render two buttons.
+ * hold three filenames and three writers to render three buttons.
  *
  * @param {Object} params
  * @param {Object} params.set          - The collection currently drawn, or null.
@@ -17,7 +18,7 @@ import { today } from '../lib/dates';
  *        that rather than the whole set -- which is the point of drawing one on
  *        a screen that offers files, and is why the filename says so.
  * @param {boolean|Object} params.exportable - `false` to withhold the buttons, or
- *        `{ filename, fields, exclude, geojson, csv }`.
+ *        `{ filename, fields, exclude, name, geojson, csv, kml }`.
  * @param {Function} [params.labelResolver]
  * @param {boolean} params.timeScoped  - Whether the screen has a date window.
  * @param {{from: string, to: string}} params.range
@@ -25,8 +26,11 @@ import { today } from '../lib/dates';
  *        Every file is written in WGS 84 longitude and latitude, so the set is
  *        converted out of this first. The map's own projection is assumed
  *        without one, as `latLngOf` assumes it.
+ * @param {Function} [params.drawnWith] - The descriptor a feature is drawn
+ *        with, its variant merged in. A KML placemark takes its name from it
+ *        when the row's `name` gives none.
  */
-export const useExport = ({ set, selection, exportable, labelResolver, timeScoped, range, srid }) => {
+export const useExport = ({ set, selection, exportable, labelResolver, timeScoped, range, srid, drawnWith }) => {
   /**
    * How this set is offered as a file, or nothing.
    *
@@ -85,8 +89,29 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
    */
   const written = () => inDegrees(source, srid)
 
-  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(written()), 'application/geo+json')
-  const saveCSV = () => download(`${filename}.csv`, toCSV(written(), { fields: offer?.fields, exclude: offer?.exclude, labelResolver }), 'text/csv;charset=utf-8')
+  /**
+   * What a KML placemark is called.
+   *
+   * The row's `name` field, when the row names one and this feature has a value
+   * there. Otherwise whatever the feature's descriptor already calls it on the
+   * map: its label, then its popup's or its pane's title. Nothing when neither
+   * says, and the placemark goes without a name rather than with a made-up one.
+   *
+   * Decided per feature rather than per set, because a set is routinely two
+   * kinds of thing and a row's field often belongs to only one of them. Sites
+   * have a name and the lines between them do not, so a line falls back to its
+   * own descriptor rather than coming out blank.
+   */
+  const nameOf = (feature) => {
+    const named = offer?.name ? valueAt(feature?.properties, offer.name) : null
+    return named === null || named === undefined || named === '' ? nameFor(drawnWith?.(feature), feature) : String(named)
+  }
 
-  return { offer, canExport, saveGeoJSON, saveCSV }
+  const columns = { fields: offer?.fields, exclude: offer?.exclude, labelResolver }
+
+  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(written()), 'application/geo+json')
+  const saveCSV = () => download(`${filename}.csv`, toCSV(written(), columns), 'text/csv;charset=utf-8')
+  const saveKML = () => download(`${filename}.kml`, toKML(written(), { ...columns, nameOf }), 'application/vnd.google-earth.kml+xml')
+
+  return { offer, canExport, saveGeoJSON, saveCSV, saveKML }
 }

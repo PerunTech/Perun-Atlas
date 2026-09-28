@@ -58,6 +58,18 @@ const columnsOf = (features, exclude = []) => {
   return [...seen];
 };
 
+/**
+ * The columns a file carries, each with the header a reader sees.
+ *
+ * The CSV and the KML both read this, so a set describes itself the same way in
+ * both files. `fields` fixes the columns outright, and its labels go through
+ * `labelResolver`. Without it, every column `columnsOf` finds is headed by the
+ * column lowercased as a label code, or by its own name when that misses.
+ */
+const columnsFor = (features, { fields, exclude, labelResolver } = {}) => (fields?.length
+  ? fields.map(({ field, label }) => ({ field, header: (label && labelResolver?.(label)) || label || field }))
+  : columnsOf(features, exclude).map(field => ({ field, header: labelResolver?.(field.toLowerCase()) || field })));
+
 /** A run of positions, as WKT writes them: `x y`, space separated, comma between. */
 const positions = (list) => list.map(([x, y]) => `${x} ${y}`).join(', ');
 
@@ -160,10 +172,7 @@ const cell = (value) => {
  */
 export const toCSV = (collection, { fields, exclude, labelResolver } = {}) => {
   const features = collection?.features ?? [];
-
-  const columns = fields?.length
-    ? fields.map(({ field, label }) => ({ field, header: (label && labelResolver?.(label)) || label || field }))
-    : columnsOf(features, exclude).map(field => ({ field, header: labelResolver?.(field.toLowerCase()) || field }));
+  const columns = columnsFor(features, { fields, exclude, labelResolver });
 
   const typeOf = (feature) => feature?.geometry?.type ?? '';
   const points = features.some(feature => /Point$/.test(typeOf(feature)));
@@ -198,4 +207,133 @@ export const toCSV = (collection, { fields, exclude, labelResolver } = {}) => {
   // CRLF, which is what RFC 4180 specifies and what a spreadsheet on Windows
   // opens without turning the file into one long row.
   return [header.map(cell), ...rows].map(row => row.join(',')).join('\r\n');
+};
+
+/**
+ * Text for an XML document: escaped, and without the characters XML cannot hold.
+ *
+ * The same two hazards as `cell`, because these values come from the same
+ * database.
+ *
+ * Markup: a record's field holding `<` or `&` would end an element early or
+ * start an entity, so the five XML escapes are applied to every text node and
+ * attribute value. One function serves both, since a quote only matters in an
+ * attribute and escaping it in text changes nothing.
+ *
+ * Control characters: XML 1.0 cannot write most of C0 at all, not even as a
+ * character reference, and a parser that meets one refuses the whole document.
+ * A form feed pasted into a note from a word processor would make the file
+ * unreadable rather than one value wrong, so they are dropped. Tab, newline and
+ * carriage return are allowed and kept.
+ */
+const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
+const xml = (value) => String(value)
+  // eslint-disable-next-line no-control-regex -- matching them is the point.
+  .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
+  .replace(/[&<>"']/g, char => XML_ESCAPES[char]);
+
+/**
+ * A run of positions, as KML writes them: `lng,lat` with commas inside a
+ * position and spaces between them. A third number, an altitude, is kept; with no
+ * `altitudeMode` a reader clamps the shape to the ground anyway.
+ */
+const kmlCoordinates = (list) => `<coordinates>${list.map(position => position.join(',')).join(' ')}</coordinates>`;
+const kmlRing = (list) => `<LinearRing>${kmlCoordinates(list)}</LinearRing>`;
+
+/**
+ * `tessellate` on lines and areas, so they follow the ground in Google Earth.
+ * Without it an edge is drawn as a straight chord between its ends, and a
+ * movement line a few kilometres long runs through the hills between two
+ * holdings and disappears into them.
+ */
+const KML_GEOMETRY = {
+  Point: (position) => `<Point>${kmlCoordinates([position])}</Point>`,
+  LineString: (coordinates) => `<LineString><tessellate>1</tessellate>${kmlCoordinates(coordinates)}</LineString>`,
+  // One `innerBoundaryIs` per hole, which is what the KML 2.2 schema says. A
+  // single one holding every hole also opens in Google Earth, and not in every
+  // other reader.
+  Polygon: ([outer, ...holes]) => '<Polygon><tessellate>1</tessellate>' +
+    `<outerBoundaryIs>${kmlRing(outer)}</outerBoundaryIs>` +
+    holes.map(hole => `<innerBoundaryIs>${kmlRing(hole)}</innerBoundaryIs>`).join('') +
+    '</Polygon>',
+  MultiPoint: (coordinates) => `<MultiGeometry>${coordinates.map(KML_GEOMETRY.Point).join('')}</MultiGeometry>`,
+  MultiLineString: (coordinates) => `<MultiGeometry>${coordinates.map(KML_GEOMETRY.LineString).join('')}</MultiGeometry>`,
+  MultiPolygon: (coordinates) => `<MultiGeometry>${coordinates.map(KML_GEOMETRY.Polygon).join('')}</MultiGeometry>`
+};
+
+/**
+ * A feature's geometry, as KML, or nothing.
+ *
+ * The same six types `toWKT` writes. A feature with no geometry is still a
+ * placemark, only without a shape, so the KML has as many placemarks as the CSV
+ * has rows.
+ */
+const toKMLGeometry = (geometry) => {
+  const write = KML_GEOMETRY[geometry?.type];
+  return write && geometry.coordinates?.length ? write(geometry.coordinates) : '';
+};
+
+/** One feature, as a `Placemark`. Indented to sit inside `Document`. */
+const placemark = (feature, columns, nameOf) => {
+  const name = nameOf?.(feature);
+  const shape = toKMLGeometry(feature?.geometry);
+
+  // Every column on every placemark, empty where the feature has no value, as
+  // in the CSV. `name` is the column itself, so a reader that turns the file
+  // back into features (GDAL, or togeojson) gets the property the set had.
+  // `displayName` is the header the CSV would write, which is what Google Earth
+  // shows in a placemark's balloon.
+  const data = columns.map(({ field, header }) => {
+    const value = valueAt(feature?.properties, field);
+    const text = value === null || value === undefined ? '' : xml(value);
+    return `        <Data name="${xml(field)}"><displayName>${xml(header)}</displayName><value>${text}</value></Data>`;
+  });
+
+  return [
+    '    <Placemark>',
+    ...(name === null || name === undefined || name === '' ? [] : [`      <name>${xml(name)}</name>`]),
+    ...(data.length ? ['      <ExtendedData>', ...data, '      </ExtendedData>'] : []),
+    ...(shape ? [`      ${shape}`] : []),
+    '    </Placemark>'
+  ].join('\n');
+};
+
+/**
+ * The collection, as KML, so a set opens in Google Earth.
+ *
+ * One `Placemark` per feature, holding the same columns under the same headers
+ * as the CSV, in `ExtendedData`. `fields`, `exclude` and `labelResolver` mean
+ * what they mean for `toCSV`. A KML file carries its geometry in its own
+ * elements, so there are no `latitude`, `longitude` or WKT columns.
+ *
+ * The positions are longitude and latitude, which is the only thing KML allows.
+ * As with `toGeoJSON`, `useExport` converts the set with `inDegrees` first, and
+ * this file knows no projection.
+ *
+ * No styles, so a reader draws each placemark in its own default. Writing them
+ * from the descriptors was left for later: KML colours are `aabbggrr`, the
+ * reverse of CSS.
+ *
+ * @param {Object} collection - GeoJSON FeatureCollection, in longitude and latitude.
+ * @param {Array}  [fields]   - [{ field, label }], fixing the columns and order.
+ * @param {Array}  [exclude]  - Property names to leave out, when `fields` is not given.
+ * @param {Function} [labelResolver] - Turns a field's label into display text.
+ * @param {Function} [nameOf] - What a placemark is called: the feature in, text
+ *        or nothing out. Nothing writes the placemark without a `name`. Which
+ *        field names a feature is the caller's to say; `useExport` asks the row
+ *        and then the descriptor.
+ */
+export const toKML = (collection, { fields, exclude, labelResolver, nameOf } = {}) => {
+  const features = collection?.features ?? [];
+  const columns = columnsFor(features, { fields, exclude, labelResolver });
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<kml xmlns="http://www.opengis.net/kml/2.2">',
+    '  <Document>',
+    ...features.map(feature => placemark(feature, columns, nameOf)),
+    '  </Document>',
+    '</kml>',
+    ''
+  ].join('\n');
 };
