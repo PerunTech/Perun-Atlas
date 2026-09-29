@@ -170,7 +170,7 @@ code that is not registered, shows the default.
 | `legend` | Legend (the key's heading) |
 | `showAll` | Show all (the key's button that switches every row back on) |
 | `details`, `close` | Details · Close |
-| `exportGeoJSON`, `exportCsv`, `exportKml` | GeoJSON · CSV · KML |
+| `exportGeoJSON`, `exportCsv`, `exportKml`, `exportShp` | GeoJSON · CSV · KML · Shapefile |
 | `openFile`, `closeFile` | Open file · Close file |
 | `fileFeature`, `fileFeatures` | {count} feature · {count} features |
 | `fileOpening` | Opening {name}… (the loading card, while a file is read and drawn) |
@@ -207,14 +207,14 @@ it off, and each one's position takes a Leaflet corner (`topleft`,
 
 ## export
 
-Left out, the set is offered as GeoJSON, CSV and KML. `false` withholds the
-buttons. An object chooses what is offered:
+Left out, the set is offered as GeoJSON, CSV, KML and a zipped shapefile.
+`false` withholds the buttons. An object chooses what is offered:
 
 | Key | Meaning |
 |---|---|
-| `geojson`, `csv`, `kml` | `false` drops that button. |
+| `geojson`, `csv`, `kml`, `shp` | `false` drops that button. |
 | `filename` | The file name's stem (default `features`). The date range, or today's date, is appended, as is `within-<radius>` when a drawn circle narrowed the set. |
-| `fields` | `[{ field, label }]` fixes the CSV's and the KML's columns, their order and their headers. It also brings back system fields, if named. |
+| `fields` | `[{ field, label, short }]` fixes the columns of the CSV, the KML and the shapefile, their order and their headers. `short` is the column's name in the shapefile. It also brings back system fields, if named. |
 | `exclude` | Columns to drop on top of the system fields, when `fields` is not given. |
 | `name` | The field that names each KML placemark. See below. |
 
@@ -235,10 +235,27 @@ none of these is written without a name. So on a screen of sites and lines, a
 `name` that only sites carry names the sites, and each line keeps its own
 descriptor's name, if it has one.
 
+The shapefile is a zip. A shapefile holds one kind of geometry, so the set is
+split into `<stem>-points`, `<stem>-lines` and `<stem>-polygons`, as far as the
+set has them, each with its `.shp`, `.shx`, `.dbf`, `.prj` and a `.cpg` saying
+UTF-8. One MultiPoint makes the whole points file MultiPoint. A feature with no
+shape, or a GeometryCollection, is left out, and so is an altitude. Without
+`fields`, each file has the columns its own features carry, so the lines are
+not padded with the sites' columns.
+
+A `.dbf` column name is at most ten letters, digits or underscores. Each column
+is cut to fit, starting from its `short` when `fields` gives one, and a name
+already taken ends in `_1`, `_2` and so on, as GDAL does it: `VILLAGE_CODE` and
+`VILLAGE_COUNT` become `VILLAGE_CO` and `VILLAGE__1`. `<stem>-fields.csv` in the
+zip gives each short name's column and the header the CSV uses. Text is
+UTF-8 and cut at 254 bytes. A number keeps the decimals it needs, up to 15. A
+column of `true` and `false` is logical. The zip opens over the map again with
+**Open file**, with a `layer` column when it holds more than one shapefile.
+
 Every file is in WGS 84 longitude and latitude (EPSG:4326), whatever projection
-the deployment stores geometry in. That covers the GeoJSON, the KML, the CSV's
-`latitude` and `longitude`, and its WKT column. A row cannot ask for the stored
-projection instead.
+the deployment stores geometry in. That covers the GeoJSON, the KML, the
+shapefile, the CSV's `latitude` and `longitude`, and its WKT column. A row
+cannot ask for the stored projection instead.
 
 A file opened over the map (see [overlay](#overlay)) is never in these files.
 

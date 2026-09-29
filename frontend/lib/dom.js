@@ -59,6 +59,8 @@ export const asNode = (content) =>
  * turn as the click cancels the download in some browsers -- the click is
  * queued, and by the time it is handled the URL it names is already gone.
  *
+ * `content` is text, or bytes for a file that is not, such as a zip.
+ *
  * A BOM for CSV, because that is what tells a spreadsheet the file is UTF-8.
  * Without it the usual default is a legacy code page, and every non-ASCII name
  * in the export opens as mojibake. JSON needs no such help: its encoding is

@@ -61,13 +61,15 @@ const columnsOf = (features, exclude = []) => {
 /**
  * The columns a file carries, each with the header a reader sees.
  *
- * The CSV and the KML both read this, so a set describes itself the same way in
- * both files. `fields` fixes the columns outright, and its labels go through
- * `labelResolver`. Without it, every column `columnsOf` finds is headed by the
- * column lowercased as a label code, or by its own name when that misses.
+ * The CSV, the KML and the shapefile all read this, so a set describes itself
+ * the same way in every file. `fields` fixes the columns outright, and its labels
+ * go through `labelResolver`. A field's `short` is the name a shapefile gives the
+ * column, and only a shapefile reads it. Without `fields`, every column
+ * `columnsOf` finds is headed by the column lowercased as a label code, or by its
+ * own name when that misses.
  */
-const columnsFor = (features, { fields, exclude, labelResolver } = {}) => (fields?.length
-  ? fields.map(({ field, label }) => ({ field, header: (label && labelResolver?.(label)) || label || field }))
+export const columnsFor = (features, { fields, exclude, labelResolver } = {}) => (fields?.length
+  ? fields.map(({ field, label, short }) => ({ field, header: (label && labelResolver?.(label)) || label || field, short }))
   : columnsOf(features, exclude).map(field => ({ field, header: labelResolver?.(field.toLowerCase()) || field })));
 
 /** A run of positions, as WKT writes them: `x y`, space separated, comma between. */
@@ -120,7 +122,7 @@ const toWKT = (geometry) => {
  * can have been stored. Prefixing with an apostrophe makes it text; the
  * apostrophe is consumed by the spreadsheet rather than shown.
  */
-const cell = (value) => {
+export const cell = (value) => {
   if (value === null || value === undefined) return '';
   const text = String(value);
 

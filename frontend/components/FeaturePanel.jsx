@@ -317,7 +317,7 @@ export const FeaturePanel = ({
     ? descriptors?.[choropleth.descriptor]
     : variantOf(descriptors?.[descriptorFor(feature) ?? descriptorOf(feature)], feature))
 
-  const { offer, canExport, saveGeoJSON, saveCSV, saveKML } = useExport({
+  const { offer, canExport, saveGeoJSON, saveCSV, saveKML, saveShapefile } = useExport({
     set: visible,
     selection,
     exportable,
@@ -444,6 +444,13 @@ export const FeaturePanel = ({
               <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveKML}>
                 <Icon name='IconWorld' size={16} stroke={1.75} aria-hidden='true' />
                 {labels.exportKml ?? 'KML'}
+              </button>
+            )}
+
+            {canExport && offer.shp !== false && (
+              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveShapefile}>
+                <Icon name='IconFileTypeZip' size={16} stroke={1.75} aria-hidden='true' />
+                {labels.exportShp ?? 'Shapefile'}
               </button>
             )}
 

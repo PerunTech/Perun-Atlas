@@ -9,5 +9,6 @@ export { mapPositions, positionsOf } from './positions';
 export { identifiersOf, spanTo, withinCircle } from './select';
 export { postTo, fillBody } from './save';
 export { toGeoJSON, toCSV, toKML } from './export';
+export { toShapefile } from './shapefile';
 export { FILE_LIMITS, fileKind, readFile, readLayers, sizeRefusal } from './read';
 export { SYSTEM_FIELDS } from './system';

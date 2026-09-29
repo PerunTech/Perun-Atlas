@@ -3,6 +3,8 @@ import { toCSV, toGeoJSON, toKML } from '../frontend/data/export';
 import { fromDegrees, inDegrees } from '../frontend/data/project';
 import { download } from '../frontend/lib/dom';
 import { useExport } from '../frontend/hooks/useExport';
+import { FILE_LIMITS } from '../frontend/data/read';
+import { readShapefile } from '../frontend/modules/shp';
 import { resetView } from './stubs/spatial.js';
 
 // The half that touches the page. What the hook hands it is what a file holds.
@@ -360,6 +362,19 @@ describe('useExport', () => {
 
     const [lng, lat] = written().match(/<Point><coordinates>([^<]+)</)[1].split(',').map(Number);
     expectDegrees([lng, lat], CENTRE);
+  });
+
+  it('writes the shapefile in degrees, as a zip named like the other files', async () => {
+    await offer({ exportable: { filename: 'sites' } }).saveShapefile();
+    const [filename, bytes, type] = download.mock.calls[0];
+    expect(filename).toMatch(/^sites-\d{4}-\d{2}-\d{2}\.zip$/);
+    expect(type).toBe('application/zip');
+
+    const zipped = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const { layers } = await readShapefile(zipped, { kind: 'zip', limit: FILE_LIMITS.bytes });
+    expect(layers.map(layer => layer.name)).toEqual([`${filename.slice(0, -4)}-points`, `${filename.slice(0, -4)}-lines`]);
+    expectDegrees(layers[0].collection.features[0].geometry.coordinates, CENTRE);
+    expectDegrees(layers[1].collection.features[0].geometry.coordinates[1], EAST);
   });
 
   describe('naming placemarks', () => {

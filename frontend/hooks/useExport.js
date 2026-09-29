@@ -1,6 +1,7 @@
-import { inDegrees, toCSV, toGeoJSON, toKML, valueAt } from '../data';
+import { inDegrees, toCSV, toGeoJSON, toKML, toShapefile, valueAt } from '../data';
 import { nameFor } from '../appearance';
 import { download } from '../lib/dom';
+import { zip } from '../lib/zip';
 import { today } from '../lib/dates';
 
 /**
@@ -9,7 +10,7 @@ import { today } from '../lib/dates';
  * No state of its own: everything here is decided from the set that arrived and
  * the row that asked for the buttons, which is why it reads as a handful of
  * derivations rather than a hook. It is one because the panel should not have to
- * hold three filenames and three writers to render three buttons.
+ * hold four filenames and four writers to render four buttons.
  *
  * @param {Object} params
  * @param {Object} params.set          - The collection currently drawn, or null.
@@ -18,7 +19,7 @@ import { today } from '../lib/dates';
  *        that rather than the whole set -- which is the point of drawing one on
  *        a screen that offers files, and is why the filename says so.
  * @param {boolean|Object} params.exportable - `false` to withhold the buttons, or
- *        `{ filename, fields, exclude, name, geojson, csv, kml }`.
+ *        `{ filename, fields, exclude, name, geojson, csv, kml, shp }`.
  * @param {Function} [params.labelResolver]
  * @param {boolean} params.timeScoped  - Whether the screen has a date window.
  * @param {{from: string, to: string}} params.range
@@ -113,5 +114,13 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
   const saveCSV = () => download(`${filename}.csv`, toCSV(written(), columns), 'text/csv;charset=utf-8')
   const saveKML = () => download(`${filename}.kml`, toKML(written(), { ...columns, nameOf }), 'application/vnd.google-earth.kml+xml')
 
-  return { offer, canExport, saveGeoJSON, saveCSV, saveKML }
+  /**
+   * A zip, since a shapefile is several files. Deflating it is the browser's and
+   * takes a promise, so the file is handed over a moment after the click, well
+   * inside the time a browser still counts a download as the click's.
+   */
+  const saveShapefile = async () =>
+    download(`${filename}.zip`, await zip(toShapefile(written(), { ...columns, stem: filename })), 'application/zip')
+
+  return { offer, canExport, saveGeoJSON, saveCSV, saveKML, saveShapefile }
 }
