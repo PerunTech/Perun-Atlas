@@ -81,3 +81,45 @@ export const download = (filename, content, type) => {
 
   setTimeout(() => URL.revokeObjectURL(url), 0);
 };
+
+/**
+ * Text, put on the clipboard. Resolves to whether it got there.
+ *
+ * The clipboard API exists only on a secure origin, and a test server on plain
+ * http is not one, so the older way stays as the fallback: a selected textarea
+ * and `execCommand('copy')`. The textarea goes inside `container`, the element
+ * clicked, and not on the body. The map screens open in modals, and a modal
+ * that keeps focus inside itself takes it back from a textarea outside, with
+ * the selection the copy was meant to read.
+ *
+ * @param {string} text
+ * @param {Element} [container] - Where the fallback's textarea is put.
+ * @returns {Promise<boolean>}
+ */
+export const copyText = async (text, container = document.body) => {
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Refused, as a browser may without saying why. The older way may still work.
+    }
+  }
+
+  const area = document.createElement('textarea');
+  area.value = text;
+  area.setAttribute('readonly', '');
+  area.setAttribute('aria-hidden', 'true');
+  Object.assign(area.style, { position: 'fixed', top: '0', left: '0', opacity: '0' });
+  container.appendChild(area);
+  area.select();
+
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch {
+    copied = false;
+  }
+  area.remove();
+  return copied;
+};

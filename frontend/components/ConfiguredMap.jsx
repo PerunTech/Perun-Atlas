@@ -1,8 +1,9 @@
 import { React, PropTypes, connect, utils } from 'perun-core';
 import { FeaturePanel } from './FeaturePanel';
+import { takeLink } from '../lib/link';
 
 const { labelsManager } = utils;
-const { useMemo } = React;
+const { useMemo, useState } = React;
 
 /**
  * A map screen, drawn from a menu button's configuration.
@@ -16,6 +17,7 @@ const { useMemo } = React;
  *       objConfig={mapConfig?.objectConfiguration}
  *       objectId={props.objectId}
  *       labelDomain='<the bundle's own module name>'
+ *       linkId={button.ID}
  *       onClose={close}
  *     />
  *
@@ -37,9 +39,21 @@ const { useMemo } = React;
  * @param {string} labelDomain    - The consumer's module name, as labelsManager
  *        spells it ('farm_registry'), which is the one thing about a consuming
  *        bundle this package cannot work out for itself.
+ * @param {string} [linkId]       - The button's id, which a link to this screen
+ *        names so the bundle can open the same button again. Without it the
+ *        screen offers no link. See `lib/link.js`.
  */
 export const ConfiguredMap = (props, context) => {
-  const { objConfig, objectId, session, labelDomain = 'main', title, className, onClose } = props;
+  const { objConfig, objectId, session, labelDomain = 'main', title, className, linkId, onClose } = props;
+
+  /**
+   * Where a link asked this screen to open, when the address names it.
+   *
+   * Read once, as the screen mounts, and only the first time for a given
+   * address: see `takeLink`. The bundle has already opened this button because
+   * the address named it; what is left is the view.
+   */
+  const [linked] = useState(() => takeLink(window.location.href, linkId));
 
   /**
    * A label code, resolved, or nothing.
@@ -119,6 +133,9 @@ export const ConfiguredMap = (props, context) => {
       notice={objConfig?.notice}
       tokens={objConfig?.tokens}
       labels={labels}
+      view={linked ?? undefined}
+      linkId={linkId}
+      link={objConfig?.link}
       className={className}
       onClose={onClose}
     />

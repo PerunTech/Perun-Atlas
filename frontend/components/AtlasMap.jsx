@@ -2,6 +2,7 @@ import { React } from 'perun-core';
 import { core, data, ui } from '../spatial';
 import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
+import { layerNamed } from '../data/layers';
 import { svgMarkup } from '../lib/icons';
 import { FIT_PADDING, formatRatio, ratioFor } from '../lib/zoom';
 import { ZoomRail, ZOOM_LABELS } from './ZoomRail';
@@ -60,6 +61,12 @@ const SCALE_WIDTH = 140;
  * top of the `+`; the rail gets it in the same place. `fit: false` turns it off,
  * and a map with no zoom control has none, since it has nowhere to sit.
  *
+ * `view` opens the map somewhere other than the deployment's own centre and
+ * zoom, on a basemap other than the first: `{ center: [lat, lng], zoom,
+ * basemap }`, any of them, as a link carries them. Read once, when the map is
+ * adopted. A basemap the catalogue does not list, or no longer lists, falls
+ * back to the first, so an old link still opens.
+ *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
  * hands it back on unmount. That is the constraint spatial 2.0 lifts — once
@@ -105,6 +112,7 @@ export const AtlasMap = ({
   zoomLabels,
   fit = true,
   extent = null,
+  view = null,
   coordinates = true,
   coordinatesPosition = 'bottomcenter',
   measure = true,
@@ -170,8 +178,21 @@ export const AtlasMap = ({
         const config = await resolve(overrides);
         if (cancelled) return;
 
+        // Where the settings are about to put the map, first, and without
+        // animating. The engine applies them by calling the map's own setters,
+        // and on the first screen of a page the map is still at zoom 0: raising
+        // the floor to the deployment's minimum zooms it, and Leaflet animates
+        // that zoom -- towards 0,0 -- a frame and a quarter of a second after the
+        // call. By then the view below is set, and the animation ends on top of
+        // it. A set framed on its data usually arrives later and hides it; a set
+        // that comes back empty, and a view opened from a link, are left at 0,0
+        // at the minimum zoom. Found in the bench on 29 September, with spatial
+        // 5.0 and later alike. At the settings' own zoom there is nothing for
+        // those setters to animate.
+        Map.setView(config.center, config.zoom, { animate: false });
+
         // Push what the deployment declared into the engine before the map is
-        // touched, so spatial reads this rather than globals from the page.
+        // otherwise touched, so spatial reads this rather than globals from the page.
         applyToEngine(config);
 
         // Adopt spatial's container directly rather than calling Map.render(),
@@ -193,7 +214,9 @@ export const AtlasMap = ({
         clearLayers();
 
         Map.setMinZoom(config.minZoom).setMaxZoom(config.maxZoom);
-        Map.setView(config.center, config.zoom);
+        // Not animated either: a zoom animation on a map still being assembled
+        // lands after whatever comes next, which is the case above again.
+        Map.setView(view?.center ?? config.center, view?.zoom ?? config.zoom, { animate: false });
 
         // Worth more here than on a full-page screen, because this map is
         // usually inside a modal: a panel sized for a record is not sized for
@@ -415,7 +438,7 @@ export const AtlasMap = ({
         const { basemap, overlays } = await fetchLayers(session, { maxZoom: config.maxZoom });
         if (cancelled) return;
 
-        const base = firstOf(basemap);
+        const base = layerNamed(basemap, view?.basemap) ?? firstOf(basemap);
         if (base) base.addTo(Map);
 
         // The deepest zoom this basemap has a real tile for; `data/layers.js`

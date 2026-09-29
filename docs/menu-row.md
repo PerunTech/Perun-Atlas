@@ -12,9 +12,13 @@ import { ConfiguredMap } from 'perun-atlas';
   objConfig={button.objectConfiguration}
   objectId={props.objectId}
   labelDomain='<the bundle's module name, as labelsManager spells it>'
+  linkId={button.ID}
   onClose={close}
 />
 ```
+
+`linkId` is optional. It is what lets the screen offer a link to itself; see
+[link](#link).
 
 This page lists every key a row may set. Everything is optional except
 `service`: a row without it renders a notice (label code
@@ -92,6 +96,7 @@ instead of silently sending an empty segment.
 | `map` | object | The map's controls. See [map](#map). |
 | `export` | false / object | The file buttons. See [export](#export). |
 | `overlay` | false | Withhold the button that opens a file over the map. See [overlay](#overlay). |
+| `link` | false | Withhold the button that copies a link to the screen. See [link](#link). |
 | `legend` | false / corner | The key. See [legend, notice, tokens](#legend-notice-tokens). |
 | `notice` | false | Withhold the "nothing to show" card. |
 | `tokens` | object | CSS custom properties for the panel. |
@@ -172,6 +177,8 @@ code that is not registered, shows the default.
 | `details`, `close` | Details · Close |
 | `exportGeoJSON`, `exportCsv`, `exportKml`, `exportShp` | GeoJSON · CSV · KML · Shapefile |
 | `openFile`, `closeFile` | Open file · Close file |
+| `copyLink`, `linkCopied` | Copy link · Link copied (the same button, for two seconds after a copy) |
+| `copyLinkPrompt` | Copy this link: (the prompt that shows the link where the browser would not copy it) |
 | `fileFeature`, `fileFeatures` | {count} feature · {count} features |
 | `fileOpening` | Opening {name}… (the loading card, while a file is read and drawn) |
 | `fileUnreadable`, `fileEmpty`, `fileNotDegrees`, `fileTooLarge`, `fileTooManyPoints` | Why a file did not open. See [overlay](#overlay). |
@@ -339,6 +346,42 @@ the browser fetches it the first time a shapefile is opened (see the
 | `fileUnknownProjection` | Has a `.prj` that cannot be read. |
 | `fileNoDatumShift` | Is on a datum other than WGS 84 or ETRS89, and its `.prj` gives no shift to WGS 84. `{crs}` is the projection's name as the `.prj` gives it. |
 | `fileReaderUnavailable` | Could not be read because `shp.perun-atlas.js` did not load. Trying again asks the network again. |
+
+## link
+
+A **Copy link** button, on unless a row sets `"link": false`, and only on a
+screen whose caller passes `linkId`. It copies the address of the record the
+screen belongs to, with the screen and the view added after the route:
+
+```
+#/main/<route>/<table>/<id>/<item>?map=<linkId>&at=<lat>,<lng>,<zoom>&base=<basemap>&from=<day>&to=<day>
+```
+
+- **`at`** is the centre in degrees and the zoom. **`base`** is the basemap
+  shown, by the label code the layer switcher lists it under, or its title
+  where it has none. **`from` and `to`** are the date window's days, on a
+  screen that has one.
+- **The days, not the quick range.** A link made from "last 3 months" opens on
+  the same three months, whenever it is opened, as a range of its own.
+- **Opening one.** The consuming bundle reads `map` and opens the button with
+  that id, as if it had been pressed. The screen then opens at the link's view.
+  The first draw is not framed on the data, so the map stays where the link
+  put it. A later draw, after the window moves, is framed as usual.
+- **Once.** Closed and opened again from its button, the screen opens as it
+  always does, even with the link still in the address bar. A reload reads the
+  link again.
+- **What is left out.** A part that does not read as valid is ignored and the
+  screen's own default is used: a centre outside ±90 / ±180, a day that does
+  not exist, a window that ends before it starts, or a basemap the catalogue
+  no longer lists.
+- **Where there is no clipboard.** Browsers give the clipboard API only to
+  https pages. Elsewhere the button uses the older copy command, and if that
+  fails too, it shows the link in a prompt to copy by hand.
+
+A link reopens the record only for a reader who can open that record, and only
+where the consuming bundle opens the button a link names. Someone signed out is
+asked to sign in first. A perun-core from `72a278a` on then takes them on to the
+link; an older one leaves them at the module menu.
 
 ## legend, notice, tokens
 

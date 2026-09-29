@@ -24,3 +24,4 @@ export { useKeyFilter } from './useKeyFilter';
 export { useLayerReport } from './useLayerReport';
 export { useRecord } from './useRecord';
 export { useSelection } from './useSelection';
+export { useViewLink } from './useViewLink';

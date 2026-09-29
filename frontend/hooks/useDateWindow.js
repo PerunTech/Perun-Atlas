@@ -16,12 +16,16 @@ const { useState } = React
  * @param {Array<{months: number, label: string}>} params.presets
  * @param {number} [params.defaultMonths]
  * @param {string} [params.servicePath] - Read for `{from}` / `{to}`; see `timeScoped`.
+ * @param {{from: string, to: string}} [params.opening] - The window a link opened
+ *        the screen at. It opens as a range of its own, with no quick range
+ *        pressed, since the days are what the link carries. Reset still goes back
+ *        to `initial`, the screen's own default.
  * @param {Function} [params.onMoved]
  */
-export const useDateWindow = ({ presets = [], defaultMonths, servicePath, onMoved }) => {
+export const useDateWindow = ({ presets = [], defaultMonths, servicePath, opening, onMoved }) => {
   const initial = defaultMonths ?? presets[presets.length - 1]?.months ?? 12
-  const [preset, setPreset] = useState(initial)
-  const [range, setRange] = useState(() => rangeOf(initial))
+  const [preset, setPreset] = useState(opening ? null : initial)
+  const [range, setRange] = useState(() => opening ?? rangeOf(initial))
 
   /**
    * Whether this map is scoped to a date window.

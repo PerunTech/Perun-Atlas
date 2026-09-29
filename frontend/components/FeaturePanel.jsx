@@ -9,6 +9,7 @@ import { LegendControl } from './LegendControl';
 import { EmptyCard } from './panel/EmptyCard';
 import { ExportButtons } from './panel/ExportButtons';
 import { FileActions, FileNotices } from './panel/FileControls';
+import { LinkButton } from './panel/LinkButton';
 import { CloseButton } from './panel/CloseButton';
 import { LoadingCard } from './panel/LoadingCard';
 import { PanelFooter } from './panel/PanelFooter';
@@ -19,7 +20,8 @@ import { FILE_KEY } from '../appearance/legend';
 import { overlayEntry } from '../appearance/overlay';
 import { descriptorOf } from '../data';
 import {
-  useChoropleth, useDateWindow, useDrawnShape, useExport, useFileOverlay, useLayerReport, useRecord
+  useChoropleth, useDateWindow, useDrawnShape, useExport, useFileOverlay, useLayerReport, useRecord,
+  useViewLink
 } from '../hooks';
 import '../style/panel.css';
 import '../style/overlay.css';
@@ -94,6 +96,13 @@ const { useEffect, useMemo, useState } = React
  * @param {Object} [choropleth]
  * @param {Object} [draw]
  * @param {string} [title]
+ * @param {Object} [view]       - Where to open, as a link carries it:
+ *                                `{ center, zoom, basemap, from, to }`, any of
+ *                                them. See `lib/link.js`.
+ * @param {string|number} [linkId] - This screen's name in a link. Without one
+ *                                there is no Copy link button, since a link
+ *                                could not reopen the screen.
+ * @param {boolean} [link]      - The row's `link`: `false` withholds the button.
  */
 
 export const FeaturePanel = ({
@@ -116,10 +125,24 @@ export const FeaturePanel = ({
   title,
   choropleth,
   draw,
+  view,
+  linkId,
+  link,
   className = '',
   onClose
 }) => {
   const [labelled, setLabelled] = useState(true)
+
+  /**
+   * Whether the map is still where a link put it.
+   *
+   * A feature set frames what it drew, and on a screen opened from a link that
+   * would move the map off the view the link was made to show. So the first
+   * draw is not framed, and every later one is: a new window is a new set, and
+   * framing it is what the reader expects.
+   */
+  const [viewHeld, setViewHeld] = useState(Boolean(view?.center))
+  const releaseView = () => { if (viewHeld) setViewHeld(false) }
 
   /**
    * The EPSG code this deployment stores geometry in, once the map has resolved
@@ -156,6 +179,7 @@ export const FeaturePanel = ({
     presets,
     defaultMonths,
     servicePath,
+    opening: view?.from && view?.to ? { from: view.from, to: view.to } : undefined,
     onMoved: () => { forget(); closeRecord() }
   })
 
@@ -260,6 +284,8 @@ export const FeaturePanel = ({
     drawnWith
   })
 
+  const viewLink = useViewLink({ linkId, link, timeScoped, range, labels })
+
   /**
    * Whether to say that nothing came back.
    *
@@ -324,7 +350,7 @@ export const FeaturePanel = ({
             the date window and the label switch, which change what is shown.
             Two clusters said otherwise and lined up differently as the toolbar
             wrapped. A second tool is another button in here. */}
-        {(drawable || exporter.canExport || fileOverlay.offered) && (
+        {(drawable || exporter.canExport || fileOverlay.offered || viewLink.offered) && (
           <div className='atlas-panel__actions'>
             {drawable && (
               <DrawTool
@@ -339,6 +365,10 @@ export const FeaturePanel = ({
             {exporter.canExport && <ExportButtons exporter={exporter} labels={labels} />}
 
             <FileActions fileOverlay={fileOverlay} labels={labels} />
+
+            {/* Last: not a file, but a copy of where the reader is, for
+                someone else to open. */}
+            {viewLink.offered && <LinkButton viewLink={viewLink} labels={labels} />}
           </div>
         )}
 
@@ -378,12 +408,17 @@ export const FeaturePanel = ({
                 shadowing this -- and if a caller ever passes one in code, losing
                 the panel's own settings silently would be the worse failure. */}
             {/* `extent` after the spread for the same reason: it is the layer's
-                report, and nothing in a row can know it. */}
+                report, and nothing in a row can know it. So is `view`, which a
+                link carries. */}
             <AtlasMap
               session={session}
               {...{ layerSwitcher: true, ...map }}
               extent={extent}
-              onReady={({ config }) => setDataSrid(config?.dataSrid ?? null)}
+              view={view}
+              onReady={(ready) => {
+                setDataSrid(ready.config?.dataSrid ?? null)
+                viewLink.attach(ready)
+              }}
             >
               {/* One layer or the other, never both. The callbacks are the same
                   pair of hands either way -- which is what let this be a branch
@@ -425,13 +460,14 @@ export const FeaturePanel = ({
                     cluster={cluster}
                     pinned={isPinnedFeature}
                     hidden={hidden}
+                    fit={!viewHeld}
                     onFeatureClick={openRecord}
                     onLegend={setDrawn}
                     onShown={setShown}
                     onExtent={setExtent}
                     onLoadStart={onFetchStart}
-                    onLoad={onFetched}
-                    onError={onFetchFailed}
+                    onLoad={(collection) => { releaseView(); onFetched(collection) }}
+                    onError={(err) => { releaseView(); onFetchFailed(err) }}
                   />
                 )}
 

@@ -178,3 +178,24 @@ export const firstOf = (grouped) => {
   const group = Object.values(grouped ?? {})[0];
   return group ? Object.values(group)[0] : null;
 };
+
+/**
+ * A layer by the name the switcher lists it under, in whichever group it is,
+ * or null. How a link names a basemap: the label code, or the title where a
+ * row has none, which is the same for every reader whatever their language.
+ */
+export const layerNamed = (grouped, name) => {
+  if (!name) return null;
+  const group = Object.values(grouped ?? {})
+    .find((layers) => Object.prototype.hasOwnProperty.call(layers, name));
+  return group ? group[name] : null;
+};
+
+/** The name of the first of these layers that is on the map, or null. */
+export const shownName = (grouped, map) => {
+  for (const layers of Object.values(grouped ?? {})) {
+    const shown = Object.entries(layers).find(([, layer]) => map?.hasLayer?.(layer));
+    if (shown) return shown[0];
+  }
+  return null;
+};
