@@ -6,8 +6,13 @@ import { toKML } from '../frontend/data/export';
 /**
  * The suite runs in node, which has no DOMParser. xmldom is the parser
  * togeojson's own tests use, and `readFile` takes one for exactly this.
+ *
+ * With no `onError`, xmldom prints every parse error to stderr before throwing,
+ * so the test that feeds it broken XML on purpose left a `[xmldom fatalError]`
+ * in the CI log beside a pass. A fatal error still throws with this one, which
+ * is what the reader catches; it just says nothing first.
  */
-const parse = (text) => new DOMParser().parseFromString(text, 'application/xml');
+const parse = (text) => new DOMParser({ onError: () => {} }).parseFromString(text, 'application/xml');
 const read = (text, options) => readFile(text, { parse, ...options });
 
 const feature = (geometry, properties = {}) => ({ type: 'Feature', properties, geometry });
