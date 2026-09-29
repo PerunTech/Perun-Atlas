@@ -1,4 +1,5 @@
-import { applyStyle } from './dom';
+import { popupFor } from '../appearance';
+import { applyStyle, asNode } from './dom';
 
 /**
  * Turning popup rows into elements.
@@ -65,6 +66,31 @@ export const popupElement = ({ title, rows }, spec = {}) => {
   }
 
   return root;
+};
+
+/**
+ * A feature's popup content, or null for none.
+ *
+ * `popup` overrides the descriptor entirely rather than merging with it, the
+ * same way `descriptorFor` overrides the producer's choice: a caller that is
+ * building its own content has already decided what the bubble says. It returns
+ * an element for rich content, a string for plain text, or nothing for no
+ * popup, and a string is rendered as text, never as markup.
+ *
+ * @param {Object} feature
+ * @param {Object} [descriptor] - The descriptor it is drawn with.
+ * @param {Object} [options]
+ * @param {Function} [options.popup] - The caller's per-feature content.
+ * @param {Function} [options.labelResolver] - Passed to `popupFor`.
+ * @returns {Node|null}
+ */
+export const popupContent = (feature, descriptor, { popup, labelResolver } = {}) => {
+  if (popup) {
+    const supplied = popup(feature);
+    return supplied === undefined || supplied === null ? null : asNode(supplied);
+  }
+  const rows = popupFor(descriptor, feature, labelResolver);
+  return rows ? popupElement(rows, descriptor?.popup) : null;
 };
 
 /**

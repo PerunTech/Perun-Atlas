@@ -14,12 +14,15 @@ out of.
 | File | |
 |---|---|
 | `dom.js` | Styling and building elements the package did not create. Nothing here ever builds a string of markup — values come from configuration and from records, and neither may become HTML. |
-| `popup.js` | Popup rows as elements. `appearance/popupFor` decides what a popup says; this decides how it is built. |
+| `popup.js` | Popup rows as elements. `appearance/popupFor` decides what a popup says; this decides how it is built, and whether a caller's own content replaces it. |
 | `cluster.js` | What the clustering plugin is asked for, and what a badge standing for a group is made of. Both settled before a layer exists. |
 | `route.js` | Where a line's ends belong while its markers are being clustered, and a path turned end to end. Arithmetic only. |
+| `surface.js` | Where a drawn set goes on the map -- the set itself, or a cluster with the pinned layers and the arrow heads beside it -- and taking its layers off the map and putting them back. Takes the map and the factory as arguments. |
+| `arrows.js` | The arrow heads on a set's lines, drawn into whichever group `surface.js` gives them. Takes the factory as an argument. |
+| `labels.js` | A feature's permanent label, bound to its layer, and kept to the zoom band its descriptor allows. |
 | `follow.js` | Putting a clustered set's lines where `route.js` says, as the view changes, and gliding them there. Takes the map as an argument rather than importing the engine, which is what puts it under test. |
 | `dates.js` | The date window as the wire writes it. Deliberately not a date library. |
 | `icons.js` | The glyphs the map's controls are drawn with. Tabler's path data, transcribed — `elements.Icon` resolves through a dynamic import and two of the three controls that need these are Leaflet's, which take their contents as a string. |
-| `filter.js` | Kinds switched off from the legend, applied to what a layer drew: which features move, the order the shown ones are drawn in, and what the set reads as with the rest taken out. The layer does the moving. |
+| `filter.js` | Kinds switched off from the legend, applied to what a layer drew: which features move, the order the shown ones are drawn in, what the set reads as with the rest taken out, and where what is shown lies. `surface.js` does the moving. |
 | `modules.js` | Loading a module this package builds beside the bundle rather than into it: where the bundle was loaded from, read while it evaluates, and the browser's `import()` from there. |
 | `zoom.js` | The zoom ladder as arithmetic: where a level sits on a rail, which thresholds fall inside the range, the view's scale as a ratio, and the margin a set is framed with. No map, no DOM, no projection — which is what puts the numbers the rail draws with under test. |

@@ -1,14 +1,17 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { descriptorOf, fetchGeometry } from '../../data';
-import { detailsFor, labelFor, labelVisible, pathOptions, popupFor, variantOf } from '../../appearance';
-import { drawnAs } from '../../appearance/legend';
-import { clusterBadge, clusterSettings } from '../../lib/cluster';
-import { applyStyle, asNode } from '../../lib/dom';
-import { changesFor, restack, shownOf } from '../../lib/filter';
+import { detailsFor, labelFor, pathOptions } from '../../appearance';
+import { drawnKinds } from '../../appearance/legend';
+import { useKeyFilter } from '../../hooks/useKeyFilter';
+import { drawArrows } from '../../lib/arrows';
+import { applyStyle } from '../../lib/dom';
+import { changesFor, extentOf, restack, shownOf } from '../../lib/filter';
 import { followClusters } from '../../lib/follow';
-import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
-import { placeKey, reversed } from '../../lib/route';
+import { bindLabel, syncLabels } from '../../lib/labels';
+import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
+import { placeKey } from '../../lib/route';
+import { placeSet } from '../../lib/surface';
 import { FIT_PADDING } from '../../lib/zoom';
 import '../../style/features.css';
 
@@ -112,29 +115,18 @@ export const FeatureSet = ({
   onError
 }) => {
   // Everything a draw put on the map, so a redraw can take it all off again.
-  // A list rather than one layer: a clustered set is two, because the cluster
-  // cannot be the home of every kind of layer. See `arrows` below.
+  // A list rather than one layer: a clustered set is two or three, because the
+  // cluster cannot be the home of every kind of layer. See `placeSet`.
   const layersRef = useRef([]);
   const labelledRef = useRef([]);
 
-  /*
-   * What the legend has switched off, as of this render.
-   *
-   * A ref as well as the prop because a draw is asynchronous. The keys it has
-   * to apply are the ones current when the response lands, which may be a
-   * click later than when the request went out.
-   */
-  const hiddenRef = useRef(hidden);
-  hiddenRef.current = hidden;
-
-  // How the draw now on the map applies a new set of keys, or null between
-  // draws. Set by the draw, because only the draw knows where its layers live.
-  const filterRef = useRef(null);
+  // What the key has switched off, and how the draw on the map applies a
+  // change to it. See `useKeyFilter`.
+  const { hiddenRef, filterRef } = useKeyFilter(hidden);
 
   // Contexts are small flat objects rebuilt on every render, so compare by value
   // rather than by identity or the effect would refetch on each keystroke.
   const contextKey = JSON.stringify(context ?? {});
-  const hiddenKey = JSON.stringify(hidden);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,78 +142,13 @@ export const FeatureSet = ({
      */
     const nameOf = (feature) => descriptorFor?.(feature) ?? descriptorOf(feature);
 
-    /**
-     * The descriptor a feature is drawn with, its variant already merged in.
-     *
-     * Every read of a descriptor goes through here rather than indexing the map
-     * directly, so a variant reaches the marker, the label, the popup and the
-     * arrow alike -- a colour that applied to the line but not to its arrow
-     * heads would be the obvious way to get this half right.
-     */
-    const entries = new WeakMap();
-    const entryFor = (feature) => {
-      // Every feature is asked this two or three times in one draw -- the
-      // marker or the path style, `onEachFeature`, and the arrow pass -- and
-      // `variantOf` builds six objects each time it merges a case. Three times
-      // six, per line, on a set large enough to want clustering, is work that
-      // produces the same answer every time. Keyed by the feature itself, so
-      // nothing has to be cleared and nothing is retained: the map is built per
-      // draw and holds its keys weakly.
-      if (entries.has(feature)) return entries.get(feature);
-      const entry = variantOf(descriptors[nameOf(feature)], feature);
-      entries.set(feature, entry);
-      return entry;
-    };
-
-    /**
-     * A feature's popup content, or nothing.
-     *
-     * `popup` overrides the descriptor entirely rather than merging with it, the
-     * same way `descriptorFor` overrides the producer's choice: a caller that is
-     * building its own content has already decided what the bubble says.
-     */
-    const contentFor = (feature, descriptor) => {
-      if (popup) {
-        const supplied = popup(feature);
-        return supplied === undefined || supplied === null ? null : asNode(supplied);
-      }
-      const rows = popupFor(descriptor, feature, labelResolver);
-      return rows ? popupElement(rows, descriptor?.popup) : null;
-    };
+    // Each feature's descriptor with its variant merged in, and the kinds that
+    // reached the map. See `drawnKinds`.
+    const kinds = drawnKinds({ descriptors, nameOf });
+    const { entryFor } = kinds;
 
     /** Permanent labels are banded by zoom, so they follow the zoom rather than the fetch. */
-    const syncLabels = () => {
-      const zoom = Map.getZoom();
-      labelledRef.current.forEach(({ layer, descriptor }) => {
-        // Not on the map, so not ours to open. Leaflet places a label by
-        // asking the layer where its middle is, and a line or an area answers
-        // that by throwing when it is off the map. Putting it back reopens the
-        // label, and the call after `filter` below corrects it for the band.
-        if (layer._atlasHidden) return;
-
-        const wanted = labelVisible(descriptor, zoom);
-
-        /**
-         * Nothing to do when the label is already in the state it should be in.
-         *
-         * Worth checking rather than just calling: `Layer.openTooltip` runs
-         * `_prepareOpen` -- which walks the layer for a position -- *before*
-         * Leaflet's own "this tooltip is already on the map" guard, so the
-         * cheap case is only cheap if we take it ourselves. This runs on every
-         * `moveend` while a set is clustered, which is every pan.
-         *
-         * It stays correct through the cluster because a permanent tooltip
-         * closes itself with its marker (`remove: closeTooltip`) and reopens
-         * when the cluster hands the marker back (`add: _openTooltip`). So a
-         * marker returned at a zoom its band forbids reads as open here, which
-         * is exactly the state this has to correct.
-         */
-        if (wanted === layer.isTooltipOpen()) return;
-
-        if (wanted) layer.openTooltip();
-        else layer.closeTooltip();
-      });
-    };
+    const sync = () => syncLabels(labelledRef.current, Map.getZoom());
 
     const clear = () => {
       labelledRef.current = [];
@@ -234,57 +161,21 @@ export const FeatureSet = ({
      *
      * `lib/route.js` says why the position is the join and what re-aiming an
      * end means; this is where the layers for it are collected.
+     *
+     * A null-prototype object rather than a `Map`, because `Map` in this file
+     * is the engine's map singleton destructured from `core` above -- `new
+     * Map()` here builds a Leaflet map, or throws. Null-prototype because the
+     * keys are built from response data, and a position should never collide
+     * with a member of `Object.prototype`.
      */
-    // A null-prototype object for the same reason `drawnKinds` is one: `Map`
-    // in this file is the engine's map singleton, so `new Map()` builds a
-    // Leaflet map or throws.
     const markerAt = Object.create(null);
 
-    // Lines whose ends can be re-aimed, the decorator drawn on each, and the
-    // handlers to unbind. A WeakMap for the decorators because the layers are
-    // this draw's and go when it does.
+    // Lines whose ends can be re-aimed, and the handlers to unbind.
     const routed = [];
-    const decoratorOf = new WeakMap();
     const cleanup = [];
 
     /** Features a menu row says must never be collapsed -- the subject, above all. */
     const isPinned = (feature) => Boolean(pinned?.(feature));
-
-    /**
-     * The distinct kinds this draw put on the map.
-     *
-     * Keyed by descriptor and variant case together, since one descriptor with
-     * two cases is two things a reader has to tell apart. Insertion order is the
-     * order the producer sent the features in, which is as much of an order as
-     * there is and is at least stable within a set.
-     *
-     * A null-prototype object rather than a `Map`, because `Map` in this file is
-     * the engine's map singleton destructured from `core` above -- `new Map()`
-     * here builds a Leaflet map, or throws. Null-prototype because the keys are
-     * built from response data and a feature named `constructor` should not
-     * collide with a member of `Object.prototype`.
-     */
-    const drawnKinds = Object.create(null);
-
-    /** The legend row a feature is drawn under. See `drawnAs`. */
-    const kindOf = (feature) => {
-      const name = nameOf(feature);
-      return drawnAs(name, descriptors[name], feature);
-    };
-
-    /** Records the feature's kind for the key, and says which one it was. */
-    const noteKind = (feature) => {
-      const { name, value, key } = kindOf(feature);
-      if (!(key in drawnKinds)) {
-        drawnKinds[key] = {
-          name,
-          value,
-          descriptor: entryFor(feature),
-          geometry: feature?.geometry?.type
-        };
-      }
-      return key;
-    };
 
     /**
      * One entry per feature layer, in the order the producer sent them, with
@@ -338,42 +229,11 @@ export const FeatureSet = ({
           onEachFeature: (feature, layer) => {
             const descriptor = entryFor(feature) ?? {};
 
-            members.push({ layer, feature, key: noteKind(feature), hidden: false });
+            members.push({ layer, feature, key: kinds.note(feature), hidden: false });
 
             const text = tooltip ? tooltip(feature) : labelFor(descriptor, feature);
-            if (text) {
-              // A point's label sits above it, not on it: a pill wide enough to
-              // hold an identifier covers a marker completely, and then the
-              // label is readable but the thing it names is not. An area has
-              // room for both, so its label stays in the middle.
-              const point = /Point$/.test(feature.geometry?.type ?? '');
-              const clearance = (descriptor.marker?.size ?? 24) / 2;
-
-              // Permanent, because a label of this kind names a feature rather
-              // than explains it — a hover tooltip would hide the thing read.
-              //
-              // A text node, not the string. Leaflet applies string content with
-              // innerHTML, and `text` is a record's field — so a holding named
-              // with anything that parses as markup was parsed as markup.
-              layer.bindTooltip(asNode(text), {
-                permanent: true,
-                direction: descriptor.label?.direction ?? (point ? 'top' : 'center'),
-                offset: descriptor.label?.offset ?? (point ? [0, -clearance] : [0, 0]),
-                // A descriptor may add a class of its own, so one label can be
-                // marked out from the rest without restyling all of them.
-                className: ['atlas-label', descriptor.label?.className].filter(Boolean).join(' '),
-                // Opaque: Leaflet sets this inline, so a translucent label cannot
-                // be made solid from a stylesheet, and translucent text over a
-                // basemap is the thing being fixed.
-                opacity: 1
-              });
-              // Same as a marker's: the pill is Leaflet's element, and it is
-              // built when the tooltip opens, which a zoom band may do long after
-              // this runs and more than once.
-              if (descriptor.label?.style) {
-                layer.on('tooltipopen', (event) => applyStyle(event.tooltip.getElement(), descriptor.label.style));
-              }
-              if (descriptor.label?.scale) labelledRef.current.push({ layer, descriptor });
+            if (text && bindLabel(layer, feature, descriptor, text)) {
+              labelledRef.current.push({ layer, descriptor });
             }
 
             /**
@@ -401,7 +261,9 @@ export const FeatureSet = ({
             // and the bubble is the one that covers the map. An explicit
             // `popup` prop still wins: a caller building its own content has
             // said what it wants.
-            const content = descriptor.details && !popup ? null : contentFor(feature, descriptor);
+            const content = descriptor.details && !popup
+              ? null
+              : popupContent(feature, descriptor, { popup, labelResolver });
             if (content) layer.bindPopup(content, POPUP_OPTIONS);
 
             // Both, when both are given. A popup says what the feature is; the
@@ -413,175 +275,29 @@ export const FeatureSet = ({
           }
         });
 
-        /**
-         * What actually goes on the map: the set itself, or a cluster over it.
-         *
-         * The set is built either way, and is what holds every layer this draw
-         * made whether or not it is the thing added -- which is why the arrows
-         * below and the bounds further down both read it rather than the
-         * surface. The cluster reads it too, and takes a copy of what it finds
-         * rather than emptying it.
-         *
-         * Only points cluster. The plugin sorts a mixed group itself: anything
-         * with no position -- a line, a polygon, an arrow decorator -- goes to a
-         * layer of its own that is added to the map unchanged, so a set of
-         * shapes with points among them keeps its shapes.
-         */
-        // Where pinned layers go when there is a cluster. Empty and on the map
-        // otherwise, which costs nothing and keeps the teardown one shape.
-        const pinnedGroup = factory.featureGroup().addTo(Map);
+        // On the map, plainly or clustered, with the groups that go beside a
+        // cluster. See `placeSet`.
+        const placed = placeSet({ map: Map, factory, group, cluster, points });
+        const { surface, clustering, settings } = placed;
+        layersRef.current = placed.layers;
 
-        const settings = clusterSettings(cluster);
-
-        /*
-         * The clustering is the engine's, and the engine is a separate artefact
-         * on a separate release cycle -- so a menu row can ask for it on a
-         * deployment whose engine predates it. Drawn plainly rather than thrown
-         * at, which is the same detection `AtlasMap` does for the bottom-centre
-         * corner, and said out loud because a row asking for something it cannot
-         * have is worth knowing about.
-         */
-        const clusterable = typeof factory.markerClusterGroup === 'function';
-        if (settings !== null && !clusterable) {
-          console.warn('perun-atlas: clustering was configured, but the map engine on this deployment does not carry it');
-        }
-
-        const clustering = settings !== null && clusterable && points >= settings.from;
-
-        const surface = clustering
-          ? factory.markerClusterGroup({
-            ...settings.options,
-            iconCreateFunction: (node) => {
-              const { element, size, className } = clusterBadge(node.getChildCount(), settings.badge);
-              return factory.divIcon({ html: element, className, iconSize: [size, size] });
-            }
-          })
-          : group;
-
-        surface.addTo(Map);
-
-        // After the line above, not instead of it. `chunkedLoading` only chunks
-        // when the group it is adding into is already on a map; handed the
-        // layers first, the plugin adds them in one pass and the tab freezes for
-        // exactly the sets this exists for.
-        if (clustering) {
-          /**
-           * Everything except what a row pinned.
-           *
-           * The subject is the one point the screen exists to show, and it sits
-           * in the middle of its own partners -- so it is the first thing a
-           * badge swallows and the last thing that should vanish. Pinned layers
-           * go to the map beside the cluster, where they are drawn at their own
-           * position at every zoom.
-           */
-          const loose = [];
-          group.eachLayer((layer) => {
-            if (layer._atlasPinned) loose.push(layer);
-            else surface.addLayer(layer);
-          });
-          loose.forEach((layer) => pinnedGroup.addLayer(layer));
-        }
-
-        /**
-         * Where the arrow decorators go.
-         *
-         * Not into the cluster. A decorator is itself a layer group, and a
-         * cluster group unwraps any group it is handed and keeps the children --
-         * of which a decorator has none until something adds it to a map. Its
-         * `onAdd` is what draws the heads, and the `moveend` it binds there is
-         * what keeps them on the line as the view changes. Unwrapped, it is an
-         * empty group: no heads, and nothing left to draw them later.
-         *
-         * So when there is a cluster the decorators get a group of their own
-         * beside it, and otherwise they join the set exactly as they always
-         * have.
-         */
-        const arrows = clustering ? factory.featureGroup().addTo(Map) : surface;
-
-        layersRef.current = arrows === surface
-          ? [surface, pinnedGroup]
-          : [surface, arrows, pinnedGroup];
-
-        // Direction, drawn on the lines themselves. Decorators are separate
-        // layers, so they join a group rather than the map and come off with it.
-        group.eachLayer((layer) => {
-          const arrow = entryFor(layer.feature)?.arrow;
-          if (!arrow || typeof layer.getLatLngs !== 'function') return;
-
-          // Which way a head points is the order of the points, and
-          // `Symbol.arrowHead` has no option to turn one around -- so an arrow
-          // that has to point back is drawn on a reversed copy of the path
-          // rather than on the layer.
-          //
-          // Which end that is belongs to the producer: a set of these paths is
-          // emitted from the record the screen is about outwards, so a plain
-          // arrow points away from it and a reversed one points at it.
-          const path = arrow.reverse ? reversed(layer.getLatLngs()) : layer;
-
-          decoratorOf.set(layer, factory.polylineDecorator(path, {
-            patterns: [{
-              offset: arrow.offset ?? '12%',
-              repeat: arrow.repeat ?? 160,
-              symbol: factory.Symbol.arrowHead({
-                pixelSize: arrow.pixelSize ?? 12,
-                polygon: false,
-                pathOptions: { stroke: true, weight: 2, color: layer.options.color, opacity: 1 }
-              })
-            }]
-          }).addTo(arrows));
+        const decoratorOf = drawArrows({
+          factory,
+          group,
+          into: placed.arrows,
+          arrowOf: (feature) => entryFor(feature)?.arrow
         });
 
         /**
-         * Where a feature layer lives while it is shown.
-         *
-         * The set itself when nothing clusters. Clustered, the cluster -- or
-         * the pinned group beside it, for the layers a row said must never be
-         * collapsed -- exactly as the layers were shared out above.
-         */
-        const holderOf = (layer) => (clustering && layer._atlasPinned ? pinnedGroup : surface);
-
-        /**
          * Take the switched-off kinds off the map and put the rest back.
-         *
-         * Off the map rather than faded, so a hidden feature takes no click,
-         * counts in no badge and opens no popup. Its arrow heads go with it,
-         * and so does its label, which Leaflet closes with the layer.
-         *
-         * The cluster is handed its layers in one call each way. Given them one
-         * at a time it re-counts every badge after each, which on the sets it
-         * exists for is the difference between a click and a stall. The plugin
-         * chunks a very large `addLayers` over several frames; the lines are
-         * re-aimed as soon as this returns, so on such a set they catch up with
-         * the last chunk on the next pan.
          *
          * @returns {boolean} Whether anything moved.
          */
         const filter = (keys) => {
           const { leaving, returning } = changesFor(members, keys);
 
-          const move = (list, on) => {
-            const clustered = [];
-
-            list.forEach(({ layer }) => {
-              layer._atlasHidden = !on;
-
-              const holder = holderOf(layer);
-              if (clustering && holder === surface) clustered.push(layer);
-              else if (on) holder.addLayer(layer);
-              else holder.removeLayer(layer);
-
-              const decorator = decoratorOf.get(layer);
-              if (decorator && on) arrows.addLayer(decorator);
-              else if (decorator) arrows.removeLayer(decorator);
-            });
-
-            if (!clustered.length) return;
-            if (on) surface.addLayers(clustered);
-            else surface.removeLayers(clustered);
-          };
-
-          move(leaving, false);
-          move(returning, true);
+          placed.move(leaving, false, decoratorOf);
+          placed.move(returning, true, decoratorOf);
 
           // Something put back came back on top of everything drawn after it.
           if (returning.length) restack(members, decoratorOf);
@@ -589,39 +305,10 @@ export const FeatureSet = ({
           return leaving.length > 0 || returning.length > 0;
         };
 
-        /**
-         * Where the shown features are, as plain corners, or null.
-         *
-         * The shown ones, so the frame is around what the reader chose to look
-         * at. Everything, when they have switched all of it off: a frame
-         * around nothing is not a frame, and the data is still there.
-         *
-         * Read off the layers rather than the response, because the layers are
-         * in the map's coordinates and the response is in whatever the
-         * deployment stores. A clustered line's ends may be sitting on a badge
-         * rather than a marker, but a badge stands inside the markers it
-         * counts, and those are in the frame too.
-         */
-        const extentOf = () => {
-          const shown = members.filter((member) => !member.hidden);
-          const bounds = factory.latLngBounds([]);
-
-          (shown.length ? shown : members).forEach(({ layer }) => {
-            if (typeof layer.getBounds === 'function') bounds.extend(layer.getBounds());
-            else if (typeof layer.getLatLng === 'function') bounds.extend(layer.getLatLng());
-          });
-
-          if (!bounds.isValid()) return null;
-
-          const south = bounds.getSouthWest();
-          const north = bounds.getNorthEast();
-          return [[south.lat, south.lng], [north.lat, north.lng]];
-        };
-
         /** What the panel reads after a draw or a filter: the set as shown, and its frame. */
         const report = (keys) => {
-          onShown?.(shownOf(collection, keys, (feature) => kindOf(feature).key));
-          onExtent?.(extentOf());
+          onShown?.(shownOf(collection, keys, (feature) => kinds.kindOf(feature).key));
+          onExtent?.(extentOf(members));
         };
 
         // Before the lines are routed and before the frame is taken, so both
@@ -650,10 +337,10 @@ export const FeatureSet = ({
           cleanup.push(following);
         }
 
-        onLegend?.(Object.values(drawnKinds));
+        onLegend?.(kinds.drawn());
 
-        syncLabels();
-        Map.on('zoomend', syncLabels);
+        sync();
+        Map.on('zoomend', sync);
 
         /**
          * Clustered markers arrive long after the draw, and bring labels with them.
@@ -671,9 +358,9 @@ export const FeatureSet = ({
          * the map, which was before these, so by the time this runs the markers
          * it is correcting are already there.
          */
-        if (clustering) Map.on('moveend', syncLabels);
+        if (clustering) Map.on('moveend', sync);
 
-        const extent = extentOf();
+        const extent = extentOf(members);
         if (fit && extent) Map.fitBounds(extent, { padding: FIT_PADDING });
 
         /**
@@ -687,7 +374,7 @@ export const FeatureSet = ({
         filterRef.current = (keys) => {
           if (!filter(keys)) return;
           following?.reroute();
-          syncLabels();
+          sync();
           report(keys);
         };
 
@@ -706,21 +393,14 @@ export const FeatureSet = ({
       cancelled = true;
       filterRef.current = null;
       cleanup.forEach((off) => off());
-      Map.off('zoomend', syncLabels);
+      Map.off('zoomend', sync);
       // Unconditionally: a draw that never clustered never registered this, and
       // taking off a handler that is not on is what Leaflet does with it anyway.
-      Map.off('moveend', syncLabels);
+      Map.off('moveend', sync);
       clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicePath, contextKey, reload]);
-
-  // A click in the key, applied to the set already drawn. Compared by value,
-  // like the context: a caller may build the array afresh on every render.
-  useEffect(() => {
-    filterRef.current?.(hidden);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hiddenKey]);
 
   return null;
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawnAs, kindKey, legendFrom, legendFromPalette, legendShown } from '../frontend/appearance/legend';
+import { drawnAs, drawnKinds, kindKey, legendFrom, legendFromPalette, legendShown } from '../frontend/appearance/legend';
 
 describe('legendFrom', () => {
   const drawn = [
@@ -99,5 +99,63 @@ describe('legendShown', () => {
 
   it('is not kept up by a key for something this set does not have', () => {
     expect(legendShown(one, ['GONE::'])).toBe(false);
+  });
+});
+
+describe('drawnKinds', () => {
+  const descriptors = {
+    site: {
+      marker: { size: 20 },
+      variants: { by: 'KIND', cases: { depot: { legend: 'Depot', marker: { size: 26 } } } }
+    },
+    route: { style: { color: '#123' } }
+  };
+  const feature = (DESCRIPTOR, props = {}, type = 'Point') => ({
+    properties: { DESCRIPTOR, ...props },
+    geometry: { type }
+  });
+  const byStamp = (f) => f.properties.DESCRIPTOR;
+
+  it('draws a feature with its descriptor, its variant case merged in', () => {
+    const { entryFor } = drawnKinds({ descriptors, nameOf: byStamp });
+    expect(entryFor(feature('site', { KIND: 'depot' })).marker).toEqual({ size: 26 });
+    expect(entryFor(feature('site', { KIND: 'field' })).marker).toEqual({ size: 20 });
+  });
+
+  it('merges a case once per feature, however often it is asked', () => {
+    const { entryFor } = drawnKinds({ descriptors, nameOf: byStamp });
+    const depot = feature('site', { KIND: 'depot' });
+    expect(entryFor(depot)).toBe(entryFor(depot));
+  });
+
+  it('draws a feature with the name the caller chose over the producer\'s', () => {
+    const { entryFor, kindOf } = drawnKinds({ descriptors, nameOf: () => 'route' });
+    const f = feature('site');
+    expect(entryFor(f)).toBe(descriptors.route);
+    expect(kindOf(f).key).toBe(kindKey('route', undefined));
+  });
+
+  it('records each kind once, as the set first carried it', () => {
+    const kinds = drawnKinds({ descriptors, nameOf: byStamp });
+    const keys = [
+      feature('route', {}, 'LineString'),
+      feature('site', { KIND: 'depot' }),
+      feature('site', { KIND: 'field' }),
+      feature('site', { KIND: 'depot' }, 'MultiPoint')
+    ].map(kinds.note);
+
+    expect(keys).toEqual([kindKey('route'), kindKey('site', 'depot'), kindKey('site'), kindKey('site', 'depot')]);
+    expect(kinds.drawn().map(({ name, value, geometry }) => [name, value, geometry])).toEqual([
+      ['route', undefined, 'LineString'],
+      ['site', 'depot', 'Point'],
+      ['site', undefined, 'Point']
+    ]);
+    expect(kinds.drawn()[1].descriptor.marker).toEqual({ size: 26 });
+  });
+
+  it('keeps a kind whose name is also a member of every object', () => {
+    const kinds = drawnKinds({ descriptors: {}, nameOf: () => 'constructor' });
+    kinds.note(feature('constructor'));
+    expect(kinds.drawn().map(({ name }) => name)).toEqual(['constructor']);
   });
 });

@@ -8,9 +8,10 @@
  * and still goes into the file.
  *
  * Each layer keeps a list of members, one per feature layer, as
- * `{ layer, feature, key, hidden }`. This file decides which of them move and
- * what the set now reads as. Putting layers on and off the map stays with the
- * layer, which is the part that knows where each one lives.
+ * `{ layer, feature, key, hidden }`. This file decides which of them move,
+ * what the set now reads as and where what is shown lies. Putting layers on and
+ * off the map is not here: `FeatureSet`'s go through `surface.js`, which knows
+ * where each one lives, and `Choropleth` has one group and moves its own.
  */
 
 /**
@@ -90,4 +91,53 @@ export const shownOf = (collection, hidden = [], keyOf) => {
   const kept = features.filter((feature) => !off.has(keyOf(feature)));
 
   return kept.length === features.length ? collection : { ...collection, features: kept };
+};
+
+/**
+ * Where the shown features are, as plain corners, or null.
+ *
+ * The shown ones, so the frame is around what the reader chose to look at.
+ * Everything, when they have switched all of it off: a frame around nothing is
+ * not a frame, and the data is still there.
+ *
+ * Read off the layers rather than the response, because the layers are in the
+ * map's coordinates and the response is in whatever the deployment stores. A
+ * clustered line's ends may be sitting on a badge rather than a marker, but a
+ * badge stands inside the markers it counts, and those are in the frame too.
+ *
+ * Plain numbers, so a caller holding no engine can keep it and hand it to
+ * `AtlasMap`. Worked out here rather than with Leaflet's `LatLngBounds`, which
+ * does the same arithmetic: a layer's own bounds when it has them and they hold
+ * anything, its position when it is a point.
+ *
+ * @param {Array} members - `{ layer, hidden }`, as the layer keeps them.
+ * @returns {Array|null} `[[south, west], [north, east]]`.
+ */
+export const extentOf = (members) => {
+  const shown = members.filter((member) => !member.hidden);
+  let south = Infinity;
+  let west = Infinity;
+  let north = -Infinity;
+  let east = -Infinity;
+
+  const take = ({ lat, lng }) => {
+    south = Math.min(south, lat);
+    west = Math.min(west, lng);
+    north = Math.max(north, lat);
+    east = Math.max(east, lng);
+  };
+
+  (shown.length ? shown : members).forEach(({ layer }) => {
+    if (typeof layer.getBounds === 'function') {
+      const bounds = layer.getBounds();
+      if (bounds?.isValid?.()) {
+        take(bounds.getSouthWest());
+        take(bounds.getNorthEast());
+      }
+    } else if (typeof layer.getLatLng === 'function') {
+      take(layer.getLatLng());
+    }
+  });
+
+  return south === Infinity ? null : [[south, west], [north, east]];
 };

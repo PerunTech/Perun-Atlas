@@ -1,11 +1,12 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { bboxIn, fetchGeometry } from '../../data';
-import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions, popupFor } from '../../appearance';
+import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions } from '../../appearance';
 import { bandOf } from '../../appearance/choropleth';
+import { useKeyFilter } from '../../hooks/useKeyFilter';
 import { asNode } from '../../lib/dom';
 import { changesFor, restack, shownOf } from '../../lib/filter';
-import { popupElement, POPUP_OPTIONS } from '../../lib/popup';
+import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
 
 const { Map, factory } = core;
 const { useEffect, useRef } = React;
@@ -107,10 +108,7 @@ export const Choropleth = ({
 
   // As in `FeatureSet`: the keys a draw applies are the ones current when its
   // response lands, and the draw leaves behind how to apply the next ones.
-  const hiddenRef = useRef(hidden);
-  hiddenRef.current = hidden;
-  const filterRef = useRef(null);
-  const hiddenKey = JSON.stringify(hidden);
+  const { hiddenRef, filterRef } = useKeyFilter(hidden);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,11 +164,7 @@ export const Choropleth = ({
             // with innerHTML, and this one comes from a record's field.
             if (text) layer.bindTooltip(asNode(text), { sticky: true });
 
-            const supplied = popup?.(feature);
-            const rows = popup ? null : popupFor(descriptor, feature, labelResolver);
-            const content = supplied !== undefined && supplied !== null
-              ? asNode(supplied)
-              : (rows ? popupElement(rows, descriptor?.popup) : null);
+            const content = popupContent(feature, descriptor, { popup, labelResolver });
             if (content) layer.bindPopup(content, POPUP_OPTIONS);
 
             if (onFeatureClick) {
@@ -287,12 +281,6 @@ export const Choropleth = ({
     // render, so by identity this would refetch on each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicePath, field, srid, reload, statusRows, JSON.stringify(context ?? {})]);
-
-  // A click in the key, applied to the areas already drawn -- not a fetch.
-  useEffect(() => {
-    filterRef.current?.(hidden);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hiddenKey]);
 
   return null;
 };

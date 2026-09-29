@@ -1,4 +1,4 @@
-import { BASE_STYLE, pathOptions } from './descriptor';
+import { BASE_STYLE, pathOptions, variantOf } from './descriptor';
 
 /**
  * What the colours on a map mean.
@@ -87,6 +87,82 @@ export const drawnAs = (name, descriptor, feature) => {
   const value = raw !== undefined && descriptor?.variants?.cases?.[raw] ? raw : undefined;
 
   return { name, value, key: kindKey(name, value) };
+};
+
+/**
+ * One draw's reading of its descriptors: which one each feature is drawn with,
+ * the legend row it falls under, and the rows that reached the map.
+ *
+ * Built once per draw and thrown away with it.
+ *
+ * @param {Object} params
+ * @param {Object} params.descriptors - Descriptor name to descriptor, as configured.
+ * @param {Function} params.nameOf    - A feature -> the name of the descriptor it
+ *        is drawn with: the producer's stamp, or the caller's override.
+ * @returns {Object} `entryFor`, `kindOf`, `note` and `drawn`, below.
+ */
+export const drawnKinds = ({ descriptors, nameOf }) => {
+  const entries = new WeakMap();
+
+  /**
+   * The descriptor a feature is drawn with, its variant already merged in.
+   *
+   * Every read of a descriptor goes through here rather than indexing the map
+   * directly, so a variant reaches the marker, the label, the popup and the
+   * arrow alike -- a colour that applied to the line but not to its arrow
+   * heads would be the obvious way to get this half right.
+   */
+  const entryFor = (feature) => {
+    // Every feature is asked this two or three times in one draw -- the
+    // marker or the path style, `onEachFeature`, and the arrow pass -- and
+    // `variantOf` builds six objects each time it merges a case. Three times
+    // six, per line, on a set large enough to want clustering, is work that
+    // produces the same answer every time. Keyed by the feature itself, so
+    // nothing has to be cleared and nothing is retained: the map is built per
+    // draw and holds its keys weakly.
+    if (entries.has(feature)) return entries.get(feature);
+    const entry = variantOf(descriptors[nameOf(feature)], feature);
+    entries.set(feature, entry);
+    return entry;
+  };
+
+  /** The legend row a feature is drawn under. See `drawnAs`. */
+  const kindOf = (feature) => {
+    const name = nameOf(feature);
+    return drawnAs(name, descriptors[name], feature);
+  };
+
+  /**
+   * The distinct kinds this draw put on the map.
+   *
+   * Keyed by descriptor and variant case together, since one descriptor with
+   * two cases is two things a reader has to tell apart. Insertion order is the
+   * order the producer sent the features in, which is as much of an order as
+   * there is and is at least stable within a set.
+   */
+  const kinds = new Map();
+
+  /** Records the feature's kind for the key, and says which one it was. */
+  const note = (feature) => {
+    const { name, value, key } = kindOf(feature);
+    if (!kinds.has(key)) {
+      kinds.set(key, {
+        name,
+        value,
+        descriptor: entryFor(feature),
+        geometry: feature?.geometry?.type
+      });
+    }
+    return key;
+  };
+
+  return {
+    entryFor,
+    kindOf,
+    note,
+    /** `[{ name, value, descriptor, geometry }]`, what `onLegend` reports. */
+    drawn: () => [...kinds.values()]
+  };
 };
 
 /** Which shape a swatch draws, from the geometry it stands for. */

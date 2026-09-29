@@ -10,6 +10,9 @@
  * Nothing here is exported from the package. A consumer takes `FeaturePanel`,
  * or builds its own screen out of the layers; these are how this one is built,
  * and they are free to change shape.
+ *
+ * One is not the panel's: `useKeyFilter` is how the two layers that draw a
+ * fetched set take the key's switched-off rows.
  */
 export { useChoropleth } from './useChoropleth';
 export { useDateWindow } from './useDateWindow';
@@ -17,6 +20,7 @@ export { useDrawnShape } from './useDrawnShape';
 export { useExport } from './useExport';
 export { useFileOverlay } from './useFileOverlay';
 export { useFormSchema } from './useFormSchema';
+export { useKeyFilter } from './useKeyFilter';
 export { useLayerReport } from './useLayerReport';
 export { useRecord } from './useRecord';
 export { useSelection } from './useSelection';

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { changesFor, restack, shownOf } from '../frontend/lib/filter';
+import { changesFor, extentOf, restack, shownOf } from '../frontend/lib/filter';
 
 const member = (key, extra = {}) => ({ key, hidden: false, layer: {}, ...extra });
 
@@ -94,5 +94,37 @@ describe('shownOf', () => {
 
   it('passes a missing set straight through', () => {
     expect(shownOf(null, ['A'], keyOf)).toBeNull();
+  });
+});
+
+describe('extentOf', () => {
+  const point = (lat, lng) => ({ getLatLng: () => ({ lat, lng }) });
+  const path = (south, west, north, east) => ({
+    getBounds: () => ({
+      isValid: () => true,
+      getSouthWest: () => ({ lat: south, lng: west }),
+      getNorthEast: () => ({ lat: north, lng: east })
+    })
+  });
+  const shown = (layer) => ({ layer, hidden: false });
+  const off = (layer) => ({ layer, hidden: true });
+
+  it('frames the points and the paths that are shown', () => {
+    expect(extentOf([shown(point(1, 2)), shown(path(0, 3, 4, 5)), off(point(-10, -10))]))
+      .toEqual([[0, 2], [4, 5]]);
+  });
+
+  it('frames everything when everything is switched off', () => {
+    expect(extentOf([off(point(1, 2)), off(point(3, 4))])).toEqual([[1, 2], [3, 4]]);
+  });
+
+  it('passes over a path whose bounds hold nothing, and does not read it as a point', () => {
+    const empty = { getBounds: () => ({ isValid: () => false }), getLatLng: () => ({ lat: 50, lng: 50 }) };
+    expect(extentOf([shown(empty), shown(point(1, 2))])).toEqual([[1, 2], [1, 2]]);
+  });
+
+  it('is null for a set with nothing to frame', () => {
+    expect(extentOf([])).toBeNull();
+    expect(extentOf([shown({})])).toBeNull();
   });
 });
