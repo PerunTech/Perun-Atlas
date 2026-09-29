@@ -1,32 +1,29 @@
-import { React, elements } from 'perun-core';
+import { React } from 'perun-core';
 import { AtlasMap } from './AtlasMap';
-import { DateRange } from './DateRange';
 import { DrawBar, DrawTool } from './DrawBar';
 import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
 import { FileOverlay } from './layers/FileOverlay';
-import { LineSwatch } from './Legend';
 import { LegendControl } from './LegendControl';
+import { EmptyCard } from './panel/EmptyCard';
+import { ExportButtons } from './panel/ExportButtons';
+import { FileActions, FileNotices } from './panel/FileControls';
+import { CloseButton } from './panel/CloseButton';
+import { LoadingCard } from './panel/LoadingCard';
+import { PanelFooter } from './panel/PanelFooter';
+import { RecordPane } from './panel/RecordPane';
+import { WindowControls } from './panel/WindowControls';
 import { DEFAULT_PALETTE, legendFrom, legendFromPalette, variantOf } from '../appearance';
 import { FILE_KEY } from '../appearance/legend';
-import { OVERLAY_STYLE, countText, openingText, overlayEntry } from '../appearance/overlay';
+import { overlayEntry } from '../appearance/overlay';
 import { descriptorOf } from '../data';
-import { useChoropleth, useDateWindow, useDrawnShape, useExport, useFileOverlay, useRecord } from '../hooks';
+import {
+  useChoropleth, useDateWindow, useDrawnShape, useExport, useFileOverlay, useLayerReport, useRecord
+} from '../hooks';
 import '../style/panel.css';
 import '../style/overlay.css';
 const { useEffect, useMemo, useState } = React
-
-/**
- * Tabler, through perun-core rather than as a dependency of this package.
- *
- * perun-core already ships `@tabler/icons-react` and loads it as its own lazy
- * chunk, so this costs no bundle weight and stays on whatever version the shell
- * is serving. It renders nothing until that chunk arrives and nothing at all if
- * it fails, so every button here keeps a text label beside the icon rather than
- * relying on one.
- */
-const { Icon } = elements
 
 /**
  * A geometry set, with a date window over it when the service takes one.
@@ -68,6 +65,9 @@ const { Icon } = elements
  * The props are a menu row's keys, and `docs/menu-row.md` is where each is
  * described: every option, default and placeholder. The differences from a row
  * are that words arrive resolved rather than as label codes, and the four below.
+ *
+ * The pieces it renders are in `panel/`, and its state is in `hooks/`. What is
+ * left here is how they fit together.
  *
  * @param {string} session      - Session the service is called with.
  * @param {string} servicePath  - The row's `service`: a path with {token} placeholders.
@@ -119,8 +119,6 @@ export const FeaturePanel = ({
   className = '',
   onClose
 }) => {
-  const [set, setSet] = useState(null)
-  const [loading, setLoading] = useState(true)
   const [labelled, setLabelled] = useState(true)
 
   /**
@@ -150,15 +148,15 @@ export const FeaturePanel = ({
    * Ordered by what each piece needs from the one above: the window feeds the
    * bindings, the bindings feed the rows and the save, and the record pane needs
    * to know whether the draw tool is armed. The one backward reference is
-   * `onMoved` naming `closeRecord`, and it is a closure rather than a call --
-   * created here, run from an event handler, by which time the record hook has
-   * been declared.
+   * `onMoved`, naming `forget` and `closeRecord`, and it is a closure rather
+   * than a call -- created here, run from an event handler, by which time both
+   * hooks have been declared.
    */
   const { timeScoped, preset, range, initial, longest, applyPreset, onRangeChange } = useDateWindow({
     presets,
     defaultMonths,
     servicePath,
-    onMoved: () => { setSet(null); closeRecord() }
+    onMoved: () => { forget(); closeRecord() }
   })
 
   const bindings = useMemo(() => ({
@@ -179,16 +177,10 @@ export const FeaturePanel = ({
     bindingKey
   })
 
-  /**
-   * What the layer last reported it drew, in that layer's own shape.
-   *
-   * `FeatureSet` reports a list of kinds; `Choropleth` reports
-   * `{ values, usedFallback }`. Kept as one piece of state rather than two
-   * because only one layer is ever mounted, and two would mean a stale half
-   * sitting beside the live one waiting to be read by mistake.
-   */
-  const noneDrawn = coloured ? { values: [], usedFallback: false } : []
-  const [drawn, setDrawn] = useState(noneDrawn)
+  const {
+    set, visible, loading, drawn, extent,
+    setDrawn, setShown, setExtent, onFetchStart, onFetched, onFetchFailed, forget
+  } = useLayerReport({ coloured })
 
   /**
    * The key's rows the reader has switched off, by the entries' own keys.
@@ -207,22 +199,6 @@ export const FeaturePanel = ({
   const showAll = () => setHidden([])
 
   /**
-   * The set as the reader sees it, as the layer last reported it: the fetched
-   * collection itself while nothing is switched off, a copy without the hidden
-   * kinds otherwise.
-   *
-   * What a circle counts and what the file buttons write, because both are
-   * about what is on the screen -- the file buttons already follow a circle for
-   * the same reason. `set` stays the whole response, for the one question that
-   * is about the response: whether anything came back at all.
-   *
-   * Null wherever `set` is, so a window that has moved and not yet been fetched
-   * offers nothing rather than the last window's features.
-   */
-  const [shown, setShown] = useState(null)
-  const visible = set === null ? null : (shown ?? set)
-
-  /**
    * The question the reader closed the empty card on, as its `bindingKey`.
    *
    * The card covers the middle of the map, and a reader who has read it may
@@ -233,9 +209,6 @@ export const FeaturePanel = ({
    * answer to it is news again.
    */
   const [emptyClosedFor, setEmptyClosedFor] = useState(null)
-
-  /** Where the shown features are, for the zoom control's button that frames them. */
-  const [extent, setExtent] = useState(null)
 
   const {
     drawable, drawing, shape, selection, note, form, saving, reload,
@@ -250,15 +223,12 @@ export const FeaturePanel = ({
    * A new file comes in switched on, whatever the reader did with the last
    * one's row: they opened it to look at it.
    */
-  const {
-    offered: fileOffered, file, refusal: fileRefusal, note: fileNote, opening: fileOpening, inputRef: fileInput,
-    choose: chooseFile, onPicked: onFilePicked, close: closeFile, drawn: fileDrawn, failed: fileFailed,
-    dismiss: dismissRefusal, dismissNote: dismissFileNote
-  } = useFileOverlay({
+  const fileOverlay = useFileOverlay({
     overlay,
     labels,
     onChange: () => setHidden((current) => current.filter((key) => key !== FILE_KEY))
   })
+  const { file } = fileOverlay
 
   // A record read from a file goes with the file. What the pane holds is a copy,
   // so nothing else would take it down, and a pane describing a file that is no
@@ -267,44 +237,6 @@ export const FeaturePanel = ({
     if (record?.file && record.file !== file) closeRecord()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file])
-
-  /**
-   * A fetch is starting.
-   *
-   * The open record deliberately survives it. What the pane holds is a resolved
-   * copy of one feature's rows, not a live view of the layer, so nothing about
-   * it goes stale when the set is redrawn -- and clearing it here closed the
-   * pane a click had just opened. The sequence was its own cause: a click opens
-   * the pane, the pane is what makes the map narrower, a narrower map is an
-   * `invalidateSize`, and `invalidateSize` fires `moveend`, which a bbox-scoped
-   * layer answers with a fetch. The pane then closed itself a quarter of a
-   * second after opening, widening the map and starting a second fetch on the
-   * way out.
-   *
-   * It also closed the pane on every ordinary pan, which is the same fault
-   * without the self-inflicted part: a reader who opens a record and nudges the
-   * map loses what they were reading.
-   *
-   * The clears that mean something stay where they are. `applyWindow` empties
-   * the record when the date window moves, because that is a different set
-   * rather than the same one fetched again.
-   */
-  const onFetchStart = () => {
-    setLoading(true)
-    setDrawn(noneDrawn)
-  }
-
-  /**
-   * A fetch failed, so there is no set: nothing to show, count or frame. The
-   * layer reports none of these on a failure, so without this the last good
-   * set's would stay behind the empty one.
-   */
-  const onFetchFailed = () => {
-    setSet({ features: [] })
-    setShown(null)
-    setExtent(null)
-    setLoading(false)
-  }
 
   /**
    * The descriptor a feature is drawn with, in the steps the mounted layer
@@ -317,7 +249,7 @@ export const FeaturePanel = ({
     ? descriptors?.[choropleth.descriptor]
     : variantOf(descriptors?.[descriptorFor(feature) ?? descriptorOf(feature)], feature))
 
-  const { offer, canExport, saveGeoJSON, saveCSV, saveKML, saveShapefile } = useExport({
+  const exporter = useExport({
     set: visible,
     selection,
     exportable,
@@ -352,41 +284,19 @@ export const FeaturePanel = ({
     >
       <header className='atlas-panel__header'>
         <div className='atlas-panel__title'>{title}</div>
-        {onClose && (
-          <button
-            type='button'
-            className='atlas-panel__close'
-            aria-label={labels.close ?? 'Close'}
-            onClick={onClose}
-          >
-            ×
-          </button>
-        )}
+        {onClose && <CloseButton label={labels.close ?? 'Close'} onClick={onClose} />}
       </header>
 
       <div className='atlas-panel__toolbar'>
         {timeScoped && (
-          <DateRange
-            from={range.from}
-            to={range.to}
-            onChange={onRangeChange}
-            labels={{ from: labels.from, to: labels.to, invalidRange: labels.invalidRange }}
+          <WindowControls
+            range={range}
+            onRangeChange={onRangeChange}
+            presets={presets}
+            preset={preset}
+            applyPreset={applyPreset}
+            labels={labels}
           />
-        )}
-
-        {timeScoped && presets.length > 0 && (
-          <div className='atlas-panel__segmented'>
-            {presets.map(({ months, label }) => (
-              <button
-                key={months}
-                type='button'
-                aria-pressed={preset === months}
-                onClick={() => applyPreset(months)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         )}
 
         {/* A control for permanent labels, which only one of the two layers
@@ -414,7 +324,7 @@ export const FeaturePanel = ({
             the date window and the label switch, which change what is shown.
             Two clusters said otherwise and lined up differently as the toolbar
             wrapped. A second tool is another button in here. */}
-        {(drawable || canExport || fileOffered) && (
+        {(drawable || exporter.canExport || fileOverlay.offered) && (
           <div className='atlas-panel__actions'>
             {drawable && (
               <DrawTool
@@ -426,108 +336,13 @@ export const FeaturePanel = ({
               />
             )}
 
-            {canExport && offer.geojson !== false && (
-              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveGeoJSON}>
-                <Icon name='IconJson' size={16} stroke={1.75} aria-hidden='true' />
-                {labels.exportGeoJSON ?? 'GeoJSON'}
-              </button>
-            )}
+            {exporter.canExport && <ExportButtons exporter={exporter} labels={labels} />}
 
-            {canExport && offer.csv !== false && (
-              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveCSV}>
-                <Icon name='IconFileTypeCsv' size={16} stroke={1.75} aria-hidden='true' />
-                {labels.exportCsv ?? 'CSV'}
-              </button>
-            )}
-
-            {canExport && offer.kml !== false && (
-              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveKML}>
-                <Icon name='IconWorld' size={16} stroke={1.75} aria-hidden='true' />
-                {labels.exportKml ?? 'KML'}
-              </button>
-            )}
-
-            {canExport && offer.shp !== false && (
-              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={saveShapefile}>
-                <Icon name='IconFileTypeZip' size={16} stroke={1.75} aria-hidden='true' />
-                {labels.exportShp ?? 'Shapefile'}
-              </button>
-            )}
-
-            {/* The other direction: a file in, drawn over the map and nowhere
-                else. Last, so the buttons that write files stay together. The
-                input is never shown; the button opens it. */}
-            {fileOffered && (
-              <button type='button' className='atlas-panel__btn atlas-panel__btn--ghost' onClick={chooseFile}>
-                <Icon name='IconFolderOpen' size={16} stroke={1.75} aria-hidden='true' />
-                {labels.openFile ?? 'Open file'}
-              </button>
-            )}
-            {fileOffered && (
-              <input
-                ref={fileInput}
-                type='file'
-                className='atlas-panel__fileinput'
-                accept='.geojson,.json,.kml,.gpx,.zip,.shp'
-                tabIndex={-1}
-                aria-hidden='true'
-                onChange={onFilePicked}
-              />
-            )}
-
-            {/* The open file, beside the button that opened it: the overlay's
-                own swatch, the file's name, what it drew, and the way to close
-                it. The key carries the same swatch and name. */}
-            {file && (
-              <div className='atlas-panel__file'>
-                <LineSwatch path={OVERLAY_STYLE} />
-                <span className='atlas-panel__filename' title={file.name}>{file.name}</span>
-                <span className='atlas-panel__filecount'>{countText(file.count, labels)}</span>
-                <button
-                  type='button'
-                  className='atlas-panel__fileclose'
-                  aria-label={labels.closeFile ?? 'Close file'}
-                  title={labels.closeFile ?? 'Close file'}
-                  onClick={closeFile}
-                >
-                  ×
-                </button>
-              </div>
-            )}
+            <FileActions fileOverlay={fileOverlay} labels={labels} />
           </div>
         )}
 
-        {/* What to know about the open file, until the reader dismisses it or
-            the file closes. */}
-        {fileNote && (
-          <p className='atlas-panel__filenote' role='status'>
-            <span>{fileNote}</span>
-            <button
-              type='button'
-              className='atlas-panel__fileclose'
-              aria-label={labels.close ?? 'Close'}
-              onClick={dismissFileNote}
-            >
-              ×
-            </button>
-          </p>
-        )}
-
-        {/* Why the last file picked did not open, until the reader dismisses it
-            or a file does open. */}
-        {fileRefusal && (
-          <p className='atlas-panel__filerefused' role='alert'>
-            <span>{fileRefusal}</span>
-            <button
-              type='button'
-              className='atlas-panel__fileclose'
-              aria-label={labels.close ?? 'Close'}
-              onClick={dismissRefusal}
-            >
-              ×
-            </button>
-          </p>
-        )}
+        <FileNotices fileOverlay={fileOverlay} labels={labels} />
 
         {/* The tool's own row, under everything else, and only while it has
             something to say: what to click, then the shape's radius and note.
@@ -554,248 +369,159 @@ export const FeaturePanel = ({
       </div>
 
       <div className='atlas-panel__body'>
-      <div className='atlas-panel__mapwrap'>
-        <div className='atlas-panel__map'>
-          {/* Merged rather than defaulted: a caller setting one of AtlasMap's
-              options should not silently lose the others. */}
-          {/* `onReady` after the spread on purpose: `map` comes from a menu row,
-              which is JSON and cannot carry a function, so nothing there can be
-              shadowing this -- and if a caller ever passes one in code, losing
-              the panel's own settings silently would be the worse failure. */}
-          {/* `extent` after the spread for the same reason: it is the layer's
-              report, and nothing in a row can know it. */}
-          <AtlasMap
-            session={session}
-            {...{ layerSwitcher: true, ...map }}
-            extent={extent}
-            onReady={({ config }) => setDataSrid(config?.dataSrid ?? null)}
-          >
-            {/* One layer or the other, never both. The callbacks are the same
-                pair of hands either way -- which is what let this be a branch
-                here rather than a second panel. A coloured map waits for its
-                rows before it is mounted at all, so an area is never drawn in
-                the unclassified colour and then corrected a moment later. */}
-            {coloured
-              ? (rows !== null || !statusPath) && (
-                <Choropleth
-                  servicePath={servicePath}
-                  context={bindings}
+        <div className='atlas-panel__mapwrap'>
+          <div className='atlas-panel__map'>
+            {/* Merged rather than defaulted: a caller setting one of AtlasMap's
+                options should not silently lose the others. */}
+            {/* `onReady` after the spread on purpose: `map` comes from a menu row,
+                which is JSON and cannot carry a function, so nothing there can be
+                shadowing this -- and if a caller ever passes one in code, losing
+                the panel's own settings silently would be the worse failure. */}
+            {/* `extent` after the spread for the same reason: it is the layer's
+                report, and nothing in a row can know it. */}
+            <AtlasMap
+              session={session}
+              {...{ layerSwitcher: true, ...map }}
+              extent={extent}
+              onReady={({ config }) => setDataSrid(config?.dataSrid ?? null)}
+            >
+              {/* One layer or the other, never both. The callbacks are the same
+                  pair of hands either way -- which is what let this be a branch
+                  here rather than a second panel. A coloured map waits for its
+                  rows before it is mounted at all, so an area is never drawn in
+                  the unclassified colour and then corrected a moment later. */}
+              {coloured
+                ? (rows !== null || !statusPath) && (
+                  <Choropleth
+                    servicePath={servicePath}
+                    context={bindings}
+                    srid={dataSrid}
+                    reload={reload}
+                    statusRows={rows}
+                    join={choropleth.join}
+                    field={choropleth.field}
+                    palette={choropleth.palette}
+                    fallback={choropleth.fallback}
+                    descriptor={descriptors?.[choropleth.descriptor]}
+                    labelResolver={labelResolver}
+                    tooltip={colourTooltip}
+                    hidden={hidden}
+                    onFeatureClick={openRecord}
+                    onLegend={setDrawn}
+                    onShown={setShown}
+                    onLoadStart={onFetchStart}
+                    onLoad={onFetched}
+                    onError={onFetchFailed}
+                  />
+                )
+                : (
+                  <FeatureSet
+                    servicePath={servicePath}
+                    context={bindings}
+                    reload={reload}
+                    descriptors={descriptors}
+                    descriptorFor={descriptorFor}
+                    labelResolver={labelResolver}
+                    cluster={cluster}
+                    pinned={isPinnedFeature}
+                    hidden={hidden}
+                    onFeatureClick={openRecord}
+                    onLegend={setDrawn}
+                    onShown={setShown}
+                    onExtent={setExtent}
+                    onLoadStart={onFetchStart}
+                    onLoad={onFetched}
+                    onError={onFetchFailed}
+                  />
+                )}
+
+              {/* A file the reader opened, over the set and under the shape being
+                  drawn. Its row in the key switches it off like any other. */}
+              {file && (
+                <FileOverlay
+                  file={file}
                   srid={dataSrid}
-                  reload={reload}
-                  statusRows={rows}
-                  join={choropleth.join}
-                  field={choropleth.field}
-                  palette={choropleth.palette}
-                  fallback={choropleth.fallback}
-                  descriptor={descriptors?.[choropleth.descriptor]}
+                  hidden={hidden.includes(FILE_KEY)}
                   labelResolver={labelResolver}
-                  tooltip={colourTooltip}
-                  hidden={hidden}
                   onFeatureClick={openRecord}
-                  onLegend={setDrawn}
-                  onShown={setShown}
-                  onLoadStart={onFetchStart}
-                  onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
-                  onError={onFetchFailed}
-                />
-              )
-              : (
-                <FeatureSet
-                  servicePath={servicePath}
-                  context={bindings}
-                  reload={reload}
-                  descriptors={descriptors}
-                  descriptorFor={descriptorFor}
-                  labelResolver={labelResolver}
-                  cluster={cluster}
-                  pinned={isPinnedFeature}
-                  hidden={hidden}
-                  onFeatureClick={openRecord}
-                  onLegend={setDrawn}
-                  onShown={setShown}
-                  onExtent={setExtent}
-                  onLoadStart={onFetchStart}
-                  onLoad={(collection) => { setSet(collection ?? { features: [] }); setLoading(false) }}
-                  onError={onFetchFailed}
+                  onDrawn={fileOverlay.drawn}
+                  onError={fileOverlay.failed}
                 />
               )}
 
-            {/* A file the reader opened, over the set and under the shape being
-                drawn. Its row in the key switches it off like any other. */}
-            {file && (
-              <FileOverlay
-                file={file}
-                srid={dataSrid}
-                hidden={hidden.includes(FILE_KEY)}
-                labelResolver={labelResolver}
-                onFeatureClick={openRecord}
-                onDrawn={fileDrawn}
-                onError={fileFailed}
-              />
-            )}
+              {/* The shape the reader is drawing, over everything the service
+                  returned. `drawing` arms the map; once a shape exists the tool is
+                  disarmed and the handles take over, so a second circle is drawn
+                  by pressing the button again rather than by an unlucky click. */}
+              {drawable && (
+                <CirclePicker
+                  value={shape}
+                  drawing={drawing}
+                  style={draw.style}
+                  onChange={setShape}
+                  onDrawn={finishDrawing}
+                />
+              )}
 
-            {/* The shape the reader is drawing, over everything the service
-                returned. `drawing` arms the map; once a shape exists the tool is
-                disarmed and the handles take over, so a second circle is drawn
-                by pressing the button again rather than by an unlucky click. */}
-            {drawable && (
-              <CirclePicker
-                value={shape}
-                drawing={drawing}
-                style={draw.style}
-                onChange={setShape}
-                onDrawn={finishDrawing}
-              />
-            )}
+              {/* Inside the map, so it lives in the container that goes
+                  fullscreen and comes off with it. Kept mounted across a reload
+                  rather than gated on `loading`: `drawn` empties at the start of
+                  every fetch, which takes the control off the map by itself, and
+                  leaving the component up is what lets a reader who collapsed the
+                  key find it still collapsed afterwards. */}
+              {legend !== false && (
+                <LegendControl
+                  entries={[
+                    ...(coloured
+                      ? legendFromPalette({
+                        palette: choropleth.palette,
+                        fallback: choropleth.fallback ?? DEFAULT_PALETTE.__unknown,
+                        unknownLabel: choropleth.unknownLabel,
+                        ...drawn
+                      }, labelResolver)
+                      : legendFrom(drawn, labelResolver)),
+                    ...(file ? [overlayEntry(file.name)] : [])
+                  ]}
+                  title={labels.legend}
+                  hidden={hidden}
+                  onToggle={toggleKind}
+                  onShowAll={showAll}
+                  showAllLabel={labels.showAll}
+                  position={typeof legend === 'string' ? legend : undefined}
+                />
+              )}
+            </AtlasMap>
+          </div>
 
-            {/* Inside the map, so it lives in the container that goes
-                fullscreen and comes off with it. Kept mounted across a reload
-                rather than gated on `loading`: `drawn` empties at the start of
-                every fetch, which takes the control off the map by itself, and
-                leaving the component up is what lets a reader who collapsed the
-                key find it still collapsed afterwards. */}
-            {legend !== false && (
-              <LegendControl
-                entries={[
-                  ...(coloured
-                    ? legendFromPalette({
-                      palette: choropleth.palette,
-                      fallback: choropleth.fallback ?? DEFAULT_PALETTE.__unknown,
-                      unknownLabel: choropleth.unknownLabel,
-                      ...drawn
-                    }, labelResolver)
-                    : legendFrom(drawn, labelResolver)),
-                  ...(file ? [overlayEntry(file.name)] : [])
-                ]}
-                title={labels.legend}
-                hidden={hidden}
-                onToggle={toggleKind}
-                onShowAll={showAll}
-                showAllLabel={labels.showAll}
-                position={typeof legend === 'string' ? legend : undefined}
-              />
-            )}
-          </AtlasMap>
+          {(loading || saving || fileOverlay.opening) && (
+            <LoadingCard saving={saving} opening={fileOverlay.opening} labels={labels} />
+          )}
+
+          {empty && (
+            <EmptyCard
+              timeScoped={timeScoped}
+              longest={longest}
+              preset={preset}
+              applyPreset={applyPreset}
+              labels={labels}
+              onClose={() => setEmptyClosedFor(bindingKey)}
+            />
+          )}
         </div>
 
-        {/* Something is under way, and which kind it is only changes the
-            word. A write says so rather than inheriting `loading`, because the
-            two do not mean the same thing to a reader waiting on one: a fetch
-            will redraw the map, a save will have changed the server. A file
-            being opened names the file, since the reader has just picked it and
-            a large one takes a second or two to read and draw. The more
-            specific event wins the word where two could be true: `saving`,
-            then the file, then `loading`.
-
-            Not the button, which said `Saving…` in place of `Save` until now.
-            That put the report in the corner the reader had just pressed and
-            looked away from, and it said the button was busy when what is busy
-            is the service. */}
-        {(loading || saving || fileOpening) && (
-          <div className='atlas-panel__loading' role='status' aria-live='polite'>
-            <div className='atlas-panel__loadingcard'>
-              <div className='atlas-panel__spinner' aria-hidden='true' />
-              <span>
-                {saving
-                  ? (labels.saving ?? 'Saving\u2026')
-                  : fileOpening
-                    ? openingText(fileOpening, labels)
-                    : (labels.loading ?? 'Loading\u2026')}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {empty && (
-          <div className='atlas-panel__empty'>
-            <div className='atlas-panel__emptycard'>
-              <div className='atlas-panel__emptytitle'>
-                {labels.empty ?? (timeScoped ? 'Nothing in this range' : 'Nothing to show')}
-              </div>
-              {labels.emptyHint && <div className='atlas-panel__emptybody'>{labels.emptyHint}</div>}
-              {timeScoped && longest && preset !== longest.months && (
-                <button
-                  type='button'
-                  className='atlas-panel__btn atlas-panel__btn--primary'
-                  onClick={() => applyPreset(longest.months)}
-                >
-                  {[labels.widen ?? 'Try', longest.label].filter(Boolean).join(' ')}
-                </button>
-              )}
-              {/* Last, so a keyboard reaches the message and the offer to widen
-                  before the way out of it. It sits in the corner all the same. */}
-              <button
-                type='button'
-                className='atlas-panel__close'
-                aria-label={labels.close ?? 'Close'}
-                title={labels.close ?? 'Close'}
-                onClick={() => setEmptyClosedFor(bindingKey)}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {record && (
-        <aside
-          className={['atlas-panel__details', record.spec?.className].filter(Boolean).join(' ')}
-          style={record.spec?.style}
-          aria-label={labels.details ?? 'Details'}
-        >
-          <div className='atlas-panel__detailshead'>
-            <div className='atlas-panel__detailstitle' style={record.spec?.titleStyle}>
-              {record.title ?? labels.details ?? 'Details'}
-            </div>
-            <button
-              type='button'
-              className='atlas-panel__close'
-              aria-label={labels.close ?? 'Close'}
-              onClick={closeRecord}
-            >
-              ×
-            </button>
-          </div>
-
-          <dl className='atlas-panel__detailsbody'>
-            {record.rows.map(({ field, label, value }) => (
-              <div key={field} className='atlas-panel__detailsrow'>
-                <dt style={record.spec?.labelStyle}>{label}</dt>
-                <dd style={record.spec?.valueStyle}>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </aside>
-      )}
+        {record && <RecordPane record={record} labels={labels} onClose={closeRecord} />}
       </div>
 
       {(timeScoped || onClose) && (
-      <div className='atlas-panel__footer'>
-        {timeScoped && <div className='atlas-panel__summary'>{`${range.from} → ${range.to}`}</div>}
-        <div className='atlas-panel__actions'>
-          {timeScoped && (
-            <button
-              type='button'
-              className='atlas-panel__btn atlas-panel__btn--ghost'
-              onClick={() => applyPreset(initial)}
-            >
-              {labels.reset ?? 'Reset range'}
-            </button>
-          )}
-          {onClose && (
-            <button
-              type='button'
-              className='atlas-panel__btn atlas-panel__btn--dark'
-              onClick={onClose}
-            >
-              {labels.close ?? 'Close'}
-            </button>
-          )}
-        </div>
-      </div>
+        <PanelFooter
+          timeScoped={timeScoped}
+          range={range}
+          initial={initial}
+          applyPreset={applyPreset}
+          labels={labels}
+          onClose={onClose}
+        />
       )}
     </div>
   )
 }
-

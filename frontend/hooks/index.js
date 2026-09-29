@@ -17,5 +17,6 @@ export { useDrawnShape } from './useDrawnShape';
 export { useExport } from './useExport';
 export { useFileOverlay } from './useFileOverlay';
 export { useFormSchema } from './useFormSchema';
+export { useLayerReport } from './useLayerReport';
 export { useRecord } from './useRecord';
 export { useSelection } from './useSelection';

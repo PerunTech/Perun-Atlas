@@ -1,14 +1,19 @@
 /**
  * Everything this package offers a consumer, and where each kind lives.
  *
- * The directory has one subdivision, and it is drawn on something real rather
- * than on how the files sort.
+ * The directory has two subdivisions, and each is drawn on something real
+ * rather than on how the files sort.
  *
  * `layers/` is the components that render nothing. They return null and put
  * their features on the map imperatively, through Leaflet, which makes them
  * adapters wearing a React interface -- a distinction worth seeing before
  * reading one, because none of the usual reasoning about what a component
  * returns applies to them.
+ *
+ * `panel/` is what `FeaturePanel` renders: its cards, its record pane, its
+ * footer and the buttons in its toolbar. None of it is exported. They are how
+ * that one screen is drawn, and a consumer building its own screen has the
+ * layers and the controls for that.
  *
  * Everything else sits at the top level: the map, the screen around it, and the
  * chrome on it.
