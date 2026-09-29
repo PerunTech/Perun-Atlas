@@ -87,7 +87,7 @@ describe('unitsPerMetre', () => {
   });
 
   /**
-   * The premise of the guard in `FeaturePanel.saveShape`. A service parsing an
+   * The premise of the guard in `shapeContext`. A service parsing an
    * integer radius cannot be handed a circle measured in degrees: 1500 m is
    * 0.0165 of a unit, which rounds to nothing, and a radius of zero is a save
    * that fails somewhere deep or stores a shape with no extent. If this ever

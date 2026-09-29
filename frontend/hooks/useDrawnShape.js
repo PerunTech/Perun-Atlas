@@ -1,5 +1,6 @@
 import { React, elements, validator } from 'perun-core';
-import { bindPath, fillBody, pointIn, postTo, ringIn, unitsPerMetre, withGroups } from '../data';
+import { fillBody, postTo, withGroups } from '../data';
+import { shapeContext } from '../data/save';
 import { useFormSchema } from './useFormSchema';
 import { useSelection } from './useSelection';
 
@@ -131,16 +132,8 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
   /**
    * Send the drawn shape to the service the row named.
    *
-   * The shape is converted here and nowhere else. A radius is drawn in metres on
-   * the ground and stored in the units of whatever projection the deployment
-   * keeps geometry in, and the two are the same number only at the equator --
-   * at these latitudes a circle sent across unconverted is a fifth too small,
-   * silently, in a record nobody re-measures. `unitsPerMetre` asks the
-   * projection itself rather than carrying a formula for it.
-   *
-   * Rounded, because more than one of these services parses its radius as an
-   * integer and a decimal point is a rejected save rather than a rounded circle.
-   * The centre keeps its decimals: it is read as a pair of doubles everywhere.
+   * What is sent is `shapeContext`'s to work out, and that is where the
+   * conversion from metres on the ground to the stored projection is explained.
    *
    * On success the shape goes away and the layer is told to fetch again, because
    * what is now on the server is not what is on the screen. On failure it stays
@@ -185,73 +178,26 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
       return
     }
 
-    setSaving(true)
+    const { context, units, tooSmall } = shapeContext(shape, {
+      draw,
+      dataSrid,
+      bindings,
+      note,
+      selected: selection.context,
+      form: formData
+    })
 
-    const centre = { lat: shape.lat, lng: shape.lng }
-    const { x, y } = pointIn(centre, dataSrid)
-    const scale = unitsPerMetre(centre, dataSrid)
-    const radius = Math.round(shape.radius * scale)
-
-    const vertices = ringIn(centre, shape.radius, dataSrid, draw.points)
-
-    /**
-     * The shape itself, as a ring in the projection the deployment stores.
-     *
-     * Formatted by the row, because the syntax is the service's and the geometry
-     * is this panel's: `point` is a template for one vertex and `join` is what
-     * goes between them. The default is a WKT coordinate pair, which is the only
-     * spelling that is anybody's standard.
-     */
-    const ring = vertices
-      .map((vertex) => bindPath(draw.ring?.point ?? '{x} {y}', vertex))
-      .join(draw.ring?.join ?? ', ')
-
-    /**
-     * The same shape, as GeoJSON.
-     *
-     * Offered beside the ring rather than instead of it: a service that parses
-     * the geometry out of a path segment needs the string, and one that reads a
-     * body needs this, and which of the two a deployment has is not this panel's
-     * to know. A row asking for `{draw.geojson}` gets the object itself, because
-     * `fillBody` hands over a sole placeholder unconverted.
-     *
-     * Closed, unlike the ring: GeoJSON says a linear ring repeats its first
-     * position as its last, and the readers that take it enforce that. The ring
-     * is left open because the services that parse one close it themselves, and
-     * a ring that arrived closed would be closed twice.
-     */
-    const geojson = {
-      type: 'Polygon',
-      coordinates: [[...vertices, vertices[0]].map((vertex) => [vertex.x, vertex.y])]
-    }
-
-    /**
-     * A radius smaller than one unit of the projection it would be sent in.
-     *
-     * Only when that is what is being sent. `{draw.radius}` is the shape's size
-     * in the stored projection, and rounding it is not optional -- more than one
-     * of these services parses a radius as an integer. But a deployment storing
-     * degrees measures a 720 m circle as 0.0065 of a unit, which rounds to
-     * nothing, and a radius of zero is a save that either fails somewhere deep
-     * or stores a shape with no extent. A row in that position wants
-     * `{draw.metres}` and the ring, neither of which has this problem.
-     *
-     * Said here, before the request, because this is the one place that knows
-     * both numbers. The service cannot tell the difference, and the reader would
-     * otherwise be told only that it refused.
-     */
-    const sendsUnits = [draw.save.onSave, JSON.stringify(draw.save.body ?? null)]
-      .some((text) => String(text).includes('{draw.radius}'))
-
-    if (sendsUnits && !(radius >= 1)) {
-      setSaving(false)
+    // Said here, before the request, because this is the one place that knows
+    // both numbers. The service cannot tell the difference, and the reader would
+    // otherwise be told only that it refused.
+    if (tooSmall) {
       alertUserResponse({
         type: 'error',
         response: labels.saveTooSmall
           ?? `This deployment stores geometry in EPSG:${dataSrid ?? '?'}, where ${Math.round(shape.radius)} m is less than one unit. Nothing was sent.`
       })
       console.error(
-        `perun-atlas: a radius of ${Math.round(shape.radius)} m is ${shape.radius * scale} units in `
+        `perun-atlas: a radius of ${Math.round(shape.radius)} m is ${units} units in `
         + `EPSG:${dataSrid}, which rounds to zero. A projection measured in degrees cannot carry an `
         + 'integer radius: send {draw.metres} for the size and {draw.ring} for the shape instead.'
       )
@@ -262,29 +208,7 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
       return
     }
 
-    const context = {
-      ...bindings,
-      note,
-      draw: {
-        lat: shape.lat,
-        lng: shape.lng,
-        metres: Math.round(shape.radius),
-        x,
-        y,
-        radius,
-        ring,
-        geojson,
-        // Only where a row asked for a selection. A screen that draws a shape
-        // and sends it somewhere has no use for `{draw.selected.ids}`, and an
-        // empty one in the context is a placeholder that resolves to nothing
-        // rather than one that is visibly not configured.
-        ...(selection.context ? { selected: selection.context } : {})
-      },
-      // At the top rather than under `draw`, because it is not about the shape.
-      // A row spreads it with `"...": "{form}"`, which is what lets the fields a
-      // schema describes arrive beside a geometry that is never one of them.
-      ...(draw?.form ? { form: formData } : {})
-    }
+    setSaving(true)
 
     const answer = await postTo(draw.save.onSave, context, {
       body: draw.save.body === undefined ? undefined : fillBody(draw.save.body, context),

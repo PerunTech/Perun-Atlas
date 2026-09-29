@@ -1,5 +1,6 @@
 import { axios } from 'perun-core';
 import { bindPath, valueAt } from './path';
+import { pointIn, ringIn, unitsPerMetre } from './project';
 
 /**
  * Sending something back.
@@ -8,10 +9,15 @@ import { bindPath, valueAt } from './path';
  * in the package that does, so the rules it follows are worth stating rather
  * than inferring.
  *
- * It knows nothing about what it is saving. A path from configuration, a body
- * from configuration, and the same `{token}` substitution every read here
+ * `postTo` knows nothing about what it is saving. A path from configuration, a
+ * body from configuration, and the same `{token}` substitution every read here
  * already does -- which is what lets a screen that draws a shape post it to a
  * service this package has never heard of.
+ *
+ * `shapeContext` is the one thing here that does know, and it is here because
+ * it is what those placeholders are filled from. It is arithmetic with no state
+ * in it, so it is tested on its own rather than through the panel that draws
+ * the shape.
  */
 
 /**
@@ -223,4 +229,110 @@ export const postTo = async (servicePath, context = {}, options = {}) => {
     console.error(`perun-atlas: save to ${url} failed`, err);
     return { ok: false, message: err?.message ?? String(err), data: null };
   }
+};
+
+/**
+ * A drawn shape, as the values a save's path and body resolve against.
+ *
+ * The shape is converted here and nowhere else. A radius is drawn in metres on
+ * the ground and stored in the units of whatever projection the deployment
+ * keeps geometry in, and the two are the same number only at the equator -- at
+ * these latitudes a circle sent across unconverted is a fifth too small,
+ * silently, in a record nobody re-measures. `unitsPerMetre` asks the projection
+ * itself rather than carrying a formula for it.
+ *
+ * Rounded, because more than one of these services parses its radius as an
+ * integer and a decimal point is a rejected save rather than a rounded circle.
+ * The centre keeps its decimals: it is read as a pair of doubles everywhere.
+ *
+ * @param {Object} shape              - The drawn circle: `lat`, `lng`, and `radius` in metres.
+ * @param {Object} params
+ * @param {Object} params.draw        - The row's `draw` block.
+ * @param {number} [params.dataSrid]  - The projection the deployment stores geometry in.
+ * @param {Object} [params.bindings]  - What the save path's placeholders resolve against.
+ * @param {string} [params.note]
+ * @param {Object} [params.selected]  - What the shape caught, when the row asked.
+ * @param {Object} [params.form]      - What was typed into the row's form.
+ * @returns {{context: Object, units: number, tooSmall: boolean}} The context; the
+ *          radius in stored units, before rounding; and whether a save sending
+ *          that radius would send zero.
+ */
+export const shapeContext = (shape, { draw, dataSrid, bindings, note, selected, form }) => {
+  const centre = { lat: shape.lat, lng: shape.lng };
+  const { x, y } = pointIn(centre, dataSrid);
+  const units = shape.radius * unitsPerMetre(centre, dataSrid);
+  const radius = Math.round(units);
+
+  const vertices = ringIn(centre, shape.radius, dataSrid, draw.points);
+
+  /**
+   * The shape itself, as a ring in the projection the deployment stores.
+   *
+   * Formatted by the row, because the syntax is the service's and the geometry
+   * is this panel's: `point` is a template for one vertex and `join` is what
+   * goes between them. The default is a WKT coordinate pair, which is the only
+   * spelling that is anybody's standard.
+   */
+  const ring = vertices
+    .map((vertex) => bindPath(draw.ring?.point ?? '{x} {y}', vertex))
+    .join(draw.ring?.join ?? ', ');
+
+  /**
+   * The same shape, as GeoJSON.
+   *
+   * Offered beside the ring rather than instead of it: a service that parses
+   * the geometry out of a path segment needs the string, and one that reads a
+   * body needs this, and which of the two a deployment has is not this panel's
+   * to know. A row asking for `{draw.geojson}` gets the object itself, because
+   * `fillBody` hands over a sole placeholder unconverted.
+   *
+   * Closed, unlike the ring: GeoJSON says a linear ring repeats its first
+   * position as its last, and the readers that take it enforce that. The ring
+   * is left open because the services that parse one close it themselves, and
+   * a ring that arrived closed would be closed twice.
+   */
+  const geojson = {
+    type: 'Polygon',
+    coordinates: [[...vertices, vertices[0]].map((vertex) => [vertex.x, vertex.y])]
+  };
+
+  /**
+   * A radius smaller than one unit of the projection it would be sent in.
+   *
+   * Only when that is what is being sent. `{draw.radius}` is the shape's size
+   * in the stored projection, and rounding it is not optional -- more than one
+   * of these services parses a radius as an integer. But a deployment storing
+   * degrees measures a 720 m circle as 0.0065 of a unit, which rounds to
+   * nothing, and a radius of zero is a save that either fails somewhere deep
+   * or stores a shape with no extent. A row in that position wants
+   * `{draw.metres}` and the ring, neither of which has this problem.
+   */
+  const sendsUnits = [draw.save.onSave, JSON.stringify(draw.save.body ?? null)]
+    .some((text) => String(text).includes('{draw.radius}'));
+
+  const context = {
+    ...bindings,
+    note,
+    draw: {
+      lat: shape.lat,
+      lng: shape.lng,
+      metres: Math.round(shape.radius),
+      x,
+      y,
+      radius,
+      ring,
+      geojson,
+      // Only where a row asked for a selection. A screen that draws a shape
+      // and sends it somewhere has no use for `{draw.selected.ids}`, and an
+      // empty one in the context is a placeholder that resolves to nothing
+      // rather than one that is visibly not configured.
+      ...(selected ? { selected } : {})
+    },
+    // At the top rather than under `draw`, because it is not about the shape.
+    // A row spreads it with `"...": "{form}"`, which is what lets the fields a
+    // schema describes arrive beside a geometry that is never one of them.
+    ...(draw.form ? { form } : {})
+  };
+
+  return { context, units, tooSmall: sendsUnits && !(radius >= 1) };
 };

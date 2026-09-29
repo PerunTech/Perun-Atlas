@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('perun-core', () => ({ axios: vi.fn(), utils: {}, elements: {} }));
 
 const { axios } = await import('perun-core');
-const { fillBody, postTo } = await import('../frontend/data/save');
+const { fillBody, postTo, shapeContext } = await import('../frontend/data/save');
+const { pointIn, ringIn, unitsPerMetre } = await import('../frontend/data/project');
 
 describe('fillBody', () => {
   const context = {
@@ -216,5 +217,136 @@ describe('postTo', () => {
     axios.mockRejectedValue(new Error('Network Error'));
     expect(await postTo('/Ws', {})).toEqual({ ok: false, message: 'Network Error', data: null });
     expect(said()).toContain('save to https://host/services/Ws failed');
+  });
+});
+
+describe('shapeContext', () => {
+  /** A circle in the deployment's own latitudes, where the scale error is worth having. */
+  const CENTRE = { lat: 35.124805, lng: 33.941707 };
+  const SHAPE = { ...CENTRE, radius: 1499.6 };
+  const METRES = { save: { onSave: '/Ws/save/{draw.metres}' } };
+  const UNITS = { save: { onSave: '/Ws/save/{draw.radius}' } };
+
+  const drawn = (draw, params = {}) => shapeContext(SHAPE, { draw, dataSrid: 3857, ...params });
+
+  it('keeps the centre in degrees and puts x and y in the stored projection', () => {
+    const { lat, lng, x, y } = drawn(METRES).context.draw;
+    expect({ lat, lng }).toEqual(CENTRE);
+    expect({ x, y }).toEqual(pointIn(CENTRE, 3857));
+    expect(shapeContext(SHAPE, { draw: METRES, dataSrid: 4326 }).context.draw)
+      .toMatchObject({ x: CENTRE.lng, y: CENTRE.lat });
+  });
+
+  it('rounds the ground radius to whole metres', () => {
+    expect(drawn(METRES).context.draw.metres).toBe(1500);
+  });
+
+  /**
+   * The conversion the function exists for. A Web Mercator metre is 0.82
+   * ground metres here, so the stored radius is a fifth longer than the drawn
+   * one -- and rounded, because these services parse it as an integer.
+   */
+  it('converts the radius into the stored projection and rounds it', () => {
+    const { context, units } = drawn(METRES);
+    expect(units).toBeCloseTo(1499.6 * unitsPerMetre(CENTRE, 3857), 9);
+    expect(context.draw.radius).toBe(Math.round(units));
+    expect(context.draw.radius).toBeGreaterThan(1800);
+  });
+
+  it('writes the ring as open WKT pairs, one per vertex, by default', () => {
+    const vertices = ringIn(CENTRE, 1499.6, 3857);
+    const pairs = drawn(METRES).context.draw.ring.split(', ');
+    expect(pairs).toHaveLength(24);
+    expect(pairs[0]).toBe(`${vertices[0].x} ${vertices[0].y}`);
+    expect(pairs[23]).toBe(`${vertices[23].x} ${vertices[23].y}`);
+    expect(pairs[0]).not.toBe(pairs[23]);
+  });
+
+  it('writes the ring the way the row says, with the vertex count it asks for', () => {
+    const ring = drawn({ ...METRES, points: 8, ring: { point: '[{x},{y}]', join: ';' } }).context.draw.ring;
+    const parts = ring.split(';');
+    expect(parts).toHaveLength(8);
+    parts.forEach((part) => expect(part).toMatch(/^\[-?[\d.]+,-?[\d.]+\]$/));
+  });
+
+  /**
+   * Closed, where the ring is open: GeoJSON says a linear ring repeats its
+   * first position as its last, and the services that parse the WKT ring close
+   * it themselves.
+   */
+  it('closes the GeoJSON polygon the WKT ring leaves open', () => {
+    const vertices = ringIn(CENTRE, 1499.6, 3857, 8);
+    const { geojson } = drawn({ ...METRES, points: 8 }).context.draw;
+    expect(geojson.type).toBe('Polygon');
+    expect(geojson.coordinates).toHaveLength(1);
+    expect(geojson.coordinates[0]).toHaveLength(9);
+    expect(geojson.coordinates[0][0]).toEqual([vertices[0].x, vertices[0].y]);
+    expect(geojson.coordinates[0][8]).toEqual(geojson.coordinates[0][0]);
+  });
+
+  it('puts the bindings and the note beside the shape', () => {
+    const { context } = drawn(METRES, { bindings: { session: 'abc', objectId: 7 }, note: 'Outbreak 12' });
+    expect(context).toMatchObject({ session: 'abc', objectId: 7, note: 'Outbreak 12' });
+  });
+
+  it("lets the shape's own keys win over a binding of the same name", () => {
+    const { context } = drawn(METRES, { bindings: { note: 'bound', draw: 'bound' }, note: '' });
+    expect(context.note).toBe('');
+    expect(context.draw.metres).toBe(1500);
+  });
+
+  /**
+   * Absent rather than empty: an empty selection in the context is a
+   * placeholder that resolves to nothing, where a missing one stays visibly
+   * unconfigured.
+   */
+  it('names a selection only when there is one', () => {
+    expect(drawn(METRES).context.draw).not.toHaveProperty('selected');
+    expect(drawn(METRES, { selected: { ids: '4,5' } }).context.draw.selected).toEqual({ ids: '4,5' });
+  });
+
+  it('carries the form only for a row that configures one', () => {
+    const typed = { EXTERNAL_ID: 'Q-4417' };
+    expect(drawn(METRES, { form: typed }).context).not.toHaveProperty('form');
+    expect(drawn({ ...METRES, form: { schema: {} } }, { form: typed }).context.form).toEqual(typed);
+  });
+
+  describe('a radius too small to send', () => {
+    /**
+     * A deployment storing degrees measures 1500 m as 0.0165 of a unit, which
+     * rounds to nothing -- a save that fails somewhere deep or stores a shape
+     * with no extent.
+     */
+    it('is refused in degrees when the path sends the radius', () => {
+      const { context, units, tooSmall } = shapeContext(SHAPE, { draw: UNITS, dataSrid: 4326 });
+      expect(tooSmall).toBe(true);
+      expect(context.draw.radius).toBe(0);
+      expect(units).toBeCloseTo(1499.6 * unitsPerMetre(CENTRE, 4326), 12);
+    });
+
+    it('is refused when the body sends it', () => {
+      const draw = { save: { onSave: '/Ws/save', body: { geometry: { R: '{draw.radius}' } } } };
+      expect(shapeContext(SHAPE, { draw, dataSrid: 4326 }).tooSmall).toBe(true);
+    });
+
+    it('is no concern when the row sends metres instead', () => {
+      const draw = { save: { onSave: '/Ws/save/{draw.metres}', body: { ring: '{draw.ring}' } } };
+      expect(shapeContext(SHAPE, { draw, dataSrid: 4326 }).tooSmall).toBe(false);
+    });
+
+    it('is no concern in a projection measured in metres', () => {
+      expect(drawn(UNITS).tooSmall).toBe(false);
+    });
+
+    it('lets through a radius of one unit, the smallest an integer can carry', () => {
+      const oneDegree = { ...CENTRE, radius: 1 / unitsPerMetre(CENTRE, 4326) };
+      const { context, tooSmall } = shapeContext(oneDegree, { draw: UNITS, dataSrid: 4326 });
+      expect(context.draw.radius).toBe(1);
+      expect(tooSmall).toBe(false);
+    });
+
+    it('catches a circle with no size at all, whatever the projection', () => {
+      expect(shapeContext({ ...CENTRE, radius: 0 }, { draw: UNITS, dataSrid: 3857 }).tooSmall).toBe(true);
+    });
   });
 });
