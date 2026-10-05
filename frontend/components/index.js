@@ -15,9 +15,10 @@
  * that one screen is drawn, and a consumer building its own screen has the
  * layers and the controls for that.
  *
- * `controls/` is what `AtlasMap` puts on its map, and how anything goes on it:
- * the map's context and the host a control portals into. Nothing in it is
- * exported yet; `AtlasMap` takes their options as its own props.
+ * `controls/` is what goes on a map as a control, one file each, and how
+ * anything goes on it: the map's context and the host a control portals into.
+ * `LegendControl` and `ZoomRail` are exported, as they were before the
+ * directory existed; `AtlasMap` takes the rest's options as its own props.
  *
  * Everything else sits at the top level: the map, the screen around it, and the
  * chrome on it.
@@ -35,9 +36,9 @@ export { DrawBar, DrawTool } from './DrawBar';
 export { FeatureSet } from './layers/FeatureSet';
 export { FeaturePanel } from './FeaturePanel';
 export { Legend } from './Legend';
-export { LegendControl } from './LegendControl';
+export { LegendControl } from './controls/LegendControl';
 export { PointPicker } from './layers/PointPicker';
-export { ZoomRail } from './ZoomRail';
+export { ZoomRail } from './controls/ZoomRail';
 
 // The connected one is the public name: a consumer wants the screen that finds
 // its own session, and the bare component next to it in ConfiguredMap.jsx is for

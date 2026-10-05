@@ -1,9 +1,9 @@
 import { React, PropTypes } from 'perun-core';
-import { GLYPHS, ICON_SIZE, ICON_STROKE } from '../lib/icons';
-import { marksIn, rungs } from '../lib/zoom';
-import { useAtlasMap } from './controls/context';
-import { containEvents, MapControl } from './controls/host';
-import '../style/zoom.css';
+import { GLYPHS, ICON_SIZE, ICON_STROKE } from '../../lib/icons';
+import { marksIn, rungs } from '../../lib/zoom';
+import { useAtlasMap } from './context';
+import { containEvents, MapControl } from './host';
+import '../../style/zoom.css';
 
 const { useEffect, useMemo, useState } = React;
 

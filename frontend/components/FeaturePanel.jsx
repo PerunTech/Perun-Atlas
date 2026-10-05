@@ -5,7 +5,7 @@ import { Choropleth } from './layers/Choropleth';
 import { CirclePicker } from './layers/CirclePicker';
 import { FeatureSet } from './layers/FeatureSet';
 import { FileOverlay } from './layers/FileOverlay';
-import { LegendControl } from './LegendControl';
+import { LegendControl } from './controls/LegendControl';
 import { EmptyCard } from './panel/EmptyCard';
 import { ExportButtons } from './panel/ExportButtons';
 import { FileActions, FileNotices } from './panel/FileControls';

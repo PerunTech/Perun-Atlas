@@ -24,7 +24,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/data/` | Everything that crosses the wire or the projection: geometry fetching and geobuf decoding, bounding boxes and rings, rows, writes, exports, which features a drawn shape covers, the GEO_LAYER_TYPE catalogue. |
 | `frontend/appearance/` | What a feature looks like and what it says, decided from a descriptor. Plain data — no DOM, no engine — which is what makes it the half of the package the suite can test. |
 | `frontend/style/` | The stylesheets, and only those. A deployment overrides them; read `frontend/style/README.md` before debugging one. |
-| `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. `panel/` holds the pieces `FeaturePanel` is drawn out of. |
+| `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. `panel/` holds the pieces `FeaturePanel` is drawn out of. `controls/` holds every control that goes on a map, one file each, and the context they read the map from. |
 | `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape with its save and what it caught, the export, the record pane, what the layer last reported. |
 | `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `frontend/lib/README.md` lists them. |
 | `frontend/modules/` | Libraries loaded on demand, each built by `vite.modules.config.mjs` as an ES module of its own beside the bundle: `shp.js`, the shapefile reader, is `backend/www/shp.perun-atlas.js`. Bytes in, plain data out; nothing here imports the engine or perun-core. |
@@ -162,8 +162,9 @@ that legitimately matched nothing, and the body is where the message is.
 
 `spatial` constructs one Leaflet map when its script evaluates, so `AtlasMap`
 adopts that instance rather than creating one, and only one may be mounted at a
-time. Lifting this is the point of spatial 2.0's `createMap` / `getMap`; when it
-lands, only the mount effect in `AtlasMap` changes and no consumer is affected.
+time. Lifting this is the point of spatial 5.1.0's `createMap`: once it is
+released, `AtlasMap` builds a map per mount and hands it to its controls through
+the context they already read it from, and no consumer is affected.
 
 ## Scope
 

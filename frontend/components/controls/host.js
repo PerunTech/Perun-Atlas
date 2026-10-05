@@ -3,7 +3,7 @@ import { core } from '../../spatial';
 import { useAtlasMap } from './context';
 
 const { factory } = core;
-const { useEffect, useState } = React;
+const { useEffect, useLayoutEffect, useState } = React;
 
 /**
  * A Leaflet control that holds whatever container it is handed, and nothing
@@ -37,8 +37,14 @@ const hostControl = () => {
  * once, at `onAdd`, and always onto the page's map. A tree portalled into this
  * container is part of the screen's own tree instead: its props update in
  * place, and the older render cycle's sweep, which unmounts every root it finds
- * in a control, has no root here to find. The container is the same
- * `div.leaflet-control` that `control()` made, so the markup does not change.
+ * in a control, has no root here to find. (It still takes every control out of
+ * its corner, this one included, and the tree waits in the detached container
+ * until the screen closes.) The container is the same `div.leaflet-control`
+ * that `control()` made, so the markup does not change.
+ *
+ * Added in a layout effect, so the control is on the map within the commit
+ * that renders it, and controls rendered together arrive in the order they
+ * render: a corner shows its controls in the order they arrive.
  *
  * @param {string} position - Any corner of the map, `bottomcenter` included
  *        where the engine has it.
@@ -49,7 +55,7 @@ export const useControlHost = (position, shown = true) => {
   const map = useAtlasMap();
   const [container] = useState(() => factory.DomUtil.create('div', 'leaflet-control'));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!shown) return undefined;
 
     const Control = hostControl();

@@ -1,30 +1,23 @@
 import { React } from 'perun-core';
-import { core, data } from '../spatial';
+import { core } from '../spatial';
 import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
 import { layerNamed } from '../data/layers';
-import { svgMarkup } from '../lib/icons';
-import { FIT_PADDING, formatRatio, ratioFor } from '../lib/zoom';
+import { FIT_PADDING } from '../lib/zoom';
 import { AtlasMapContext } from './controls/context';
+import { AttributionControl } from './controls/AttributionControl';
 import { CoordinatesControl } from './controls/CoordinatesControl';
+import { FullscreenControl } from './controls/FullscreenControl';
+import { LayerSwitcher } from './controls/LayerSwitcher';
 import { LocateControl } from './controls/LocateControl';
 import { MeasureControl } from './controls/MeasureControl';
-import { ZoomRail, ZOOM_LABELS } from './ZoomRail';
+import { ScaleControl } from './controls/ScaleControl';
+import { ZoomBar } from './controls/ZoomBar';
+import { ZoomRail, ZOOM_LABELS } from './controls/ZoomRail';
 import '../style/controls.css';
 
-const { Map, factory } = core;
-const { layerControl } = data;
+const { Map } = core;
 const { useEffect, useMemo, useRef, useState } = React;
-
-/**
- * How wide the scale bar is allowed to be, and therefore the span the ratio
- * beside it is measured across.
- *
- * One number for both on purpose: the bar and the ratio are two readings of the
- * same measurement, and taking them across different spans is how they come to
- * disagree by a rounding.
- */
-const SCALE_WIDTH = 140;
 
 /**
  * A map, mounted into whatever container this component renders.
@@ -34,7 +27,7 @@ const SCALE_WIDTH = 140;
  *
  * Controls: spatial's map is built with its own zoom and attribution controls
  * switched off, because its toolbar supplies them and this component does not
- * mount that toolbar. Both are added here instead — zoom on by default, in the
+ * mount that toolbar. Both are put on here instead — zoom on by default, in the
  * bottom right, positionable with `zoomControl` / `zoomPosition` and drawn as a
  * ladder rather than two buttons where a screen asks for `zoomControl: 'rail'`,
  * attribution always, since a tile provider's terms are not an option a screen
@@ -56,6 +49,10 @@ const SCALE_WIDTH = 140;
  * top left, where it had been the first of four, to the bottom right above the
  * credit, and why the rail carries its level with it.
  *
+ * Each control is a component of its own in `controls/`, which reads the map
+ * through `useAtlasMap()`; this component decides which go on, where, and in
+ * what order, and takes their options as its own props.
+ *
  * The zoom control also carries a button that frames the data again, once a
  * layer has said where the data is: `extent`, as `[[south, west], [north,
  * east]]`, which `FeatureSet` reports and `FeaturePanel` passes on. It lives in
@@ -73,9 +70,9 @@ const SCALE_WIDTH = 140;
  *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
- * hands it back on unmount. That is the constraint spatial 2.0 lifts — once
- * `createMap` exists, only the body of this effect changes, and no consumer is
- * affected. It also means two AtlasMaps cannot be shown at once, which is fine for
+ * hands it back on unmount. That is the constraint spatial 5.1.0's `createMap`
+ * lifts: once this component builds a map of its own, the context hands that
+ * map to the controls instead, and no consumer is affected. It also means two AtlasMaps cannot be shown at once, which is fine for
  * an embedded panel and is checked for rather than left to fail obscurely.
  */
 
@@ -136,30 +133,16 @@ export const AtlasMap = ({
   children
 }) => {
   const containerRef = useRef(null);
-  const switcherRef = useRef(null);
-  const zoomRef = useRef(null);
-  const fullscreenRef = useRef(null);
-  const scaleRef = useRef(null);
-  const attributionRef = useRef(null);
   const adoptedStyleRef = useRef(null);
-  // Not a control, so it is not in the list that gets `remove()`d: the ratio is
-  // a line inside the scale bar's own container, and what has to be undone is
-  // the listener keeping it current.
-  const ratioOffRef = useRef(null);
-  // The same, for the listener that moves the rail's tile ceiling when the
-  // reader picks another basemap.
+  // The listener that moves the rail's tile ceiling when the reader picks
+  // another basemap. The controls' own listeners go with the controls.
   const baseOffRef = useRef(null);
-  // The fit button in the plain zoom bar. Not a control either: it sits inside
-  // the zoom control's container and goes when that does.
-  const fitButtonRef = useRef(null);
-  // The frame as of this render, for a button that was built once, in an
-  // effect, and is clicked long after.
-  const extentRef = useRef(extent);
-  extentRef.current = extent;
-  // The map, once it is adopted and set up, which is when the controls that
-  // render from here can go on it; `ready` waits for the basemaps as well.
-  const [map, setMap] = useState(null);
-  const [ready, setReady] = useState(false);
+  // The map and the settings it was set up with, once it is adopted, which is
+  // when the controls go on it; and the basemaps and overlays once they are in,
+  // which is when the switcher and the children do.
+  const [adopted, setAdopted] = useState(null);
+  const [layers, setLayers] = useState(null);
+  const ready = layers !== null;
   const [failure, setFailure] = useState(null);
   const [nativeMax, setNativeMax] = useState(null);
 
@@ -222,168 +205,14 @@ export const AtlasMap = ({
         // lands after whatever comes next, which is the case above again.
         Map.setView(view?.center ?? config.center, view?.zoom ?? config.zoom, { animate: false });
 
-        // Worth more here than on a full-page screen, because this map is
-        // usually inside a modal: a panel sized for a record is not sized for
-        // reading a country. `leaflet.fullscreen` is one of spatial's own
-        // dependencies and its Factory imports it, so this is a control the
-        // engine already carries rather than a new one.
-        //
-        // `content` is the plugin's own option for supplying the button's
-        // contents, and passing it drops the `fullscreen-icon` class the sprite
-        // is keyed to -- so spatial's `fullscreen-control.css`, which exists to
-        // stop that two-frame image showing both frames at once, goes quiet
-        // rather than fighting this. Both glyphs are put in and one is shown:
-        // the plugin toggles `leaflet-fullscreen-on` and never touches the
-        // contents again, which is exactly what the sprite's two frames were
-        // doing, done with CSS that can say which is which.
-        if (fullscreen && factory.control.fullscreen) {
-          fullscreenRef.current = factory.control.fullscreen({
-            position: fullscreenPosition,
-            content: svgMarkup('maximize') + svgMarkup('minimize')
-          }).addTo(Map);
-        }
-
-        // spatial builds its map with `zoomControl: false` and
-        // `attributionControl: false`, because its own toolbar carries a
-        // NavigationControl and that toolbar is part of the app chrome this
-        // component deliberately does not mount -- it adopts the bare container
-        // instead. So a screen embedding a map this way had no way to zoom
-        // without a wheel or a trackpad, and no way to display a credit.
-        //
-        // `prefix: false` drops Leaflet's own 'Leaflet' link: this is where a
-        // deployment's credit and a tile provider's terms are satisfied, not an
-        // advertisement for the mapping library.
-        //
-        // Added before the layers, so the attribution control is listening when
-        // they arrive and picks up whatever credit each one carries.
-        attributionRef.current = factory.control.attribution({ prefix: false }).addTo(Map);
-        if (config.attribution) attributionRef.current.addAttribution(config.attribution);
-
-        // After the attribution rather than before it, which is the whole of
-        // what puts the zoom above the credit line: Leaflet fills a bottom
-        // corner in reverse arrival order -- `insertBefore(firstChild)` -- so in
-        // a bottom corner the last control added is the top one on screen, and
-        // a credit that is not against the map edge does not read as a credit.
-        //
-        // The rail is not built here. It is a React control and it mounts
-        // itself, from this component's own output, once the map is ready.
-        // Anything truthy that is not the rail keeps the buttons, rather than
-        // `=== true`: a menu row is JSON written by hand, and a screen that has
-        // been saying `"zoomControl": 1` for a year should not lose its zoom to
-        // a new spelling arriving beside it.
-        //
-        // Leaflet's own `zoomInText`/`zoomOutText` rather than reaching into the
-        // control's DOM afterwards: they are the supported way to say what a
-        // zoom button holds, and they leave every behaviour that makes this
-        // control worth keeping -- the disabled state at each end of the range,
-        // shift-click for three levels, the titles -- untouched.
-        if (zoomControl && zoomControl !== 'rail') {
-          zoomRef.current = factory.control.zoom({
-            position: zoomPosition,
-            zoomInText: svgMarkup('plus'),
-            zoomOutText: svgMarkup('minus')
-          }).addTo(Map);
-
-          // A third button in the same bar, above the `+`. Put into the zoom
-          // control's own container, like the ratio line below goes into the
-          // scale's: it then shares the bar's column, its look and its
-          // lifetime, and there is nothing to keep aligned by hand.
-          //
-          // Built the way Leaflet builds the two beside it -- an anchor with a
-          // `#` href and the role of a button -- rather than as a `button`. That
-          // is not a taste. spatial's `navigation.css` makes every `button` in
-          // the bottom-right corner absolute, padded and round, for navigation
-          // buttons of its own; an anchor is what that rule leaves alone, and
-          // what `.leaflet-bar a` already draws exactly like the `+` and `-`,
-          // hover and touch sizes included, on every engine this has run on.
-          //
-          // The glyph goes in as markup for the reason `lib/icons.js` gives,
-          // and the words as attributes, never as markup. Hidden, not absent,
-          // while there is no frame to go back to; see the effect that follows
-          // the extent.
-          if (fit) {
-            const words = zoomLabels?.fit ?? ZOOM_LABELS.fit;
-            const bar = zoomRef.current.getContainer();
-            const link = factory.DomUtil.create('a', 'atlas-fit');
-
-            link.href = '#';
-            link.title = words;
-            link.setAttribute('role', 'button');
-            link.setAttribute('aria-label', words);
-            link.innerHTML = svgMarkup('zoom-scan');
-            link.style.display = extentRef.current ? '' : 'none';
-
-            factory.DomEvent.disableClickPropagation(link);
-            factory.DomEvent.on(link, 'click', factory.DomEvent.stop);
-            factory.DomEvent.on(link, 'click', () => {
-              if (extentRef.current) Map.fitBounds(extentRef.current, { padding: FIT_PADDING });
-            });
-
-            bar.insertBefore(link, bar.firstChild);
-            fitButtonRef.current = link;
-          }
-        }
-
-        // Leaflet's own distance bar rather than spatial's `ScaleControl`, which
-        // is a 1:N ratio dropdown reading `crs.options.distances` -- a CRS built
-        // from a bare EPSG code carries none, so on most deployments it mounts
-        // and renders nothing. The units are the deployment's own, from the
-        // setting that already answers this question everywhere else.
-        if (scale) {
-          const metric = config.units !== 'imperial';
-          scaleRef.current = factory.control
-            .scale({ position: scalePosition, metric, imperial: !metric, maxWidth: SCALE_WIDTH })
-            .addTo(Map);
-        }
-
-        // The same measurement as a ratio, on the same bar.
-        //
-        // A bar answers "how far is that" and a ratio answers "what is this map,
-        // compared to the ones I already know" -- which is the question a reader
-        // arriving from a paper sheet or a cadastral plan actually has, and the
-        // one a zoom level cannot answer at all, since z14 is a different map at
-        // every latitude.
-        //
-        // Measured rather than derived from the zoom: this package supports
-        // deployments whose map is not on the Web Mercator grid, and the closed
-        // form everyone quotes for metres-per-pixel is only true on that one. A
-        // ground distance across a known span of pixels is true on all of them,
-        // and it is how Leaflet's own scale bar does it.
-        //
-        // Written into the scale control's own container rather than added as a
-        // second control beside it, so it travels with the bar it restates --
-        // same corner, same margin, same lifetime -- instead of being a second
-        // thing in the corner that has to be kept next to the first.
-        if (scale && scaleRatio && scaleRef.current) {
-          const line = factory.DomUtil.create(
-            'div', 'atlas-scale-ratio', scaleRef.current.getContainer()
-          );
-
-          const writeRatio = () => {
-            const size = Map.getSize();
-            const y = Math.round(size.y / 2);
-            const span = Math.min(size.x, SCALE_WIDTH);
-            const metres = Map.distance(
-              Map.containerPointToLatLng(factory.point(0, y)),
-              Map.containerPointToLatLng(factory.point(span, y))
-            );
-            line.textContent = formatRatio(ratioFor(metres, span)) ?? '';
-          };
-
-          // `move` rather than `moveend`: on a Mercator map the ground distance
-          // a pixel covers changes as the reader pans north, so a ratio that
-          // only caught the end of a drag would be wrong for the whole of it.
-          Map.on('move zoomend', writeRatio);
-          writeRatio();
-          ratioOffRef.current = () => Map.off('move zoomend', writeRatio);
-        }
-
-        // The locate button, the coordinate readout and the measurement tools
-        // render from this component's output, and go on the map now. They
-        // arrive after the controls above, which is the order a corner shows:
-        // Leaflet fills a top corner in arrival order, so the locate and
-        // measure buttons sit under the fullscreen button.
-        setMap(Map);
+        // The controls render from this component's output, each a component
+        // of its own in `controls/`, and go on the map now, before the layers:
+        // the credit line has to be on the map when a basemap arrives, or the
+        // credits come out in another order. Each adds itself in a layout
+        // effect, and on this shell's React 16 a state change in a promise
+        // continuation renders and commits before the call returns, so they are
+        // all on the map before the next line runs, in the order they render.
+        setAdopted({ map: Map, config });
 
         // Layers take the deployment's ceiling rather than a constant, so a
         // basemap stops where the map does.
@@ -408,19 +237,12 @@ export const AtlasMap = ({
         Map.on('baselayerchange', onBaseChange);
         baseOffRef.current = () => Map.off('baselayerchange', onBaseChange);
 
-        // Built here rather than through spatial's app builder, which adds the
-        // control and keeps no reference to it. A control is not a layer, so
-        // nothing else takes it off again, and the map outlives this component.
-        if (layerSwitcher) {
-          switcherRef.current = layerControl(basemap, overlays, { collapsed: true }).addTo(Map);
-        }
-
         Map.invalidateSize();
 
-        // `onReady` before `setReady`, and the order carries weight on React 16.
+        // `onReady` before `setLayers`, and the order carries weight on React 16.
         //
         // These two calls sit in a promise continuation rather than in an event
-        // handler, and React 16 batches only the latter -- so `setReady(true)`
+        // handler, and React 16 batches only the latter -- so `setLayers`
         // flushes by itself and mounts the children before a parent listening on
         // `onReady` has re-rendered with anything it learned here. A layer that
         // reads the deployment's geometry SRID off this callback therefore made
@@ -434,7 +256,7 @@ export const AtlasMap = ({
         // together and the children mount with the parent already correct, which
         // is exactly what this is arranging by hand.
         onReady?.({ map: Map, config, basemap, overlays });
-        setReady(true);
+        setLayers({ basemap, overlays });
       } catch (err) {
         if (cancelled) return;
         console.error(err);
@@ -448,40 +270,10 @@ export const AtlasMap = ({
     return () => {
       cancelled = true;
       mounted = false;
-      // `leaflet.fullscreen` subscribes `_toggleState` to the map in `onAdd` and
-      // its `onRemove` does not take it off again, so `Control.remove` nulls the
-      // control's `_map` and leaves a handler on the map still reading it. The
-      // map is the engine's page-lifetime singleton, so that is one dead handler
-      // per mount, and the next exit from fullscreen -- which the live control
-      // fires at every subscriber -- throws on the first of them:
-      //
-      //     Cannot read properties of null (reading '_isFullscreen')
-      //
-      // The engine now patches this in its own Factory, and `off` on a handler
-      // that is already gone is a no-op, so this is here for the deployments
-      // where the two bundles are not the same age. Before `remove`, which is
-      // what puts the control out of reach of its own map.
-      if (fullscreenRef.current?._toggleState) {
-        Map.off('enterFullscreen exitFullscreen',
-          fullscreenRef.current._toggleState, fullscreenRef.current);
-      }
-      // Controls are not layers, so `clearLayers` never sees them and the map
-      // outlives this component. Each one that was added has to come off.
-      [switcherRef, zoomRef, fullscreenRef, scaleRef, attributionRef].forEach(ref => {
-        if (ref.current) {
-          ref.current.remove();
-          ref.current = null;
-        }
-      });
-      // The ratio line goes with the scale control that holds it; the listener
-      // that keeps it current does not, and a map handler left behind on a map
-      // that outlives this component is a leak by any other name.
-      ratioOffRef.current?.();
-      ratioOffRef.current = null;
+      // The controls come off with their own components. What is left is this
+      // component's: its listener, the screen's layers and the container.
       baseOffRef.current?.();
       baseOffRef.current = null;
-      // Gone with the zoom control that held it; only the handle is left.
-      fitButtonRef.current = null;
       clearLayers();
       const element = Map.getContainer();
       if (element && adoptedStyleRef.current) {
@@ -493,13 +285,6 @@ export const AtlasMap = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // The plain bar's fit button, shown while there is somewhere to go back to.
-  // Inline, because `.leaflet-bar a` and this package's own centring rule both
-  // set `display`, and either would otherwise keep a dead button on screen.
-  useEffect(() => {
-    if (fitButtonRef.current) fitButtonRef.current.style.display = extent ? '' : 'none';
-  }, [extent]);
 
   /**
    * Leaflet measures its container once and caches the result, so a map that
@@ -575,27 +360,45 @@ export const AtlasMap = ({
     );
   }
 
+  const config = adopted?.config;
+
   // Everything below reads the map from the context rather than naming the
   // engine's, so a control or a layer serves whichever map it is put on.
+  //
+  // The controls in the order each corner shows them: Leaflet fills a top
+  // corner in arrival order, so the locate and measure buttons sit under the
+  // fullscreen button, and a bottom corner in reverse -- `insertBefore
+  // (firstChild)` -- so the zoom, added after the credit line, sits above it,
+  // and the credit keeps the map edge.
   return (
-    <AtlasMapContext.Provider value={Map}>
+    <AtlasMapContext.Provider value={adopted?.map ?? null}>
       <div ref={containerRef} className={className} style={{ height: '100%', ...style }} />
-      {/* Each mounts itself into its corner through the map's context, in this
-          order -- see the effect above. */}
-      {map && locate && <LocateControl position={locatePosition} />}
-      {map && coordinates && <CoordinatesControl position={coordinatesPosition} />}
-      {map && measure && <MeasureControl position={measurePosition} tools={measureTools} />}
-      {/* Rendered rather than built in the effect above, because everything it
-          draws changes -- the level on every zoom, the marks when the basemap
-          arrives -- and a control built once in an effect closes over the
-          values it was built with. It mounts itself into the map's corner from
-          here; see ZoomRail. */}
+      {adopted && (
+        <>
+          {fullscreen && <FullscreenControl position={fullscreenPosition} />}
+          {locate && <LocateControl position={locatePosition} />}
+          <AttributionControl credit={config.attribution} />
+          {/* Anything truthy that is not the rail keeps the buttons, rather
+              than `=== true`: a menu row is JSON written by hand, and a screen
+              that has been saying `"zoomControl": 1` for a year should not lose
+              its zoom to a new spelling arriving beside it. */}
+          {zoomControl && zoomControl !== 'rail' && (
+            <ZoomBar position={zoomPosition} fit={fit} extent={extent} labels={zoomLabels} />
+          )}
+          {scale && <ScaleControl position={scalePosition} units={config.units} ratio={scaleRatio} />}
+          {coordinates && <CoordinatesControl position={coordinatesPosition} />}
+          {measure && <MeasureControl position={measurePosition} tools={measureTools} />}
+        </>
+      )}
+      {ready && layerSwitcher && <LayerSwitcher basemap={layers.basemap} overlays={layers.overlays} />}
+      {/* Once the basemaps are in, because it marks where the first one stops
+          sharpening. */}
       {ready && zoomControl === 'rail' && (
         <ZoomRail
           position={zoomPosition}
           marks={marks}
           labels={zoomLabels}
-          onFit={fit && extent ? () => Map.fitBounds(extent, { padding: FIT_PADDING }) : undefined}
+          onFit={fit && extent ? () => adopted.map.fitBounds(extent, { padding: FIT_PADDING }) : undefined}
         />
       )}
       {ready && children}

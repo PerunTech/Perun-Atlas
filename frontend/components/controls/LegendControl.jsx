@@ -1,7 +1,7 @@
 import { React, PropTypes } from 'perun-core';
-import { legendShown } from '../appearance/legend';
-import { containEvents, MapControl } from './controls/host';
-import { Legend } from './Legend';
+import { legendShown } from '../../appearance/legend';
+import { containEvents, MapControl } from './host';
+import { Legend } from '../Legend';
 
 /**
  * The legend, as part of the map rather than a box on top of it.
