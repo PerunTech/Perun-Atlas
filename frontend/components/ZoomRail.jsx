@@ -1,10 +1,10 @@
-import { React, ReactDOM, PropTypes } from 'perun-core';
-import { core } from '../spatial';
+import { React, PropTypes } from 'perun-core';
 import { GLYPHS, ICON_SIZE, ICON_STROKE } from '../lib/icons';
 import { marksIn, rungs } from '../lib/zoom';
+import { useAtlasMap } from './controls/context';
+import { containEvents, MapControl } from './controls/host';
 import '../style/zoom.css';
 
-const { Map, control, factory } = core;
 const { useEffect, useMemo, useState } = React;
 
 /**
@@ -30,12 +30,11 @@ const { useEffect, useMemo, useState } = React;
  *
  * Mounted as a Leaflet control for the reasons `LegendControl` sets out -- it
  * travels into fullscreen with the map, and the corner owns its placement --
- * and by the same means: `control()` renders its props once at `onAdd`, so the
- * control is handed a bare container and React keeps the tree inside it through
- * a portal. Here that is not a nicety. Everything this draws changes on every
- * zoom.
+ * and by the same means: the tree is portalled into the control, so its props
+ * update in place. Here that is not a nicety. Everything this draws changes on
+ * every zoom.
  *
- * @param {string} [position] - Any corner spatial's `control` accepts. Defaults
+ * @param {string} [position] - Any corner of the map. Defaults
  *        to the bottom right, above the attribution: Leaflet stacks a bottom
  *        corner in reverse arrival order, so a control added after the credit
  *        line sits on top of it and the credit keeps the map edge.
@@ -101,57 +100,37 @@ Glyph.propTypes = { name: PropTypes.oneOf(Object.keys(GLYPHS)).isRequired };
 
 export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }) => {
   const copy = { ...ZOOM_LABELS, ...labels };
-
-  /**
-   * The container the control is handed, made once and kept.
-   *
-   * Leaflet forwards events from a control's container to the map unless told
-   * not to, and on this control that is not cosmetic: a drag on the handle
-   * would pan the map underneath it, and a wheel over the rail would zoom twice.
-   */
-  const [host] = useState(() => {
-    const node = factory.DomUtil.create('div', 'atlas-zoom__host');
-    factory.DomEvent.disableClickPropagation(node);
-    factory.DomEvent.disableScrollPropagation(node);
-    return node;
-  });
+  const map = useAtlasMap();
 
   const [describedBy] = useState(() => {
     instances += 1;
     return `atlas-zoom-marks-${instances}`;
   });
 
-  const [range, setRange] = useState(() => ({ min: Map.getMinZoom(), max: Map.getMaxZoom() }));
-  const [zoom, setZoom] = useState(() => Map.getZoom());
+  const [range, setRange] = useState(() => ({ min: map.getMinZoom(), max: map.getMaxZoom() }));
+  const [zoom, setZoom] = useState(() => map.getZoom());
 
   useEffect(() => {
-    const readZoom = () => setZoom(Map.getZoom());
+    const readZoom = () => setZoom(map.getZoom());
     const readRange = () => {
-      setRange({ min: Map.getMinZoom(), max: Map.getMaxZoom() });
+      setRange({ min: map.getMinZoom(), max: map.getMaxZoom() });
       readZoom();
     };
 
-    Map.on('zoomend', readZoom);
+    map.on('zoomend', readZoom);
     // Fired when `setMinZoom`/`setMaxZoom` run and when a layer with its own
     // limits arrives, which is how a basemap narrows the range under us.
-    Map.on('zoomlevelschange', readRange);
+    map.on('zoomlevelschange', readRange);
 
     // The map is adopted rather than created here, so it may have moved between
     // this state being initialised and the listeners being attached.
     readRange();
 
     return () => {
-      Map.off('zoomend', readZoom);
-      Map.off('zoomlevelschange', readRange);
+      map.off('zoomend', readZoom);
+      map.off('zoomlevelschange', readRange);
     };
-  }, []);
-
-  useEffect(() => {
-    // Not a layer, so nothing else takes it off again and the map outlives this
-    // component -- the same reason AtlasMap keeps a handle on every control.
-    const added = control(host, {}, { position });
-    return () => { added.remove(); };
-  }, [position, host]);
+  }, [map]);
 
   const { min, max } = range;
   const ladder = useMemo(() => rungs(min, max), [min, max]);
@@ -162,7 +141,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
   const level = Math.round(zoom);
   const described = placed.filter(mark => mark.label).map(mark => mark.label).join('. ');
 
-  return ReactDOM.createPortal(
+  const rail = (
     <div className='atlas-zoom'>
       {onFit && (
         <button
@@ -179,7 +158,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
       <button
         type='button'
         className='atlas-zoom__step'
-        onClick={() => Map.zoomIn()}
+        onClick={() => map.zoomIn()}
         disabled={level >= max}
         title={copy.in}
         aria-label={copy.in}
@@ -232,7 +211,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
             max={max}
             step={1}
             value={Math.min(Math.max(level, min), max)}
-            onChange={event => Map.setZoom(Number(event.target.value))}
+            onChange={event => map.setZoom(Number(event.target.value))}
             aria-label={copy.level}
             aria-describedby={described ? describedBy : undefined}
           />
@@ -244,7 +223,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
       <button
         type='button'
         className='atlas-zoom__step'
-        onClick={() => Map.zoomOut()}
+        onClick={() => map.zoomOut()}
         disabled={level <= min}
         title={copy.out}
         aria-label={copy.out}
@@ -253,8 +232,15 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
       </button>
 
       <output className='atlas-zoom__level' title={copy.level}>{level}</output>
-    </div>,
-    host
+    </div>
+  );
+
+  // On this control `containEvents` is not cosmetic: a drag on the handle would
+  // pan the map underneath it, and a wheel over the rail would zoom twice.
+  return (
+    <MapControl position={position}>
+      <div className='atlas-zoom__host' ref={containEvents}>{rail}</div>
+    </MapControl>
   );
 };
 

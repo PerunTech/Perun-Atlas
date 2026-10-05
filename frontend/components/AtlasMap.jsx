@@ -5,6 +5,7 @@ import { fetchLayers, firstOf } from '../data';
 import { layerNamed } from '../data/layers';
 import { svgMarkup } from '../lib/icons';
 import { FIT_PADDING, formatRatio, ratioFor } from '../lib/zoom';
+import { AtlasMapContext } from './controls/context';
 import { ZoomRail, ZOOM_LABELS } from './ZoomRail';
 import '../style/controls.css';
 
@@ -624,8 +625,10 @@ export const AtlasMap = ({
     );
   }
 
+  // Everything below reads the map from the context rather than naming the
+  // engine's, so a control or a layer serves whichever map it is put on.
   return (
-    <>
+    <AtlasMapContext.Provider value={Map}>
       <div ref={containerRef} className={className} style={{ height: '100%', ...style }} />
       {/* Rendered rather than built in the effect above, because everything it
           draws changes -- the level on every zoom, the marks when the basemap
@@ -641,6 +644,6 @@ export const AtlasMap = ({
         />
       )}
       {ready && children}
-    </>
+    </AtlasMapContext.Provider>
   );
 };

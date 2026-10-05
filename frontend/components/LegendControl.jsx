@@ -1,10 +1,7 @@
-import { React, ReactDOM, PropTypes } from 'perun-core';
-import { core } from '../spatial';
+import { React, PropTypes } from 'perun-core';
 import { legendShown } from '../appearance/legend';
+import { containEvents, MapControl } from './controls/host';
 import { Legend } from './Legend';
-
-const { control, factory } = core;
-const { useEffect, useState } = React;
 
 /**
  * The legend, as part of the map rather than a box on top of it.
@@ -17,11 +14,9 @@ const { useEffect, useState } = React;
  * A control has none of those problems: Leaflet's corner owns the placement, and
  * the whole chrome travels with the container.
  *
- * `control()` renders its props once, at `onAdd`, and closes over them -- fine
- * for a toolbar, wrong for a key whose rows change with every set drawn. So the
- * control is given a bare container and React keeps the tree inside it through a
- * portal: entries update as props, and the collapsed state survives a reload
- * because nothing unmounts when the rows change.
+ * The tree is portalled into the control (see `controls/host.js`), so it stays
+ * part of the screen's own: entries update as props, and the collapsed state
+ * survives a reload because nothing unmounts when the rows change.
  *
  * @param {Array} entries - As `appearance/legend.js` builds them.
  * @param {string} [title] - Heading, already resolved.
@@ -31,7 +26,7 @@ const { useEffect, useState } = React;
  * @param {Function} [onToggle]
  * @param {Function} [onShowAll]
  * @param {string} [showAllLabel]
- * @param {string} [position] - Any corner spatial's `control` accepts. Defaults
+ * @param {string} [position] - Any corner of the map. Defaults
  *        to the bottom left, which is where a map key conventionally goes and
  *        which holds only the scale bar now that the coordinate readout has its
  *        own region underneath the map. The alternatives are all worse here:
@@ -49,52 +44,27 @@ export const LegendControl = ({
   showAllLabel,
   position = 'bottomleft'
 }) => {
-  /**
-   * The container the control is handed, made once and kept.
-   *
-   * Built outside the effect so the portal has a target on the first render,
-   * and never rebuilt: replacing it would take the React tree -- and with it
-   * the collapsed state -- down alongside it.
-   */
-  const [host] = useState(() => {
-    const node = factory.DomUtil.create('div', 'atlas-legend__host');
-
-    // Leaflet forwards events from a control's container on to the map unless
-    // told not to. Without these, a click on the toggle also reaches the map,
-    // and a wheel over a long key zooms rather than scrolls it.
-    factory.DomEvent.disableClickPropagation(node);
-    factory.DomEvent.disableScrollPropagation(node);
-
-    return node;
-  });
-
   // Where `Legend` renders nothing, a control holding nothing is still a margin
   // in the corner. Take it off the map instead -- by the same rule, so a key
   // kept up for a row that is switched off has a control to sit in.
   const shown = legendShown(entries, hidden);
 
-  useEffect(() => {
-    if (!shown) return undefined;
-
-    // Not a layer, so nothing else takes it off again and the map outlives this
-    // component -- the same reason AtlasMap keeps a handle on every control it
-    // adds.
-    const added = control(host, {}, { position });
-
-    return () => { added.remove(); };
-  }, [shown, position, host]);
-
-  return ReactDOM.createPortal(
-    <Legend
-      entries={entries}
-      title={title}
-      open={open}
-      hidden={hidden}
-      onToggle={onToggle}
-      onShowAll={onShowAll}
-      showAllLabel={showAllLabel}
-    />,
-    host
+  // Without `containEvents`, a click on the toggle also reaches the map, and a
+  // wheel over a long key zooms rather than scrolls it.
+  return (
+    <MapControl position={position} shown={shown}>
+      <div className='atlas-legend__host' ref={containEvents}>
+        <Legend
+          entries={entries}
+          title={title}
+          open={open}
+          hidden={hidden}
+          onToggle={onToggle}
+          onShowAll={onShowAll}
+          showAllLabel={showAllLabel}
+        />
+      </div>
+    </MapControl>
   );
 };
 
