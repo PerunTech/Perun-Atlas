@@ -1,15 +1,18 @@
 import { React } from 'perun-core';
-import { core, data, ui } from '../spatial';
+import { core, data } from '../spatial';
 import { applyToEngine, resolve } from '../bootstrap';
 import { fetchLayers, firstOf } from '../data';
 import { layerNamed } from '../data/layers';
 import { svgMarkup } from '../lib/icons';
 import { FIT_PADDING, formatRatio, ratioFor } from '../lib/zoom';
 import { AtlasMapContext } from './controls/context';
+import { CoordinatesControl } from './controls/CoordinatesControl';
+import { LocateControl } from './controls/LocateControl';
+import { MeasureControl } from './controls/MeasureControl';
 import { ZoomRail, ZOOM_LABELS } from './ZoomRail';
 import '../style/controls.css';
 
-const { Map, control, factory } = core;
+const { Map, factory } = core;
 const { layerControl } = data;
 const { useEffect, useMemo, useRef, useState } = React;
 
@@ -135,10 +138,7 @@ export const AtlasMap = ({
   const containerRef = useRef(null);
   const switcherRef = useRef(null);
   const zoomRef = useRef(null);
-  const coordinatesRef = useRef(null);
-  const measureRef = useRef(null);
   const fullscreenRef = useRef(null);
-  const locateRef = useRef(null);
   const scaleRef = useRef(null);
   const attributionRef = useRef(null);
   const adoptedStyleRef = useRef(null);
@@ -156,6 +156,9 @@ export const AtlasMap = ({
   // effect, and is clicked long after.
   const extentRef = useRef(extent);
   extentRef.current = extent;
+  // The map, once it is adopted and set up, which is when the controls that
+  // render from here can go on it; `ready` waits for the basemaps as well.
+  const [map, setMap] = useState(null);
   const [ready, setReady] = useState(false);
   const [failure, setFailure] = useState(null);
   const [nativeMax, setNativeMax] = useState(null);
@@ -238,16 +241,6 @@ export const AtlasMap = ({
             position: fullscreenPosition,
             content: svgMarkup('maximize') + svgMarkup('minimize')
           }).addTo(Map);
-        }
-
-        // Where the reader is. Guarded like the readout and the measure tools --
-        // this bundle and the engine deploy separately -- and worth knowing that
-        // the browser only answers over https or on localhost, which the control
-        // reports rather than failing as a denied permission.
-        if (locate && ui.LocateControl) {
-          locateRef.current = control(ui.LocateControl, {}, { position: locatePosition });
-        } else if (locate) {
-          console.warn('perun-atlas: the engine on this environment has no locate control; skipping it.');
         }
 
         // spatial builds its map with `zoomControl: false` and
@@ -385,54 +378,12 @@ export const AtlasMap = ({
           ratioOffRef.current = () => Map.off('move zoomend', writeRatio);
         }
 
-        // Where the pointer is, quoted in a system the reader chooses -- which is
-        // not the system the map is projected in, and deliberately so: the map's
-        // is the deployment's decision, and changing it invalidates every tile,
-        // while changing what a position is quoted in costs one conversion.
-        //
-        // Mounted through spatial's `control`, which renders a React component
-        // into a Leaflet control rather than a factory returning a layer.
-        //
-        // Checked for rather than assumed: this bundle and the engine are
-        // deployed separately, and an environment still serving an older
-        // spatial has no such export -- which would otherwise take the whole
-        // map down at the moment the control was added.
-        if (coordinates && ui.CoordinatesControl) {
-          // Centred under the map rather than tucked in a corner: it describes
-          // the map instead of acting on it, and it was sharing the bottom left
-          // with the scale, which describes it too. `bottomcenter` is spatial's
-          // own region and newer than the four corners, so an engine without it
-          // has no container to append to and `addTo` would throw -- fall back
-          // to the corner this used to occupy.
-          const corner = Map._controlCorners?.[coordinatesPosition]
-            ? coordinatesPosition
-            : 'bottomleft';
-
-          coordinatesRef.current = control(ui.CoordinatesControl, {}, { position: corner });
-        } else if (coordinates) {
-          console.warn('perun-atlas: the engine on this environment has no coordinate readout; skipping it.');
-        }
-
-        // How far is this from that, how big is this piece of ground, what is
-        // the bearing along that boundary -- asked of whatever happens to be on
-        // screen, which is why it belongs to the map rather than to a screen's
-        // configuration. Added last of the three that share the top left, so
-        // that Leaflet -- which fills a top corner in arrival order -- puts it
-        // under the fullscreen and locate buttons rather than over them.
-        //
-        // Guarded like the readout above, and for the same reason: this bundle
-        // and the engine deploy separately, so an environment on an older
-        // spatial has no such export and would otherwise take the map down at
-        // the moment the control was added.
-        if (measure && ui.MeasureControl) {
-          measureRef.current = control(
-            ui.MeasureControl,
-            measureTools ? { tools: measureTools } : {},
-            { position: measurePosition }
-          );
-        } else if (measure) {
-          console.warn('perun-atlas: the engine on this environment has no measurement control; skipping it.');
-        }
+        // The locate button, the coordinate readout and the measurement tools
+        // render from this component's output, and go on the map now. They
+        // arrive after the controls above, which is the order a corner shows:
+        // Leaflet fills a top corner in arrival order, so the locate and
+        // measure buttons sit under the fullscreen button.
+        setMap(Map);
 
         // Layers take the deployment's ceiling rather than a constant, so a
         // basemap stops where the map does.
@@ -516,8 +467,7 @@ export const AtlasMap = ({
       }
       // Controls are not layers, so `clearLayers` never sees them and the map
       // outlives this component. Each one that was added has to come off.
-      [switcherRef, zoomRef, coordinatesRef, measureRef,
-       fullscreenRef, locateRef, scaleRef, attributionRef].forEach(ref => {
+      [switcherRef, zoomRef, fullscreenRef, scaleRef, attributionRef].forEach(ref => {
         if (ref.current) {
           ref.current.remove();
           ref.current = null;
@@ -630,6 +580,11 @@ export const AtlasMap = ({
   return (
     <AtlasMapContext.Provider value={Map}>
       <div ref={containerRef} className={className} style={{ height: '100%', ...style }} />
+      {/* Each mounts itself into its corner through the map's context, in this
+          order -- see the effect above. */}
+      {map && locate && <LocateControl position={locatePosition} />}
+      {map && coordinates && <CoordinatesControl position={coordinatesPosition} />}
+      {map && measure && <MeasureControl position={measurePosition} tools={measureTools} />}
       {/* Rendered rather than built in the effect above, because everything it
           draws changes -- the level on every zoom, the marks when the basemap
           arrives -- and a control built once in an effect closes over the

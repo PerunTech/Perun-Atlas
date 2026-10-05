@@ -1,12 +1,15 @@
 The stylesheets, and nothing else.
 
-Nine files, each imported for its side effect by every component it dresses,
-so a component rendered on its own outside `FeaturePanel` is still styled —
-`panel.css` by `FeaturePanel`, `form.css` by `DateRange` and `DrawBar`,
-`draw.css` by `DrawBar` and `CirclePicker`, `features.css` by `FeatureSet`,
-`legend.css` by `Legend`, `picker.css` by `PointPicker`, `controls.css` by
-`AtlasMap`, `zoom.css` by `ZoomRail`, `overlay.css` by `FileOverlay` and
-`FeaturePanel`.
+Twelve files, each imported for its side effect by every component it
+dresses, so a component rendered on its own outside `FeaturePanel` is still
+styled — `panel.css` by `FeaturePanel`, `form.css` by `DateRange` and
+`DrawBar`, `draw.css` by `DrawBar` and `CirclePicker`, `features.css` by
+`FeatureSet`, `legend.css` by `Legend`, `picker.css` by `PointPicker`,
+`controls.css` by `AtlasMap`, `zoom.css` by `ZoomRail`, `overlay.css` by
+`FileOverlay` and `FeaturePanel`, and `coordinates.css`, `locate-control.css`
+and `measure-control.css` by the controls of those names. The last three came
+from spatial with their controls, and spatial loads its own copies of them
+until a 6.0 removes its React parts.
 
 They are kept together rather than beside their components because a
 deployment restyles this package from the outside, and one directory is the

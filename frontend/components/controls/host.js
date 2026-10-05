@@ -67,6 +67,22 @@ export const MapControl = ({ position, shown = true, children }) =>
   ReactDOM.createPortal(children, useControlHost(position, shown));
 
 /**
+ * What a control renders where the engine lacks what it is built on.
+ *
+ * This bundle and the engine deploy separately, so an environment can be
+ * serving a spatial older than the tools a control calls. Skipping the control
+ * with a warning leaves the rest of the map standing.
+ *
+ * @param {string} what - The control, as the warning names it.
+ */
+export const Skipped = ({ what }) => {
+  useEffect(() => {
+    console.warn(`perun-atlas: the engine on this environment has no ${what}; skipping it.`);
+  }, [what]);
+  return null;
+};
+
+/**
  * A ref that keeps clicks and wheels inside a node from reaching the map.
  *
  * Leaflet passes events from a control's container on to the map unless told

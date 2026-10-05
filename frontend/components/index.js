@@ -15,6 +15,10 @@
  * that one screen is drawn, and a consumer building its own screen has the
  * layers and the controls for that.
  *
+ * `controls/` is what `AtlasMap` puts on its map, and how anything goes on it:
+ * the map's context and the host a control portals into. Nothing in it is
+ * exported yet; `AtlasMap` takes their options as its own props.
+ *
  * Everything else sits at the top level: the map, the screen around it, and the
  * chrome on it.
  *
