@@ -1,7 +1,8 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
-import { descriptorOf, fetchGeometry } from '../../data';
-import { detailsFor, labelFor, pathOptions } from '../../appearance';
+import { descriptorOf } from '../../data/feature';
+import { fetchGeometry } from '../../data/geometry';
+import { detailsFor, labelFor, pathOptions } from '../../appearance/descriptor';
 import { drawnKinds } from '../../appearance/legend';
 import { useKeyFilter } from '../../hooks/useKeyFilter';
 import { drawArrows } from '../../lib/arrows';
@@ -13,7 +14,7 @@ import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
 import { placeKey } from '../../lib/route';
 import { placeSet } from '../../lib/surface';
 import { FIT_PADDING } from '../../lib/zoom';
-import { useAtlasMap } from '../controls/context';
+import { useAtlasMap } from '../context';
 import '../../style/features.css';
 
 const { factory } = core;

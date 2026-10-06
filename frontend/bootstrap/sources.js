@@ -1,5 +1,5 @@
 import { axios } from 'perun-core';
-import { SCHEMA } from '../config';
+import { SCHEMA } from '../config/Schema';
 
 /**
  * Where configuration values come from, in precedence order.

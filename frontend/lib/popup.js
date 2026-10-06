@@ -1,4 +1,4 @@
-import { popupFor } from '../appearance';
+import { popupFor } from '../appearance/descriptor';
 import { applyStyle, asNode } from './dom';
 
 /**

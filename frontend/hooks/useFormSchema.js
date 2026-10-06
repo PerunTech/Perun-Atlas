@@ -1,5 +1,6 @@
 import { React } from 'perun-core';
-import { bindPath, fetchSchema, fetchUISchema, pickFields, usableUI } from '../data';
+import { fetchSchema, fetchUISchema, pickFields, usableUI } from '../data/form';
+import { bindPath } from '../data/path';
 
 const { useEffect, useMemo, useState } = React
 

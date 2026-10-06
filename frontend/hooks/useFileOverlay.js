@@ -1,5 +1,5 @@
 import { React } from 'perun-core';
-import { FILE_LIMITS, fileKind, readFile, readLayers, sizeRefusal } from '../data';
+import { FILE_LIMITS, fileKind, readFile, readLayers, sizeRefusal } from '../data/read';
 import { loadModule } from '../lib/modules';
 import { assumedText, refusalText } from '../appearance/overlay';
 

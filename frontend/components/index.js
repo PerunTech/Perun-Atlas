@@ -15,13 +15,14 @@
  * that one screen is drawn, and a consumer building its own screen has the
  * layers and the controls for that.
  *
- * `controls/` is what goes on a map as a control, one file each, and how
- * anything goes on it: the map's context and the host a control portals into.
- * `LegendControl` and `ZoomRail` are exported, as they were before the
- * directory existed; `AtlasMap` takes the rest's options as its own props.
+ * `controls/` is what goes on a map as a control, one file each, and the host a
+ * control portals into. `LegendControl` and `ZoomRail` are exported, as they
+ * were before the directory existed; `AtlasMap` takes the rest's options as its
+ * own props.
  *
  * Everything else sits at the top level: the map, the screen around it, and the
- * chrome on it.
+ * chrome on it. So does `context.js`, the map an `AtlasMap` hands down, which
+ * the layers read as much as the controls do.
  *
  * What these are built out of is not here: `frontend/lib/` holds the small
  * shared pieces and `frontend/hooks/` the panel's state, and neither is

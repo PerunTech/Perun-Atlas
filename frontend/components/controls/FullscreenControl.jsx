@@ -1,7 +1,7 @@
 import { React, PropTypes } from 'perun-core';
 import { core } from '../../spatial';
 import { svgMarkup } from '../../lib/icons';
-import { useAtlasMap } from './context';
+import { useAtlasMap } from '../context';
 
 const { factory } = core;
 const { useLayoutEffect } = React;

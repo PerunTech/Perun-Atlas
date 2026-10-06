@@ -1,9 +1,9 @@
 import { React, PropTypes, elements } from 'perun-core';
 import { config, core, tools } from '../../spatial';
 import { canLocate, locatePress } from '../../lib/controls';
-import { useAtlasMap } from './context';
+import { useAtlasMap } from '../context';
 import { MapControl, Skipped } from './host';
-import { label } from './labels';
+import { label } from './messages';
 import '../../style/locate-control.css';
 
 const { setting } = config;

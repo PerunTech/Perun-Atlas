@@ -1,5 +1,5 @@
 import { React } from 'perun-core'
-import { shownName } from '../data/layers'
+import { shownName } from '../data/tiles'
 import { copyText } from '../lib/dom'
 import { writeLink } from '../lib/link'
 

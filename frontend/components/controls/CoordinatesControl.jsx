@@ -1,9 +1,9 @@
 import { React, PropTypes } from 'perun-core';
 import { config, core, tools } from '../../spatial';
 import { cornerFor } from '../../lib/controls';
-import { useAtlasMap } from './context';
+import { useAtlasMap } from '../context';
 import { MapControl, Skipped } from './host';
-import { label } from './labels';
+import { label } from './messages';
 import '../../style/coordinates.css';
 
 const { setting } = config;

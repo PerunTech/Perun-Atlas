@@ -1,5 +1,5 @@
 import { React } from 'perun-core';
-import { matchesIdentity } from '../data';
+import { matchesIdentity } from '../data/feature';
 
 const { useEffect, useState } = React
 

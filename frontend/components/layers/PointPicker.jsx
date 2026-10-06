@@ -1,6 +1,6 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
-import { useAtlasMap } from '../controls/context';
+import { useAtlasMap } from '../context';
 import '../../style/picker.css';
 
 const { factory } = core;

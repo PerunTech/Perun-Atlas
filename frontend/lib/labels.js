@@ -1,4 +1,4 @@
-import { labelVisible } from '../appearance';
+import { labelVisible } from '../appearance/descriptor';
 import { applyStyle, asNode } from './dom';
 
 /**

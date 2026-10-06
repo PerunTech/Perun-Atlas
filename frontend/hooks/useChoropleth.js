@@ -1,5 +1,5 @@
 import { React } from 'perun-core';
-import { fetchRows } from '../data';
+import { fetchRows } from '../data/rows';
 import { reader } from '../data/path';
 
 const { useEffect, useMemo, useState } = React

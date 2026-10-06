@@ -1,5 +1,5 @@
 import { React } from 'perun-core';
-import { core } from '../../spatial';
+import { core } from '../spatial';
 
 const { createContext, useContext } = React;
 

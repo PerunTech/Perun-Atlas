@@ -2,7 +2,7 @@ import { React, PropTypes } from 'perun-core';
 import { core } from '../../spatial';
 import { svgMarkup } from '../../lib/icons';
 import { FIT_PADDING } from '../../lib/zoom';
-import { useAtlasMap } from './context';
+import { useAtlasMap } from '../context';
 import { ZOOM_LABELS } from './ZoomRail';
 
 const { factory } = core;

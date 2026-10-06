@@ -1,6 +1,6 @@
 import { React, PropTypes } from 'perun-core';
 import { data } from '../../spatial';
-import { useAtlasMap } from './context';
+import { useAtlasMap } from '../context';
 
 const { layerControl } = data;
 const { useLayoutEffect } = React;

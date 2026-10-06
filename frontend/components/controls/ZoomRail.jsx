@@ -1,7 +1,7 @@
 import { React, PropTypes } from 'perun-core';
 import { GLYPHS, ICON_SIZE, ICON_STROKE } from '../../lib/icons';
 import { marksIn, rungs } from '../../lib/zoom';
-import { useAtlasMap } from './context';
+import { useAtlasMap } from '../context';
 import { containEvents, MapControl } from './host';
 import '../../style/zoom.css';
 
@@ -15,7 +15,7 @@ const { useEffect, useMemo, useState } = React;
  * answers to that last question and none of them was visible anywhere:
  *
  *   - A basemap stops serving real tiles somewhere below the deployment's
- *     ceiling -- `data/layers.js` knows where, per provider -- and past it
+ *     ceiling -- `data/tiles.js` knows where, per provider -- and past it
  *     Leaflet enlarges the last tile it got. The reader sees blur and reads it
  *     as missing data.
  *   - A descriptor's labels are banded by zoom (`appearance/labelVisible`), so

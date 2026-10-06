@@ -15,14 +15,19 @@ import { LoadingCard } from './panel/LoadingCard';
 import { PanelFooter } from './panel/PanelFooter';
 import { RecordPane } from './panel/RecordPane';
 import { WindowControls } from './panel/WindowControls';
-import { DEFAULT_PALETTE, legendFrom, legendFromPalette, variantOf } from '../appearance';
-import { FILE_KEY } from '../appearance/legend';
+import { DEFAULT_PALETTE } from '../appearance/choropleth';
+import { variantOf } from '../appearance/descriptor';
+import { FILE_KEY, legendFrom, legendFromPalette } from '../appearance/legend';
 import { overlayEntry } from '../appearance/overlay';
-import { descriptorOf } from '../data';
-import {
-  useChoropleth, useDateWindow, useDrawnShape, useExport, useFileOverlay, useLayerReport, useRecord,
-  useViewLink
-} from '../hooks';
+import { descriptorOf } from '../data/feature';
+import { useChoropleth } from '../hooks/useChoropleth';
+import { useDateWindow } from '../hooks/useDateWindow';
+import { useDrawnShape } from '../hooks/useDrawnShape';
+import { useExport } from '../hooks/useExport';
+import { useFileOverlay } from '../hooks/useFileOverlay';
+import { useLayerReport } from '../hooks/useLayerReport';
+import { useRecord } from '../hooks/useRecord';
+import { useViewLink } from '../hooks/useViewLink';
 import '../style/panel.css';
 import '../style/overlay.css';
 const { useEffect, useMemo, useState } = React

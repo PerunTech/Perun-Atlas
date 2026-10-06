@@ -1,9 +1,9 @@
 import { React, PropTypes, elements } from 'perun-core';
 import { config, core, tools as engineTools } from '../../spatial';
 import { readingFor } from '../../lib/controls';
-import { useAtlasMap } from './context';
+import { useAtlasMap } from '../context';
 import { MapControl, Skipped } from './host';
-import { label } from './labels';
+import { label } from './messages';
 import '../../style/measure-control.css';
 
 const { MEASURE_AREA, MEASURE_RADIUS, MEAUSURE_LENGTH } = config;

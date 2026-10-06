@@ -1,13 +1,14 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
-import { bboxIn, fetchGeometry } from '../../data';
-import { categoriesDrawn, colourBy, detailsFor, joinStatus, pathOptions } from '../../appearance';
-import { bandOf } from '../../appearance/choropleth';
+import { fetchGeometry } from '../../data/geometry';
+import { bboxIn } from '../../data/project';
+import { detailsFor, pathOptions } from '../../appearance/descriptor';
+import { bandOf, categoriesDrawn, colourBy, joinStatus } from '../../appearance/choropleth';
 import { useKeyFilter } from '../../hooks/useKeyFilter';
 import { asNode } from '../../lib/dom';
 import { changesFor, restack, shownOf } from '../../lib/filter';
 import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
-import { useAtlasMap } from '../controls/context';
+import { useAtlasMap } from '../context';
 
 const { factory } = core;
 const { useEffect, useRef } = React;

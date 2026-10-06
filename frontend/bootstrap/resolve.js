@@ -1,4 +1,4 @@
-import { SCHEMA, REQUIRED } from '../config';
+import { REQUIRED, SCHEMA } from '../config/Schema';
 import { coerce } from './coerce';
 import { remoteSource, legacySource, defaultSource } from './sources';
 

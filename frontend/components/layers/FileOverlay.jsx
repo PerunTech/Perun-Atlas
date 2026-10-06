@@ -1,7 +1,7 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
-import { fromDegrees } from '../../data';
-import { useAtlasMap } from '../controls/context';
+import { fromDegrees } from '../../data/project';
+import { useAtlasMap } from '../context';
 import { OVERLAY_POINT, OVERLAY_STYLE, overlayRecord } from '../../appearance/overlay';
 import { FIT_PADDING } from '../../lib/zoom';
 import '../../style/overlay.css';

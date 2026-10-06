@@ -1,6 +1,6 @@
 import { React, elements, validator } from 'perun-core';
-import { fillBody, postTo, withGroups } from '../data';
-import { shapeContext } from '../data/save';
+import { withGroups } from '../data/form';
+import { fillBody, postTo, shapeContext } from '../data/save';
 import { useFormSchema } from './useFormSchema';
 import { useSelection } from './useSelection';
 

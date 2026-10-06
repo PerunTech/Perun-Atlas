@@ -1,5 +1,8 @@
-import { inDegrees, toCSV, toGeoJSON, toKML, toShapefile, valueAt } from '../data';
-import { nameFor } from '../appearance';
+import { toCSV, toGeoJSON, toKML } from '../data/export';
+import { valueAt } from '../data/path';
+import { inDegrees } from '../data/project';
+import { toShapefile } from '../data/shapefile';
+import { nameFor } from '../appearance/descriptor';
 import { download } from '../lib/dom';
 import { zip } from '../lib/zip';
 import { today } from '../lib/dates';

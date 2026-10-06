@@ -1,10 +1,10 @@
 import { React } from 'perun-core';
 import { core } from '../spatial';
-import { applyToEngine, resolve } from '../bootstrap';
-import { fetchLayers, firstOf } from '../data';
-import { layerNamed } from '../data/layers';
+import { applyToEngine } from '../bootstrap/apply';
+import { resolve } from '../bootstrap/resolve';
+import { fetchLayers, firstOf, layerNamed } from '../data/tiles';
 import { FIT_PADDING } from '../lib/zoom';
-import { AtlasMapContext } from './controls/context';
+import { AtlasMapContext } from './context';
 import { AttributionControl } from './controls/AttributionControl';
 import { CoordinatesControl } from './controls/CoordinatesControl';
 import { FullscreenControl } from './controls/FullscreenControl';
@@ -181,7 +181,7 @@ export const AtlasMap = ({
         const base = layerNamed(basemap, view?.basemap) ?? firstOf(basemap);
         if (base) base.addTo(map);
 
-        // The deepest zoom this basemap has a real tile for; `data/layers.js`
+        // The deepest zoom this basemap has a real tile for; `data/tiles.js`
         // carries the figure per provider. Above it Leaflet enlarges the last
         // tile it got, which reads as missing data rather than as the edge of
         // the data -- so the rail marks it. Null where the provider is not one

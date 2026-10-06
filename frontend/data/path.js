@@ -10,8 +10,7 @@
  * it as a blank column. One copy cannot disagree with itself.
  *
  * Imports nothing, on purpose. `appearance/` reads through this and has to stay
- * free of the engine and the shell, so it takes this file directly rather than
- * through `data/index.js`, which reaches both.
+ * free of the engine and the shell, which most of `data/` reaches.
  */
 
 /**

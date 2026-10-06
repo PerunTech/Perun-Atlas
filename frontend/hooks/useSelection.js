@@ -1,5 +1,5 @@
 import { React } from 'perun-core';
-import { identifiersOf, withinCircle } from '../data';
+import { identifiersOf, withinCircle } from '../data/select';
 
 const { useMemo } = React
 
