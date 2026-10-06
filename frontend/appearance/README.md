@@ -23,7 +23,6 @@ They never were.
 | `legend.js` | What the colours on a map mean: the key's entries, and the key each kind is switched off by. |
 | `overlay.js` | How a file the reader opened is drawn, named and described. |
 
-`joinStatus` is the one thing here that is not appearance — it marries rows
-onto features, which is data shaping. It sits in `choropleth.js` because it
-exists to serve the colouring and reads as part of it; moving it to `data/`
-would be defensible and has not been done.
+Two things that lived here were not appearance, and have moved: `joinStatus`,
+which marries a status feed's rows onto features, is `data/join.js`, and what
+the panel says about a file the reader opened is `lib/fileText.js`.

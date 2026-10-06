@@ -21,6 +21,7 @@ which is what puts it under test. The rest of `lib/` is used across the package.
 | `dom.js` | Styling and building elements the package did not create. Nothing here ever builds a string of markup — values come from configuration and from records, and neither may become HTML. |
 | `controls.js` | The parts of the map's own controls that need no map: what a measurement says, what a press of the locate button does, and which corner a control can go in. |
 | `dates.js` | The date window as the wire writes it. Deliberately not a date library. |
+| `fileText.js` | What the panel says about a file the reader opened: its count, that it is opening, what was assumed about it and why it was refused, in the panel's words or neutral English. |
 | `icons.js` | The glyphs the map's controls are drawn with. Tabler's path data, transcribed — `elements.Icon` resolves through a dynamic import and two of the three controls that need these are Leaflet's, which take their contents as a string. |
 | `link.js` | A link that reopens a map screen where the reader left it, read from and written into the query after the route. A function of the address it is given; the one thing held is which addresses have already been read. |
 | `modules.js` | Loading a module this package builds beside the bundle rather than into it: where the bundle was loaded from, read while it evaluates, and the browser's `import()` from there. |

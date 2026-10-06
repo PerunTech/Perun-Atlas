@@ -1,9 +1,10 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { fetchGeometry } from '../../data/geometry';
+import { joinStatus } from '../../data/join';
 import { bboxIn } from '../../data/project';
 import { detailsFor, pathOptions } from '../../appearance/descriptor';
-import { bandOf, categoriesDrawn, colourBy, joinStatus } from '../../appearance/choropleth';
+import { bandOf, categoriesDrawn, colourBy } from '../../appearance/choropleth';
 import { useKeyFilter } from '../../hooks/useKeyFilter';
 import { asNode } from '../../lib/dom';
 import { changesFor, restack, shownOf } from '../../lib/features/filter';

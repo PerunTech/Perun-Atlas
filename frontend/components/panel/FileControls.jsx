@@ -1,5 +1,6 @@
 import { React, elements } from 'perun-core'
-import { OVERLAY_STYLE, countText } from '../../appearance/overlay'
+import { OVERLAY_STYLE } from '../../appearance/overlay'
+import { countText } from '../../lib/fileText'
 import { LineSwatch } from '../Legend'
 import { CloseButton } from './CloseButton'
 

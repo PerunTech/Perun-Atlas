@@ -1,5 +1,5 @@
 import { React } from 'perun-core'
-import { openingText } from '../../appearance/overlay'
+import { openingText } from '../../lib/fileText'
 
 /**
  * Something is under way, and which kind it is only changes the word.
