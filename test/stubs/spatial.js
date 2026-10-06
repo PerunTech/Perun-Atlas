@@ -129,6 +129,22 @@ export const setView = (next) => { view = { ...view, ...next }; };
 export const resetView = () => { view = { ...INITIAL }; };
 export const CRS_STUB = CRS;
 
+/**
+ * A map of its own, as `createMap` builds one: the page's methods over a view
+ * that no `setView` reaches. A test hands it to a function to show that the
+ * function reads the map it is given rather than the page's.
+ */
+export const mapWith = (own = {}) => {
+  const at = { ...INITIAL, ...own };
+  return {
+    getCRS: () => at.crs,
+    getBounds: () => at.bounds,
+    getBBox: () => at.bbox,
+    getZoom: () => at.zoom,
+    distance
+  };
+};
+
 const core = {
   Map: {
     getCRS: () => view.crs,

@@ -27,11 +27,12 @@ import { today } from '../lib/dates';
  *        Every file is written in WGS 84 longitude and latitude, so the set is
  *        converted out of this first. The map's own projection is assumed
  *        without one, as `latLngOf` assumes it.
+ * @param {Object} [params.map]        - That map, once it is built.
  * @param {Function} [params.drawnWith] - The descriptor a feature is drawn
  *        with, its variant merged in. A KML placemark takes its name from it
  *        when the row's `name` gives none.
  */
-export const useExport = ({ set, selection, exportable, labelResolver, timeScoped, range, srid, drawnWith }) => {
+export const useExport = ({ set, selection, exportable, labelResolver, timeScoped, range, srid, map, drawnWith }) => {
   /**
    * How this set is offered as a file, or nothing.
    *
@@ -88,7 +89,7 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
    * than anyone saves a file, and a copy of the whole set each time would be
    * work thrown away.
    */
-  const written = () => inDegrees(source, srid)
+  const written = () => inDegrees(source, srid, map)
 
   /**
    * What a KML placemark is called.

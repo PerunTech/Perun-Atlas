@@ -166,6 +166,15 @@ export const FeaturePanel = ({
   const [dataSrid, setDataSrid] = useState(null)
 
   /**
+   * The map `AtlasMap` shows, from the same callback.
+   *
+   * The hooks below convert a drawn shape and the set through it: the shape is
+   * measured on this map, and the set is drawn there. Undefined until then,
+   * which the conversions read as the page's map, on the same projection.
+   */
+  const [drawnOn, setDrawnOn] = useState(undefined)
+
+  /**
    * The panel's own state, in the pieces it is made of.
    *
    * Ordered by what each piece needs from the one above: the window feeds the
@@ -237,7 +246,7 @@ export const FeaturePanel = ({
   const {
     drawable, drawing, shape, selection, note, form, saving, reload,
     setShape, setNote, startDrawing, finishDrawing, clearDrawing, saveShape
-  } = useDrawnShape({ draw, dataSrid, set: visible, bindings, labels })
+  } = useDrawnShape({ draw, dataSrid, set: visible, bindings, labels, map: drawnOn })
 
   const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing })
 
@@ -281,6 +290,7 @@ export const FeaturePanel = ({
     timeScoped,
     range,
     srid: dataSrid,
+    map: drawnOn,
     drawnWith
   })
 
@@ -416,6 +426,7 @@ export const FeaturePanel = ({
               extent={extent}
               view={view}
               onReady={(ready) => {
+                setDrawnOn(ready.map)
                 setDataSrid(ready.config?.dataSrid ?? null)
                 viewLink.attach(ready)
               }}

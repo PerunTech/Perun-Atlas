@@ -34,6 +34,7 @@ const DEFAULTS = { id: '{pkid}', join: ',' }
  * @param {Object} params.set         - The collection currently drawn, or null.
  * @param {Object} params.shape       - `{ lat, lng, radius }`, or null.
  * @param {number} [params.dataSrid]  - The projection that collection is in.
+ * @param {Object} [params.map]       - The map the shape is drawn on.
  * @param {boolean|Object} [params.select] - The row's `draw.select`: `true` for
  *        the defaults, or `{ mode, id, join }`. `mode` is `touches` or
  *        `contains`; `id` and `join` spell the identifier list the save body can
@@ -42,7 +43,7 @@ const DEFAULTS = { id: '{pkid}', join: ',' }
  *        whole set while a shape is drawn.
  * @returns {Object} `{ selecting, feedsExport, count, total, inside, has, metres, context }`.
  */
-export const useSelection = ({ set, shape, dataSrid, select }) => {
+export const useSelection = ({ set, shape, dataSrid, select, map }) => {
   const asked = select === true ? DEFAULTS : (select ? { ...DEFAULTS, ...select } : null)
 
   // Read off the object rather than depending on it: a menu row arrives as a
@@ -66,7 +67,7 @@ export const useSelection = ({ set, shape, dataSrid, select }) => {
       }
     }
 
-    const answer = withinCircle(set, shape, { srid: dataSrid, mode })
+    const answer = withinCircle(set, shape, { srid: dataSrid, mode, map })
 
     return {
       selecting: true,
@@ -95,5 +96,5 @@ export const useSelection = ({ set, shape, dataSrid, select }) => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [set, shape, dataSrid, mode, id, join, feedsExport, Boolean(asked)])
+  }, [set, shape, dataSrid, map, mode, id, join, feedsExport, Boolean(asked)])
 }

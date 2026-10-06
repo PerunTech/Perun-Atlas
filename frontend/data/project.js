@@ -13,13 +13,13 @@ const { Map, factory } = core;
  * already reconciles one direction -- it is told the data's SRID and unprojects
  * incoming geometry through it.
  *
- * The other direction had nothing doing the same job. `Map.getBBox()` projects
- * the view through the *map's* CRS, which is right for a WMS request, because a
- * tile server is asked in the CRS the tiles are published on. It is wrong for a
- * geometry service, which compares the box against stored coordinates: Web
- * Mercator metres read as degrees describe a box far outside any real extent, so
- * the query matches nothing and the screen shows an empty map rather than an
- * error.
+ * The other direction had nothing doing the same job. A map's `getBBox()`
+ * projects the view through the *map's* CRS, which is right for a WMS request,
+ * because a tile server is asked in the CRS the tiles are published on. It is
+ * wrong for a geometry service, which compares the box against stored
+ * coordinates: Web Mercator metres read as degrees describe a box far outside
+ * any real extent, so the query matches nothing and the screen shows an empty
+ * map rather than an error.
  */
 
 /**
@@ -41,6 +41,19 @@ const CONVERTIBLE = {
 /** A CRS object for a bare EPSG code, or null where the engine has none. */
 export const crsFor = (srid) => CONVERTIBLE[String(srid)]?.() ?? null;
 
+/**
+ * The map an answer is about: the one the caller names, or the page's.
+ *
+ * Every function below takes the map as its last argument, because a page can
+ * hold more than one: each `AtlasMap` builds its own. What they read from it is
+ * its projection, its ground distance and, for `bboxIn`, its view. The page's
+ * map, spatial's own, is the fallback for a caller that names none. This package
+ * never shows it, but it takes the deployment's settings, so it is on the same
+ * projection as a map built from them. Its view is nobody's, which is why a
+ * bounding box should always name its map.
+ */
+const mapFor = (map) => map ?? Map;
+
 /** Said once per code: a warning per pan would bury the console on a bbox map. */
 const warned = new Set();
 
@@ -48,12 +61,13 @@ const warned = new Set();
  * The current view as `minx,miny,maxx,maxy` in the given projection.
  *
  * With no code, or one the engine cannot build, the map's own CRS is used and
- * the result is exactly what `Map.getBBox()` returns -- which is the right
+ * the result is exactly what the map's `getBBox()` returns -- which is the right
  * answer when the two agree, and the only answer available when they do not.
  * The second case says so, because a box in the wrong projection fails by
  * matching nothing, and an empty map is the least informative symptom there is.
  *
  * @param {string|number} [srid] - EPSG code to express the box in.
+ * @param {Object} [map] - The map whose view it is. See `mapFor`.
  * @returns {string} Four comma-separated numbers, as the services expect.
  */
 /**
@@ -80,11 +94,11 @@ const projectionFor = (srid) => {
   return null;
 };
 
-export const bboxIn = (srid) => {
+export const bboxIn = (srid, map) => {
   const crs = projectionFor(srid);
-  if (!crs) return Map.getBBox();
+  if (!crs) return mapFor(map).getBBox();
 
-  const bounds = Map.getBounds();
+  const bounds = mapFor(map).getBounds();
   const sw = crs.projection.project(bounds.getSouthWest());
   const ne = crs.projection.project(bounds.getNorthEast());
 
@@ -101,10 +115,11 @@ export const bboxIn = (srid) => {
  *
  * @param {{lat: number, lng: number}} latlng
  * @param {string|number} [srid] - EPSG code to express the point in.
+ * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
  * @returns {{x: number, y: number}}
  */
-export const pointIn = (latlng, srid) => {
-  const crs = projectionFor(srid) ?? Map.getCRS();
+export const pointIn = (latlng, srid, map) => {
+  const crs = projectionFor(srid) ?? mapFor(map).getCRS();
   const { x, y } = crs.projection.project(factory.latLng(latlng));
   return { x, y };
 };
@@ -127,11 +142,12 @@ export const pointIn = (latlng, srid) => {
  * @param {{x: number, y: number}|number[]} position - A stored coordinate, or a
  *        GeoJSON position, which is `[x, y]` and therefore `[lng, lat]` in 4326.
  * @param {string|number} [srid] - The EPSG code it is expressed in.
+ * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
  * @returns {{lat: number, lng: number}}
  */
-export const latLngOf = (position, srid) => {
+export const latLngOf = (position, srid, map) => {
   const [x, y] = Array.isArray(position) ? position : [position?.x, position?.y];
-  const crs = projectionFor(srid) ?? Map.getCRS();
+  const crs = projectionFor(srid) ?? mapFor(map).getCRS();
   const { lat, lng } = crs.projection.unproject(factory.point(x, y));
   return { lat, lng };
 };
@@ -152,10 +168,11 @@ export const latLngOf = (position, srid) => {
  *
  * @param {Object|null} collection - A GeoJSON FeatureCollection in stored units.
  * @param {string|number} [srid] - The EPSG code it is stored in.
+ * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
  * @returns {Object|null} A copy in degrees; the original is not touched.
  */
-export const inDegrees = (collection, srid) => mapPositions(collection, (position) => {
-  const { lat, lng } = latLngOf(position, srid);
+export const inDegrees = (collection, srid, map) => mapPositions(collection, (position) => {
+  const { lat, lng } = latLngOf(position, srid, map);
   return [lng, lat, ...position.slice(2)];
 });
 
@@ -173,10 +190,11 @@ export const inDegrees = (collection, srid) => mapPositions(collection, (positio
  *
  * @param {Object|null} collection - A GeoJSON FeatureCollection in degrees.
  * @param {string|number} [srid] - The EPSG code the deployment stores.
+ * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
  * @returns {Object|null} A copy in stored units; the original is not touched.
  */
-export const fromDegrees = (collection, srid) => mapPositions(collection, (position) => {
-  const { x, y } = pointIn({ lat: position[1], lng: position[0] }, srid);
+export const fromDegrees = (collection, srid, map) => mapPositions(collection, (position) => {
+  const { x, y } = pointIn({ lat: position[1], lng: position[0] }, srid, map);
   return [x, y, ...position.slice(2)];
 });
 
@@ -204,9 +222,10 @@ export const fromDegrees = (collection, srid) => mapPositions(collection, (posit
  *
  * @param {{lat: number, lng: number}} latlng - Where the scale is measured.
  * @param {string|number} [srid]
+ * @param {Object} [map] - Whose projection and distance. See `mapFor`.
  * @returns {number} Projected units per ground metre, or 1 where it cannot be measured.
  */
-export const unitsPerMetre = (latlng, srid) => scalesAt(latlng, srid).ew;
+export const unitsPerMetre = (latlng, srid, map) => scalesAt(latlng, srid, map).ew;
 
 /**
  * The same ratio along both axes.
@@ -220,19 +239,19 @@ export const unitsPerMetre = (latlng, srid) => scalesAt(latlng, srid).ew;
  * noise is nothing beside it, near enough that the scale has not changed across
  * it.
  */
-const scalesAt = (latlng, srid) => {
+const scalesAt = (latlng, srid, map) => {
   const step = 0.001;
   const here = factory.latLng(latlng);
   const east = factory.latLng({ lat: here.lat, lng: here.lng + step });
   const north = factory.latLng({ lat: here.lat + step, lng: here.lng });
 
-  const a = pointIn(here, srid);
-  const eastGround = Map.distance(here, east);
-  const northGround = Map.distance(here, north);
+  const a = pointIn(here, srid, map);
+  const eastGround = mapFor(map).distance(here, east);
+  const northGround = mapFor(map).distance(here, north);
 
   return {
-    ew: eastGround ? Math.abs(pointIn(east, srid).x - a.x) / eastGround : 1,
-    ns: northGround ? Math.abs(pointIn(north, srid).y - a.y) / northGround : 1
+    ew: eastGround ? Math.abs(pointIn(east, srid, map).x - a.x) / eastGround : 1,
+    ns: northGround ? Math.abs(pointIn(north, srid, map).y - a.y) / northGround : 1
   };
 };
 
@@ -276,11 +295,12 @@ const roundTo = (value, places) => {
  * @param {string|number} [srid]
  * @param {number} [points] - How many vertices. The shape is not closed: the
  *        services that take one close it themselves.
+ * @param {Object} [map] - Whose projection and distance. See `mapFor`.
  * @returns {Array<{x: number, y: number}>}
  */
-export const ringIn = (centre, metres, srid, points = 24) => {
-  const { ew, ns } = scalesAt(centre, srid);
-  const { x, y } = pointIn(centre, srid);
+export const ringIn = (centre, metres, srid, points = 24, map) => {
+  const { ew, ns } = scalesAt(centre, srid, map);
+  const { x, y } = pointIn(centre, srid, map);
   const rx = metres * ew;
   const ry = metres * ns;
   const places = decimalsFor(Math.min(rx, ry));

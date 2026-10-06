@@ -25,9 +25,10 @@ const { Map, factory } = core;
  * try; the caller knows which layer it mounted.
  *
  * And the distance is on the ground, not on the screen or in the projection.
- * `Map.distance` is the same haversine every other measurement in this stack
- * uses, which is what makes "3 km" here the same 3 km the scale bar draws and
- * the same one `unitsPerMetre` converts for a save.
+ * The map's `distance` is the same haversine every other measurement in this
+ * stack uses, which is what makes "3 km" here the same 3 km the scale bar draws
+ * and the same one `unitsPerMetre` converts for a save. Which map is the
+ * caller's to say, as in `project.js`, and the page's when it does not.
  */
 
 /**
@@ -46,19 +47,21 @@ const { Map, factory } = core;
  * @param {Object} feature - A GeoJSON feature.
  * @param {{lat: number, lng: number}} centre
  * @param {string|number} [srid] - What the feature's coordinates are in.
+ * @param {Object} [map] - The map it is drawn on. The page's without one.
  * @returns {{nearest: number, furthest: number}|null} Metres, or null for a
  *          feature with no geometry to measure.
  */
-export const spanTo = (feature, centre, srid) => {
+export const spanTo = (feature, centre, srid, map) => {
   const positions = positionsOf(feature?.geometry);
   if (positions.length === 0) return null;
 
   const from = factory.latLng(centre);
+  const ground = map ?? Map;
   let nearest = Infinity;
   let furthest = 0;
 
   positions.forEach((position) => {
-    const metres = Map.distance(from, factory.latLng(latLngOf(position, srid)));
+    const metres = ground.distance(from, factory.latLng(latLngOf(position, srid, map)));
     if (metres < nearest) nearest = metres;
     if (metres > furthest) furthest = metres;
   });
@@ -77,6 +80,7 @@ export const spanTo = (feature, centre, srid) => {
  * @param {'touches'|'contains'} [options.mode] - Whether a feature reaching into
  *        the circle counts, or only one wholly inside it. `touches` by default,
  *        because the question behind a radius is usually about reach.
+ * @param {Object} [options.map] - The map the circle was drawn on.
  * @returns {Object} `{ inside, outside, has, metres, total }`. `inside` is
  *          nearest first, so a caller that wants the closest five takes them off
  *          the front. `has` and `metres` are keyed by the feature object itself
@@ -84,7 +88,7 @@ export const spanTo = (feature, centre, srid) => {
  *          drew, and no set of properties here is reliably unique.
  */
 export const withinCircle = (collection, circle, options = {}) => {
-  const { srid, mode = 'touches' } = options;
+  const { srid, mode = 'touches', map } = options;
   const features = collection?.features ?? [];
 
   const empty = {
@@ -106,7 +110,7 @@ export const withinCircle = (collection, circle, options = {}) => {
   const outside = [];
 
   features.forEach((feature) => {
-    const span = spanTo(feature, centre, srid);
+    const span = spanTo(feature, centre, srid, map);
 
     // A feature with no geometry is not outside the circle; it is not anywhere.
     // It goes with the ones that were not caught, which is where a caller

@@ -45,10 +45,11 @@ const alertType = (data, ok) => (data?.type ? undefined : (ok ? 'success' : 'err
  * @param {Object} [params.set]       - The collection on screen, for `draw.select`.
  * @param {Object} params.bindings    - What the save path's placeholders resolve against.
  * @param {Object} [params.labels]
+ * @param {Object} [params.map]       - The map the shape is drawn on, once it is built.
  * @returns {Object} The shape, its controls, what it caught, and `reload` -- a
  *          number the layers refetch on, which a successful write increments.
  */
-export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) => {
+export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map }) => {
   /**
    * The shape being drawn, and everything that goes with sending it.
    *
@@ -117,7 +118,7 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
    * storing it would be a second copy of an answer that changes on every
    * keystroke in the radius field.
    */
-  const selection = useSelection({ set, shape, dataSrid, select: draw?.select })
+  const selection = useSelection({ set, shape, dataSrid, select: draw?.select, map })
 
   /** Nothing drawn and nothing pending. */
   const clearDrawing = () => {
@@ -184,7 +185,8 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {} }) =>
       bindings,
       note,
       selected: selection.context,
-      form: formData
+      form: formData,
+      map
     })
 
     // Said here, before the request, because this is the one place that knows

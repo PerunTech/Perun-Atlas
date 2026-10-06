@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { bboxIn, crsFor, pointIn, ringIn, unitsPerMetre } from '../frontend/data/project';
-import { latLngBounds, resetView, setView } from './stubs/spatial.js';
+import { bboxIn, crsFor, fromDegrees, inDegrees, latLngOf, pointIn, ringIn, unitsPerMetre } from '../frontend/data/project';
+import { latLngBounds, mapWith, resetView, setView } from './stubs/spatial.js';
 
 /** Somewhere in the deployment's own latitudes, where the scale error is worth having. */
 const CENTRE = { lat: 35.124805, lng: 33.941707 };
@@ -163,5 +163,50 @@ describe('bboxIn', () => {
     setView({ bbox: 'already,in,the,map' });
     expect(bboxIn(2100)).toBe('already,in,the,map');
     warn.mockRestore();
+  });
+
+  it("reads the view of the map it is given, not the page's", () => {
+    setView({ bounds, bbox: 'the,page,s,view' });
+    const shown = mapWith({
+      bounds: latLngBounds({ lat: 35.0, lng: 33.0 }, { lat: 35.2, lng: 33.4 }),
+      bbox: 'the,shown,map,view'
+    });
+    expect(bboxIn(4326, shown)).toBe('33,35,33.4,35.2');
+    expect(bboxIn(undefined, shown)).toBe('the,shown,map,view');
+  });
+});
+
+describe('the map an answer is about', () => {
+  /**
+   * The page's map on Web Mercator, the shown one in degrees, and no code that
+   * names the stored projection: the case where the fallback decides. Each map
+   * an AtlasMap builds takes the deployment's settings, so the two agree on a
+   * real page unless one screen's overrides name another projection.
+   */
+  const shown = mapWith({ crs: crsFor(4326) });
+
+  it("falls back to the given map's projection, both ways", () => {
+    expect(pointIn(CENTRE, undefined, shown)).toEqual({ x: 33.941707, y: 35.124805 });
+    expect(latLngOf([33.941707, 35.124805], undefined, shown)).toEqual(CENTRE);
+    expect(pointIn(CENTRE).x).toBeGreaterThan(3_000_000);
+  });
+
+  it('carries the map through a whole collection, out and back', () => {
+    const collection = {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [33.941707, 35.124805] } }]
+    };
+    expect(fromDegrees(collection, undefined, shown)).toEqual(collection);
+    expect(inDegrees(collection, undefined, shown)).toEqual(collection);
+  });
+
+  it("measures a circle in the given map's units", () => {
+    expect(unitsPerMetre(CENTRE, undefined, shown)).toBeCloseTo(unitsPerMetre(CENTRE, 4326), 12);
+    expect(ringIn(CENTRE, 1500, undefined, 8, shown)).toEqual(ringIn(CENTRE, 1500, 4326, 8));
+  });
+
+  it("takes null for the page's map, as a caller holding no map yet passes it", () => {
+    expect(pointIn(CENTRE, undefined, null)).toEqual(pointIn(CENTRE));
+    expect(bboxIn(undefined, null)).toBe(bboxIn());
   });
 });

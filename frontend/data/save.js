@@ -253,17 +253,18 @@ export const postTo = async (servicePath, context = {}, options = {}) => {
  * @param {string} [params.note]
  * @param {Object} [params.selected]  - What the shape caught, when the row asked.
  * @param {Object} [params.form]      - What was typed into the row's form.
+ * @param {Object} [params.map]       - The map it was drawn on.
  * @returns {{context: Object, units: number, tooSmall: boolean}} The context; the
  *          radius in stored units, before rounding; and whether a save sending
  *          that radius would send zero.
  */
-export const shapeContext = (shape, { draw, dataSrid, bindings, note, selected, form }) => {
+export const shapeContext = (shape, { draw, dataSrid, bindings, note, selected, form, map }) => {
   const centre = { lat: shape.lat, lng: shape.lng };
-  const { x, y } = pointIn(centre, dataSrid);
-  const units = shape.radius * unitsPerMetre(centre, dataSrid);
+  const { x, y } = pointIn(centre, dataSrid, map);
+  const units = shape.radius * unitsPerMetre(centre, dataSrid, map);
   const radius = Math.round(units);
 
-  const vertices = ringIn(centre, shape.radius, dataSrid, draw.points);
+  const vertices = ringIn(centre, shape.radius, dataSrid, draw.points, map);
 
   /**
    * The shape itself, as a ring in the projection the deployment stores.

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { crsFor } from '../frontend/data/project';
 import { identifiersOf, spanTo, withinCircle } from '../frontend/data/select';
+import { mapWith } from './stubs/spatial.js';
 
 /**
  * A centre on the island these deployments cover, and features at distances
@@ -59,6 +61,14 @@ describe('spanTo', () => {
     expect(spanTo({ type: 'Feature', properties: {} }, CENTRE, 4326)).toBeNull();
     expect(spanTo({ geometry: { type: 'Point', coordinates: [] } }, CENTRE, 4326)).toBeNull();
   });
+
+  it("reads stored positions through the given map's projection when no code names one", () => {
+    // The page's map is on Web Mercator, so read through it the degrees are
+    // metres, and the feature is on the equator, thousands of kilometres off.
+    const shown = mapWith({ crs: crsFor(4326) });
+    expect(Math.round(spanTo(near, CENTRE, undefined, shown).nearest)).toBe(910);
+    expect(spanTo(near, CENTRE).nearest).toBeGreaterThan(3_000_000);
+  });
 });
 
 describe('withinCircle', () => {
@@ -67,6 +77,12 @@ describe('withinCircle', () => {
     expect(answer.inside.map(f => f.properties.name)).toEqual(['near', 'mid']);
     expect(answer.outside.map(f => f.properties.name)).toEqual(['far']);
     expect(answer.total).toBe(3);
+  });
+
+  it('measures on the map it is given', () => {
+    const shown = mapWith({ crs: crsFor(4326) });
+    const answer = withinCircle(set(near, mid, far), { ...CENTRE, radius: 5000 }, { map: shown });
+    expect(answer.inside.map(f => f.properties.name)).toEqual(['near', 'mid']);
   });
 
   it('puts the nearest first, so a caller can take the closest few off the front', () => {
