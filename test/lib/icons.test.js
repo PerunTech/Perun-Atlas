@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GLYPHS, ICON_SIZE, ICON_STROKE, svgMarkup } from '../frontend/lib/icons';
+import { GLYPHS, ICON_SIZE, ICON_STROKE, svgMarkup } from '../../frontend/lib/icons';
 
 describe('svgMarkup', () => {
   it('draws every path the glyph has, in order', () => {

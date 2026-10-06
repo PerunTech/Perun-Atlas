@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { bboxIn, crsFor, fromDegrees, inDegrees, latLngOf, pointIn, ringIn, unitsPerMetre } from '../frontend/data/project';
-import { latLngBounds, mapWith, resetView, setView } from './stubs/spatial.js';
+import { bboxIn, crsFor, fromDegrees, inDegrees, latLngOf, pointIn, ringIn, unitsPerMetre } from '../../frontend/data/project';
+import { latLngBounds, mapWith, resetView, setView } from '../stubs/spatial.js';
 
 /** Somewhere in the deployment's own latitudes, where the scale error is worth having. */
 const CENTRE = { lat: 35.124805, lng: 33.941707 };

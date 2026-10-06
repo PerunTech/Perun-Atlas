@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawnAs, drawnKinds, kindKey, legendFrom, legendFromPalette, legendShown } from '../frontend/appearance/legend';
+import { drawnAs, drawnKinds, kindKey, legendFrom, legendFromPalette, legendShown } from '../../frontend/appearance/legend';
 
 describe('legendFrom', () => {
   const drawn = [

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readLink, takeLink, writeLink } from '../frontend/lib/link';
-import { layerNamed, shownName } from '../frontend/data/tiles';
+import { readLink, takeLink, writeLink } from '../../frontend/lib/link';
+import { layerNamed, shownName } from '../../frontend/data/tiles';
 
 const RECORD = 'https://aims.example/app/#/main/registry/HOLDING/4711/HOLDING_DETAILS';
 

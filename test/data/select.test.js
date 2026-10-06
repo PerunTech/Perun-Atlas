@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { crsFor } from '../frontend/data/project';
-import { identifiersOf, spanTo, withinCircle } from '../frontend/data/select';
-import { mapWith } from './stubs/spatial.js';
+import { crsFor } from '../../frontend/data/project';
+import { identifiersOf, spanTo, withinCircle } from '../../frontend/data/select';
+import { mapWith } from '../stubs/spatial.js';
 
 /**
  * A centre on the island these deployments cover, and features at distances

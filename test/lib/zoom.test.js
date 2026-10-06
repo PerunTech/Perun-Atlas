@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatRatio, labelStep, marksIn, offsetOf, ratioFor, roundRatio, rungs
-} from '../frontend/lib/zoom';
+} from '../../frontend/lib/zoom';
 
 describe('offsetOf', () => {
   it('puts the ends at the ends and the middle in the middle', () => {

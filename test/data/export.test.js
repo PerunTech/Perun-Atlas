@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { toCSV, toGeoJSON, toKML } from '../frontend/data/export';
-import { fromDegrees, inDegrees } from '../frontend/data/project';
-import { download } from '../frontend/lib/dom';
-import { useExport } from '../frontend/hooks/useExport';
-import { FILE_LIMITS } from '../frontend/data/read';
-import { readShapefile } from '../frontend/modules/shp';
-import { resetView } from './stubs/spatial.js';
+import { toCSV, toGeoJSON, toKML } from '../../frontend/data/export';
+import { fromDegrees, inDegrees } from '../../frontend/data/project';
+import { download } from '../../frontend/lib/dom';
+import { useExport } from '../../frontend/hooks/useExport';
+import { FILE_LIMITS } from '../../frontend/data/read';
+import { readShapefile } from '../../frontend/modules/shp';
+import { resetView } from '../stubs/spatial.js';
 
 // The half that touches the page. What the hook hands it is what a file holds.
-vi.mock('../frontend/lib/dom', () => ({ download: vi.fn() }));
+vi.mock('../../frontend/lib/dom', () => ({ download: vi.fn() }));
 
 const point = (properties, coordinates = [33.9, 35.1]) =>
   ({ type: 'Feature', properties, geometry: { type: 'Point', coordinates } });

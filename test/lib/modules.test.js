@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadModule, moduleUrl } from '../frontend/lib/modules';
+import { loadModule, moduleUrl } from '../../frontend/lib/modules';
 
 const BUNDLE = 'https://registry.example/perun-atlas/perun-atlas.js';
 const FILES = { shp: 'shp.perun-atlas.js?v=5c9f573974ae' };

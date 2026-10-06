@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { bandOf, categoriesDrawn, colourBy, DEFAULT_PALETTE, joinStatus } from '../frontend/appearance/choropleth';
-import { legendFromPalette } from '../frontend/appearance/legend';
+import { bandOf, categoriesDrawn, colourBy, DEFAULT_PALETTE, joinStatus } from '../../frontend/appearance/choropleth';
+import { legendFromPalette } from '../../frontend/appearance/legend';
 
 const feature = (properties) => ({ type: 'Feature', properties });
 const PALETTE = { 0: '#2e7d32', 1: '#f9a825', 2: '#c62828' };

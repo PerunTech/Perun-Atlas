@@ -1,18 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { readShapefile } from '../frontend/modules/shp';
-import { FILE_LIMITS, fileKind, readLayers } from '../frontend/data/read';
+import { readShapefile } from '../../frontend/modules/shp';
+import { FILE_LIMITS, fileKind, readLayers } from '../../frontend/data/read';
 
 /**
  * The shapefile reader, against files GDAL wrote.
  *
- * `fixtures/shapefiles/make.sh` says how each was made. They hold the same two
+ * `test/fixtures/shapefiles/make.sh` says how each was made. They hold the same two
  * sites, at the positions below, in one projection or another, so every test
  * that reads one back can say where the sites should land.
  */
 
 const fixture = (name) => {
-  const bytes = readFileSync(new URL(`./fixtures/shapefiles/${name}`, import.meta.url));
+  const bytes = readFileSync(new URL(`../fixtures/shapefiles/${name}`, import.meta.url));
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 };
 

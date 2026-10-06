@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('perun-core', () => ({ axios: vi.fn(), utils: {}, elements: {} }));
 
 const { axios } = await import('perun-core');
-const { fillBody, postTo, shapeContext } = await import('../frontend/data/save');
-const { pointIn, ringIn, unitsPerMetre } = await import('../frontend/data/project');
+const { fillBody, postTo, shapeContext } = await import('../../frontend/data/save');
+const { pointIn, ringIn, unitsPerMetre } = await import('../../frontend/data/project');
 
 describe('fillBody', () => {
   const context = {

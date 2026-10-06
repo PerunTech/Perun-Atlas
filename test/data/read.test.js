@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DOMParser } from '@xmldom/xmldom';
-import { FILE_LIMITS, readFile, sizeRefusal } from '../frontend/data/read';
-import { toKML } from '../frontend/data/export';
+import { FILE_LIMITS, readFile, sizeRefusal } from '../../frontend/data/read';
+import { toKML } from '../../frontend/data/export';
 
 /**
  * The suite runs in node, which has no DOMParser. xmldom is the parser

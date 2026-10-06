@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bindPath, reader, valueAt } from '../frontend/data/path';
+import { bindPath, reader, valueAt } from '../../frontend/data/path';
 
 describe('valueAt', () => {
   it('walks a dotted path and stops at nothing', () => {

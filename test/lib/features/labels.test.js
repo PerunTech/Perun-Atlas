@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bindLabel, syncLabels } from '../frontend/lib/features/labels';
+import { bindLabel, syncLabels } from '../../../frontend/lib/features/labels';
 
 /** A layer that records what it was bound with, and a tooltip that opens and closes. */
 const layer = ({ open = false, hidden = false } = {}) => {

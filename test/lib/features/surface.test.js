@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { placeSet } from '../frontend/lib/features/surface';
+import { placeSet } from '../../../frontend/lib/features/surface';
 
 /**
  * A group that keeps its layers in a set and says whether it was on the map

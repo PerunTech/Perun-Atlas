@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { OVERLAY_STYLE, assumedText, countText, openingText, overlayEntry, overlayRecord, refusalText } from '../frontend/appearance/overlay';
-import { FILE_KEY, kindKey, legendShown } from '../frontend/appearance/legend';
+import { OVERLAY_STYLE, assumedText, countText, openingText, overlayEntry, overlayRecord, refusalText } from '../../frontend/appearance/overlay';
+import { FILE_KEY, kindKey, legendShown } from '../../frontend/appearance/legend';
 
 describe('overlayEntry', () => {
   it('is a dashed line in the key, named after the file', () => {

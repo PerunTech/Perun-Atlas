@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { popupContent } from '../frontend/lib/features/popup';
+import { popupContent } from '../../../frontend/lib/features/popup';
 
 /** Just enough of an element for `popupElement` to build into. */
 const element = (tag) => ({

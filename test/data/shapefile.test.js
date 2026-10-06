@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { iter } from 'but-unzip';
-import { shortNames, toShapefile, WGS84_PRJ } from '../frontend/data/shapefile';
-import { FILE_LIMITS } from '../frontend/data/read';
-import { crc32, zip } from '../frontend/lib/zip';
-import { readShapefile } from '../frontend/modules/shp';
+import { shortNames, toShapefile, WGS84_PRJ } from '../../frontend/data/shapefile';
+import { FILE_LIMITS } from '../../frontend/data/read';
+import { crc32, zip } from '../../frontend/lib/zip';
+import { readShapefile } from '../../frontend/modules/shp';
 
 /**
  * The shapefile writer, read back through the shapefile reader.

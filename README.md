@@ -30,7 +30,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/modules/` | Libraries loaded on demand, each built by `vite.modules.config.mjs` as an ES module of its own beside the bundle: `shp.js`, the shapefile reader, is `backend/www/shp.perun-atlas.js`. Bytes in, plain data out; nothing here imports the engine or perun-core. |
 | `build/` | The function that injects this package's CSS at `head.firstChild`, one `<style>` per sheet; `vite.config.mjs` puts it beside every stylesheet import. `frontend/style/README.md` says why that matters. |
 | `docs/menu-row.md` | Every key a menu row may set for `ConfiguredMap`, with its defaults. The contract consuming bundles write rows against. |
-| `test/` | The unit suite, and the two stubs standing in for the shell. |
+| `test/` | The unit suite, laid out as `frontend/` is, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
 
 Only the components and `config/` are exported. Everything else under
@@ -91,6 +91,11 @@ need a map: projections and rings, descriptors and palettes, the join, the CSV
 and the KML, the save body and its verdict, and the files a reader opens. The
 shapefiles among those are in `test/fixtures/shapefiles/`, made by GDAL with the
 script beside them.
+
+A file's tests are at its own path under `test/`: `frontend/data/save.js` is
+tested by `test/data/save.test.js`. A test file that takes in a second file
+along the way, as the export's does with the reader, sits with the one it is
+about.
 
 Two things make that possible. `perun-core` and `spatial` are the shell's and
 are `externals` in a production build, so a run points those two bare specifiers

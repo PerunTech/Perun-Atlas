@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapPositions, positionsOf } from '../frontend/data/positions';
+import { mapPositions, positionsOf } from '../../frontend/data/positions';
 
 const feature = (geometry, properties = {}) => ({ type: 'Feature', properties, geometry });
 const set = (...features) => ({ type: 'FeatureCollection', features });

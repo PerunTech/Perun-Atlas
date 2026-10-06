@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('perun-core', () => ({ axios: { get: vi.fn() }, utils: {}, elements: {} }));
 
 const { axios } = await import('perun-core');
-const { fetchSchema, fetchUISchema, pickFields, usableUI, withGroups } = await import('../frontend/data/form');
+const { fetchSchema, fetchUISchema, pickFields, usableUI, withGroups } = await import('../../frontend/data/form');
 
 /**
  * A table's schema, in the shape these services actually send one.

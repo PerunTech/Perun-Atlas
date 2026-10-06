@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canLocate, cornerFor, locatePress, pointsOf, readingFor } from '../frontend/lib/controls';
+import { canLocate, cornerFor, locatePress, pointsOf, readingFor } from '../../frontend/lib/controls';
 
 /**
  * The engine's measure, as far as `readingFor` uses it: plain arithmetic over
