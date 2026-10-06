@@ -201,9 +201,9 @@ that legitimately matched nothing, and the body is where the message is.
 
 `spatial` constructs one Leaflet map when its script evaluates, so `AtlasMap`
 adopts that instance rather than creating one, and only one may be mounted at a
-time. Lifting this is the point of spatial 5.1.0's `createMap`: once it is
-released, `AtlasMap` builds a map per mount and hands it to its controls through
-the context they already read it from, and no consumer is affected.
+time. Lifting this is the point of `createMap`, which arrives with spatial 4.2.1:
+once `AtlasMap` builds a map per mount with it, it hands that map to its controls
+through the context they already read it from, and no consumer is affected.
 
 ## Scope
 

@@ -70,8 +70,8 @@ const { useEffect, useMemo, useRef, useState } = React;
  *
  * Note on lifecycle: spatial constructs a single Leaflet map when its script
  * evaluates, so this component adopts that instance rather than creating one, and
- * hands it back on unmount. That is the constraint spatial 5.1.0's `createMap`
- * lifts: once this component builds a map of its own, the context hands that
+ * hands it back on unmount. That is the constraint `createMap`, new in spatial
+ * 4.2.1, lifts: once this component builds a map of its own, the context hands that
  * map to the controls instead, and no consumer is affected. It also means two AtlasMaps cannot be shown at once, which is fine for
  * an embedded panel and is checked for rather than left to fail obscurely.
  */
@@ -174,8 +174,8 @@ export const AtlasMap = ({
         // it. A set framed on its data usually arrives later and hides it; a set
         // that comes back empty, and a view opened from a link, are left at 0,0
         // at the minimum zoom. Found in the bench on 29 September, with spatial
-        // 5.0 and later alike. At the settings' own zoom there is nothing for
-        // those setters to animate.
+        // from 3f7151d, the build that called itself 5.0, to its newest alike. At
+        // the settings' own zoom there is nothing for those setters to animate.
         Map.setView(config.center, config.zoom, { animate: false });
 
         // Push what the deployment declared into the engine before the map is

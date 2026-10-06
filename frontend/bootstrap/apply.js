@@ -7,7 +7,7 @@ const { Map, store } = core;
  * Hands the resolved configuration to the engine.
  *
  * spatial replaced its `window.sys*` globals with `config.configure()`, and in
- * 5.0 removed them, so a deployment's parameters reach the engine as values
+ * 4.2.1 removed them, so a deployment's parameters reach the engine as values
  * rather than as script tags a human keeps in step. perun-atlas already resolves
  * those parameters from SVAROG_SYS_PARAMS, which makes it the natural caller:
  * the database is the single source and `index.html` carries no configuration.
@@ -31,7 +31,7 @@ const TO_ENGINE = {
 /**
  * Warns when the engine did not end up on the CRS this deployment declared.
  *
- * Until spatial 5.0 this was the common case rather than a fault: a map's CRS
+ * Until spatial 4.2.1 this was the common case rather than a fault: a map's CRS
  * was fixed when the bundle evaluated, so it came from a `window.sysCrs` on the
  * page and SPATIAL_CRS could not reach it. A deployment that set the parameter
  * and not the global ran on spatial's own default, asked its basemap for tiles
