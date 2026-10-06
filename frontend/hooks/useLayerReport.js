@@ -1,6 +1,6 @@
 import { React } from 'perun-core';
 
-const { useState } = React
+const { useState } = React;
 
 /**
  * What the layer on the map last reported, and the callbacks it reports through.
@@ -18,8 +18,8 @@ const { useState } = React
  *          window that has moved.
  */
 export const useLayerReport = ({ coloured }) => {
-  const [set, setSet] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [set, setSet] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   /**
    * What the layer last reported it drew, in that layer's own shape.
@@ -29,8 +29,8 @@ export const useLayerReport = ({ coloured }) => {
    * because only one layer is ever mounted, and two would mean a stale half
    * sitting beside the live one waiting to be read by mistake.
    */
-  const noneDrawn = coloured ? { values: [], usedFallback: false } : []
-  const [drawn, setDrawn] = useState(noneDrawn)
+  const noneDrawn = coloured ? { values: [], usedFallback: false } : [];
+  const [drawn, setDrawn] = useState(noneDrawn);
 
   /**
    * The set as the reader sees it, as the layer last reported it: the fetched
@@ -45,11 +45,11 @@ export const useLayerReport = ({ coloured }) => {
    * Null wherever `set` is, so a window that has moved and not yet been fetched
    * offers nothing rather than the last window's features.
    */
-  const [shown, setShown] = useState(null)
-  const visible = set === null ? null : (shown ?? set)
+  const [shown, setShown] = useState(null);
+  const visible = set === null ? null : (shown ?? set);
 
   /** Where the shown features are, for the zoom control's button that frames them. */
-  const [extent, setExtent] = useState(null)
+  const [extent, setExtent] = useState(null);
 
   /**
    * A fetch is starting.
@@ -73,15 +73,15 @@ export const useLayerReport = ({ coloured }) => {
    * rather than the same one fetched again.
    */
   const onFetchStart = () => {
-    setLoading(true)
-    setDrawn(noneDrawn)
-  }
+    setLoading(true);
+    setDrawn(noneDrawn);
+  };
 
   /** A fetch answered. A response with no collection in it is an empty set. */
   const onFetched = (collection) => {
-    setSet(collection ?? { features: [] })
-    setLoading(false)
-  }
+    setSet(collection ?? { features: [] });
+    setLoading(false);
+  };
 
   /**
    * A fetch failed, so there is no set: nothing to show, count or frame. The
@@ -89,11 +89,11 @@ export const useLayerReport = ({ coloured }) => {
    * set's would stay behind the empty one.
    */
   const onFetchFailed = () => {
-    setSet({ features: [] })
-    setShown(null)
-    setExtent(null)
-    setLoading(false)
-  }
+    setSet({ features: [] });
+    setShown(null);
+    setExtent(null);
+    setLoading(false);
+  };
 
   return {
     set,
@@ -110,5 +110,5 @@ export const useLayerReport = ({ coloured }) => {
     // The window moved: the set held is the last window's, and nothing yet is
     // this one's.
     forget: () => setSet(null)
-  }
-}
+  };
+};

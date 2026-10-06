@@ -12,10 +12,10 @@
  */
 
 /** ISO yyyy-mm-dd, which is both what `<input type="date">` speaks and what `LocalDate.parse` expects. */
-export const iso = (date) => date.toISOString().slice(0, 10)
+export const iso = (date) => date.toISOString().slice(0, 10);
 
 /** Today, as the wire writes it. */
-export const today = () => iso(new Date())
+export const today = () => iso(new Date());
 
 /**
  * The same day, a number of months back.
@@ -26,13 +26,13 @@ export const today = () => iso(new Date())
  * of its far edge is not a difference anyone is reading.
  */
 export const monthsAgo = (months) => {
-  const date = new Date()
-  date.setMonth(date.getMonth() - months)
-  return iso(date)
-}
+  const date = new Date();
+  date.setMonth(date.getMonth() - months);
+  return iso(date);
+};
 
 /** A quick range: that many months back, up to today. */
-export const rangeOf = (months) => ({ from: monthsAgo(months), to: today() })
+export const rangeOf = (months) => ({ from: monthsAgo(months), to: today() });
 
 /** Whether two windows name the same span, which is whether a refetch is worth making. */
-export const sameWindow = (a, b) => a?.from === b?.from && a?.to === b?.to
+export const sameWindow = (a, b) => a?.from === b?.from && a?.to === b?.to;

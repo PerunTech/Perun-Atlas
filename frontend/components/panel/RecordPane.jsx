@@ -1,5 +1,5 @@
-import { React } from 'perun-core'
-import { CloseButton } from './CloseButton'
+import { React } from 'perun-core';
+import { CloseButton } from './CloseButton';
 
 /**
  * A feature's whole record, in a pane beside the map.
@@ -34,4 +34,4 @@ export const RecordPane = ({ record, onClose, labels = {} }) => (
       ))}
     </dl>
   </aside>
-)
+);

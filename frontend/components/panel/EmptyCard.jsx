@@ -1,5 +1,5 @@
-import { React } from 'perun-core'
-import { CloseButton } from './CloseButton'
+import { React } from 'perun-core';
+import { CloseButton } from './CloseButton';
 
 /**
  * The card that says nothing came back, in the middle of the map.
@@ -37,4 +37,4 @@ export const EmptyCard = ({ timeScoped, longest, preset, applyPreset, onClose, l
       <CloseButton label={labels.close ?? 'Close'} title={labels.close ?? 'Close'} onClick={onClose} />
     </div>
   </div>
-)
+);

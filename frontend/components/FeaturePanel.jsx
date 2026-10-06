@@ -30,7 +30,7 @@ import { useRecord } from '../hooks/useRecord';
 import { useViewLink } from '../hooks/useViewLink';
 import '../style/panel.css';
 import '../style/overlay.css';
-const { useEffect, useMemo, useState } = React
+const { useEffect, useMemo, useState } = React;
 
 /**
  * A geometry set, with a date window over it when the service takes one.
@@ -136,7 +136,7 @@ export const FeaturePanel = ({
   className = '',
   onClose
 }) => {
-  const [labelled, setLabelled] = useState(true)
+  const [labelled, setLabelled] = useState(true);
 
   /**
    * Whether the map is still where a link put it.
@@ -146,8 +146,8 @@ export const FeaturePanel = ({
    * draw is not framed, and every later one is: a new window is a new set, and
    * framing it is what the reader expects.
    */
-  const [viewHeld, setViewHeld] = useState(Boolean(view?.center))
-  const releaseView = () => { if (viewHeld) setViewHeld(false) }
+  const [viewHeld, setViewHeld] = useState(Boolean(view?.center));
+  const releaseView = () => { if (viewHeld) setViewHeld(false); };
 
   /**
    * The EPSG code this deployment stores geometry in, once the map has resolved
@@ -168,7 +168,7 @@ export const FeaturePanel = ({
    * geometry and nothing converts the box going out. That is worth knowing
    * before a path is written; it is not something this can decide.
    */
-  const [dataSrid, setDataSrid] = useState(null)
+  const [dataSrid, setDataSrid] = useState(null);
 
   /**
    * The map `AtlasMap` shows, from the same callback.
@@ -177,7 +177,7 @@ export const FeaturePanel = ({
    * measured on this map, and the set is drawn there. Undefined until then,
    * which the conversions read as the page's map, on the same projection.
    */
-  const [drawnOn, setDrawnOn] = useState(undefined)
+  const [drawnOn, setDrawnOn] = useState(undefined);
 
   /**
    * The panel's own state, in the pieces it is made of.
@@ -194,31 +194,31 @@ export const FeaturePanel = ({
     defaultMonths,
     servicePath,
     opening: view?.from && view?.to ? { from: view.from, to: view.to } : undefined,
-    onMoved: () => { forget(); closeRecord() }
-  })
+    onMoved: () => { forget(); closeRecord(); }
+  });
 
   const bindings = useMemo(() => ({
     ...(context || {}),
     ...(timeScoped && { from: range.from, to: range.to }),
     ...(dataSrid && { srid: dataSrid })
-  }), [context, timeScoped, range.from, range.to, dataSrid])
+  }), [context, timeScoped, range.from, range.to, dataSrid]);
 
   // Bindings are a small flat object rebuilt on every render, so the effects that
   // depend on them compare them by value; by identity they would refetch on each
   // one. Handed down beside the bindings themselves, because the hook that reads
   // them cannot tell a rebuilt object from a changed one either.
-  const bindingKey = JSON.stringify(bindings)
+  const bindingKey = JSON.stringify(bindings);
 
   const { coloured, statusPath, rows, tooltip: colourTooltip } = useChoropleth({
     choropleth,
     bindings,
     bindingKey
-  })
+  });
 
   const {
     set, visible, loading, drawn, extent,
     setDrawn, setShown, setExtent, onFetchStart, onFetched, onFetchFailed, forget
-  } = useLayerReport({ coloured })
+  } = useLayerReport({ coloured });
 
   /**
    * The key's rows the reader has switched off, by the entries' own keys.
@@ -230,11 +230,11 @@ export const FeaturePanel = ({
    * nothing until it is drawn again, and then it is still off, and the key says
    * so.
    */
-  const [hidden, setHidden] = useState([])
+  const [hidden, setHidden] = useState([]);
   const toggleKind = (key) => setHidden((current) => (
     current.includes(key) ? current.filter((k) => k !== key) : [...current, key]
-  ))
-  const showAll = () => setHidden([])
+  ));
+  const showAll = () => setHidden([]);
 
   /**
    * The question the reader closed the empty card on, as its `bindingKey`.
@@ -246,14 +246,14 @@ export const FeaturePanel = ({
    * A different window, or a different record, is a new question, and an empty
    * answer to it is news again.
    */
-  const [emptyClosedFor, setEmptyClosedFor] = useState(null)
+  const [emptyClosedFor, setEmptyClosedFor] = useState(null);
 
   const {
     drawable, drawing, shape, selection, note, form, saving, reload,
     setShape, setNote, startDrawing, finishDrawing, clearDrawing, saveShape
-  } = useDrawnShape({ draw, dataSrid, set: visible, bindings, labels, map: drawnOn })
+  } = useDrawnShape({ draw, dataSrid, set: visible, bindings, labels, map: drawnOn });
 
-  const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing })
+  const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing });
 
   /**
    * A file the reader opened over the map, and the key's row for it.
@@ -265,16 +265,16 @@ export const FeaturePanel = ({
     overlay,
     labels,
     onChange: () => setHidden((current) => current.filter((key) => key !== FILE_KEY))
-  })
-  const { file } = fileOverlay
+  });
+  const { file } = fileOverlay;
 
   // A record read from a file goes with the file. What the pane holds is a copy,
   // so nothing else would take it down, and a pane describing a file that is no
   // longer on the map is describing nothing.
   useEffect(() => {
-    if (record?.file && record.file !== file) closeRecord()
+    if (record?.file && record.file !== file) closeRecord();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file])
+  }, [file]);
 
   /**
    * The descriptor a feature is drawn with, in the steps the mounted layer
@@ -285,7 +285,7 @@ export const FeaturePanel = ({
    */
   const drawnWith = (feature) => (coloured
     ? descriptors?.[choropleth.descriptor]
-    : variantOf(descriptors?.[descriptorFor(feature) ?? descriptorOf(feature)], feature))
+    : variantOf(descriptors?.[descriptorFor(feature) ?? descriptorOf(feature)], feature));
 
   const exporter = useExport({
     set: visible,
@@ -297,9 +297,9 @@ export const FeaturePanel = ({
     srid: dataSrid,
     map: drawnOn,
     drawnWith
-  })
+  });
 
-  const viewLink = useViewLink({ linkId, link, timeScoped, range, labels })
+  const viewLink = useViewLink({ linkId, link, timeScoped, range, labels });
 
   /**
    * Whether to say that nothing came back.
@@ -314,9 +314,9 @@ export const FeaturePanel = ({
    * on an empty map would click the explanation instead of the map. A screen
    * that draws is a screen whose empty state is its ordinary one anyway.
    */
-  const nothingFound = !loading && set !== null && (set.features?.length ?? 0) === 0
+  const nothingFound = !loading && set !== null && (set.features?.length ?? 0) === 0;
   const empty = nothingFound && notice !== false && !drawing && !shape && !file &&
-    emptyClosedFor !== bindingKey
+    emptyClosedFor !== bindingKey;
 
   return (
     <div
@@ -431,9 +431,9 @@ export const FeaturePanel = ({
               extent={extent}
               view={view}
               onReady={(ready) => {
-                setDrawnOn(ready.map)
-                setDataSrid(ready.config?.dataSrid ?? null)
-                viewLink.attach(ready)
+                setDrawnOn(ready.map);
+                setDataSrid(ready.config?.dataSrid ?? null);
+                viewLink.attach(ready);
               }}
             >
               {/* One layer or the other, never both. The callbacks are the same
@@ -482,8 +482,8 @@ export const FeaturePanel = ({
                     onShown={setShown}
                     onExtent={setExtent}
                     onLoadStart={onFetchStart}
-                    onLoad={(collection) => { releaseView(); onFetched(collection) }}
-                    onError={(err) => { releaseView(); onFetchFailed(err) }}
+                    onLoad={(collection) => { releaseView(); onFetched(collection); }}
+                    onError={(err) => { releaseView(); onFetchFailed(err); }}
                   />
                 )}
 
@@ -575,5 +575,5 @@ export const FeaturePanel = ({
         />
       )}
     </div>
-  )
-}
+  );
+};

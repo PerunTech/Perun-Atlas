@@ -1,11 +1,11 @@
-import { React, elements } from 'perun-core'
-import { OVERLAY_STYLE } from '../../appearance/overlay'
-import { countText } from '../../lib/fileText'
-import { LineSwatch } from '../Legend'
-import { CloseButton } from './CloseButton'
+import { React, elements } from 'perun-core';
+import { OVERLAY_STYLE } from '../../appearance/overlay';
+import { countText } from '../../lib/fileText';
+import { LineSwatch } from '../Legend';
+import { CloseButton } from './CloseButton';
 
 /** Tabler through perun-core; `ExportButtons` says why. */
-const { Icon } = elements
+const { Icon } = elements;
 
 /**
  * Opening a file over the map, in two pieces for the two places they go.
@@ -24,7 +24,7 @@ const { Icon } = elements
  * @param {Object} [labels]
  */
 export const FileActions = ({ fileOverlay, labels = {} }) => {
-  const { offered, file, inputRef, choose, onPicked, close } = fileOverlay
+  const { offered, file, inputRef, choose, onPicked, close } = fileOverlay;
 
   return (
     <>
@@ -66,15 +66,15 @@ export const FileActions = ({ fileOverlay, labels = {} }) => {
         </div>
       )}
     </>
-  )
-}
+  );
+};
 
 /**
  * @param {Object} fileOverlay - What `useFileOverlay` returned.
  * @param {Object} [labels]
  */
 export const FileNotices = ({ fileOverlay, labels = {} }) => {
-  const { note, refusal, dismiss, dismissNote } = fileOverlay
+  const { note, refusal, dismiss, dismissNote } = fileOverlay;
 
   return (
     <>
@@ -96,5 +96,5 @@ export const FileNotices = ({ fileOverlay, labels = {} }) => {
         </p>
       )}
     </>
-  )
-}
+  );
+};

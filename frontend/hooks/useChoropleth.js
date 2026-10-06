@@ -2,7 +2,7 @@ import { React } from 'perun-core';
 import { fetchRows } from '../data/rows';
 import { reader } from '../data/path';
 
-const { useEffect, useMemo, useState } = React
+const { useEffect, useMemo, useState } = React;
 
 /**
  * What a coloured map needs beyond its geometry.
@@ -24,9 +24,9 @@ export const useChoropleth = ({ choropleth, bindings, bindingKey }) => {
    * layer is mounted, which key is built from what that layer reports, and
    * whether the label switch is a control or a dead toggle.
    */
-  const coloured = Boolean(choropleth)
+  const coloured = Boolean(choropleth);
 
-  const [rows, setRows] = useState(null)
+  const [rows, setRows] = useState(null);
 
   /**
    * The rows a coloured map joins onto its geometry.
@@ -41,19 +41,19 @@ export const useChoropleth = ({ choropleth, bindings, bindingKey }) => {
    * `rows !== null` -- so there is no first draw in the fallback colour followed
    * by a corrected one.
    */
-  const statusPath = coloured ? choropleth.status : null
+  const statusPath = coloured ? choropleth.status : null;
 
   useEffect(() => {
-    if (!statusPath) return undefined
+    if (!statusPath) return undefined;
 
-    let cancelled = false
+    let cancelled = false;
     fetchRows(statusPath, bindings).then((next) => {
-      if (!cancelled) setRows(next)
-    })
+      if (!cancelled) setRows(next);
+    });
 
-    return () => { cancelled = true }
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusPath, bindingKey])
+  }, [statusPath, bindingKey]);
 
   /**
    * A hover label for a coloured area, built from the field a row names.
@@ -64,11 +64,11 @@ export const useChoropleth = ({ choropleth, bindings, bindingKey }) => {
    * also name it -- nested or as a flat `TABLE.COLUMN` key alike.
    */
   const tooltip = useMemo(() => {
-    const field = choropleth?.tooltip
-    if (!field) return undefined
-    const read = reader(field)
-    return (feature) => read(feature?.properties) ?? null
-  }, [choropleth])
+    const field = choropleth?.tooltip;
+    if (!field) return undefined;
+    const read = reader(field);
+    return (feature) => read(feature?.properties) ?? null;
+  }, [choropleth]);
 
-  return { coloured, statusPath, rows, tooltip }
-}
+  return { coloured, statusPath, rows, tooltip };
+};

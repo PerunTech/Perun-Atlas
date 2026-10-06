@@ -1,7 +1,7 @@
 import { React } from 'perun-core';
 import { rangeOf, sameWindow } from '../lib/dates';
 
-const { useState } = React
+const { useState } = React;
 
 /**
  * The date window a service path asks for, and the controls that move it.
@@ -23,9 +23,9 @@ const { useState } = React
  * @param {Function} [params.onMoved]
  */
 export const useDateWindow = ({ presets = [], defaultMonths, servicePath, opening, onMoved }) => {
-  const initial = defaultMonths ?? presets[presets.length - 1]?.months ?? 12
-  const [preset, setPreset] = useState(opening ? null : initial)
-  const [range, setRange] = useState(() => opening ?? rangeOf(initial))
+  const initial = defaultMonths ?? presets[presets.length - 1]?.months ?? 12;
+  const [preset, setPreset] = useState(opening ? null : initial);
+  const [range, setRange] = useState(() => opening ?? rangeOf(initial));
 
   /**
    * Whether this map is scoped to a date window.
@@ -42,7 +42,7 @@ export const useDateWindow = ({ presets = [], defaultMonths, servicePath, openin
    * the key its effect depends on. On a path with no window that is a refetch of
    * a byte-identical URL, with the count blanked while it is in flight.
    */
-  const timeScoped = /\{(from|to)\}/.test(servicePath ?? '')
+  const timeScoped = /\{(from|to)\}/.test(servicePath ?? '');
 
   /**
    * Move the date window, and clear what belonged to the old one.
@@ -65,18 +65,18 @@ export const useDateWindow = ({ presets = [], defaultMonths, servicePath, openin
    * question about the control rather than about the data.
    */
   const applyWindow = (next, months) => {
-    setPreset(months)
-    if (sameWindow(next, range)) return
-    setRange(next)
-    onMoved?.()
-  }
+    setPreset(months);
+    if (sameWindow(next, range)) return;
+    setRange(next);
+    onMoved?.();
+  };
 
-  const applyPreset = (months) => applyWindow(rangeOf(months), months)
+  const applyPreset = (months) => applyWindow(rangeOf(months), months);
 
-  const onRangeChange = (next) => applyWindow(next, null)
+  const onRangeChange = (next) => applyWindow(next, null);
 
   /** Offering the longest range is only an offer while the range is shorter than it. */
-  const longest = presets[presets.length - 1]
+  const longest = presets[presets.length - 1];
 
-  return { timeScoped, preset, range, applyPreset, onRangeChange, longest, initial }
-}
+  return { timeScoped, preset, range, applyPreset, onRangeChange, longest, initial };
+};

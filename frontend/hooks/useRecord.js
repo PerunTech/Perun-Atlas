@@ -1,7 +1,7 @@
 import { React } from 'perun-core';
 import { matchesIdentity } from '../data/feature';
 
-const { useEffect, useState } = React
+const { useEffect, useState } = React;
 
 /**
  * The record behind a click, and which feature the screen is about.
@@ -17,7 +17,7 @@ const { useEffect, useState } = React
  * @param {boolean} params.drawing   - Whether the draw tool is armed; see `openRecord`.
  */
 export const useRecord = ({ subject, drawing }) => {
-  const [record, setRecord] = useState(null)
+  const [record, setRecord] = useState(null);
 
   /**
    * The record on screen, drawn as itself.
@@ -28,7 +28,7 @@ export const useRecord = ({ subject, drawing }) => {
    * here: the feature whose identity is the record's gets the caller's
    * descriptor, every other one keeps the one it arrived with.
    */
-  const isSubject = (feature) => matchesIdentity(feature, subject?.id, subject?.match)
+  const isSubject = (feature) => matchesIdentity(feature, subject?.id, subject?.match);
 
   /**
    * A click on a feature opens its record -- unless a shape is being drawn.
@@ -40,16 +40,16 @@ export const useRecord = ({ subject, drawing }) => {
    * thing only.
    */
   const openRecord = (feature, details) => {
-    if (drawing) return
-    if (details) setRecord(details)
-  }
+    if (drawing) return;
+    if (details) setRecord(details);
+  };
 
-  const descriptorFor = (feature) => (subject?.descriptor && isSubject(feature) ? subject.descriptor : null)
+  const descriptorFor = (feature) => (subject?.descriptor && isSubject(feature) ? subject.descriptor : null);
 
   // The record the screen is about is never collapsed into a badge. It sits
   // among its own partners, so it is the first thing a cluster swallows -- and
   // the one point whose position every line on the screen is drawn from.
-  const isPinnedFeature = (feature) => isSubject(feature)
+  const isPinnedFeature = (feature) => isSubject(feature);
 
   /**
    * Escape closes the pane.
@@ -60,11 +60,11 @@ export const useRecord = ({ subject, drawing }) => {
    * trapping focus.
    */
   useEffect(() => {
-    if (!record) return undefined
-    const onKey = (event) => { if (event.key === 'Escape') setRecord(null) }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [record])
+    if (!record) return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') setRecord(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [record]);
 
   return {
     record,
@@ -73,5 +73,5 @@ export const useRecord = ({ subject, drawing }) => {
     isSubject,
     descriptorFor,
     isPinnedFeature
-  }
-}
+  };
+};

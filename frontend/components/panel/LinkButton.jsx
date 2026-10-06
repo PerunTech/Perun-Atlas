@@ -1,7 +1,7 @@
-import { React, elements } from 'perun-core'
+import { React, elements } from 'perun-core';
 
 /** Tabler through perun-core; `ExportButtons` says why. */
-const { Icon } = elements
+const { Icon } = elements;
 
 /**
  * The button that copies a link to this screen as it stands.
@@ -23,4 +23,4 @@ export const LinkButton = ({ viewLink, labels = {} }) => (
     <Icon name={viewLink.copied ? 'IconCheck' : 'IconLink'} size={16} stroke={1.75} aria-hidden='true' />
     {viewLink.copied ? (labels.linkCopied ?? 'Link copied') : (labels.copyLink ?? 'Copy link')}
   </button>
-)
+);

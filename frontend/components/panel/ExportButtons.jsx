@@ -1,4 +1,4 @@
-import { React, elements } from 'perun-core'
+import { React, elements } from 'perun-core';
 
 /**
  * Tabler, through perun-core rather than as a dependency of this package.
@@ -9,7 +9,7 @@ import { React, elements } from 'perun-core'
  * it fails, so every button here keeps a text label beside the icon rather than
  * relying on one.
  */
-const { Icon } = elements
+const { Icon } = elements;
 
 /**
  * The file formats, in the order their buttons stand.
@@ -23,7 +23,7 @@ const FORMATS = [
   { offer: 'csv', icon: 'IconFileTypeCsv', label: 'exportCsv', fallback: 'CSV', save: 'saveCSV' },
   { offer: 'kml', icon: 'IconWorld', label: 'exportKml', fallback: 'KML', save: 'saveKML' },
   { offer: 'shp', icon: 'IconFileTypeZip', label: 'exportShp', fallback: 'Shapefile', save: 'saveShapefile' }
-]
+];
 
 /**
  * The buttons that write the set to a file, one per format the row has not
@@ -44,4 +44,4 @@ export const ExportButtons = ({ exporter, labels = {} }) => (
       </button>
     ))}
   </>
-)
+);

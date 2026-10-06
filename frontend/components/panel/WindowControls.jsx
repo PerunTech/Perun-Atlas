@@ -1,5 +1,5 @@
-import { React } from 'perun-core'
-import { DateRange } from '../DateRange'
+import { React } from 'perun-core';
+import { DateRange } from '../DateRange';
 
 /**
  * The date window: the picker, and the quick ranges beside it.
@@ -39,4 +39,4 @@ export const WindowControls = ({ range, onRangeChange, presets = [], preset, app
       </div>
     )}
   </>
-)
+);

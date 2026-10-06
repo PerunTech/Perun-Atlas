@@ -1,6 +1,6 @@
 import { React } from 'perun-core';
 
-const { useEffect, useRef } = React
+const { useEffect, useRef } = React;
 
 /**
  * The key's switched-off rows, as a layer that draws asynchronously needs them.
@@ -21,19 +21,19 @@ const { useEffect, useRef } = React
  * @returns {{ hiddenRef: Object, filterRef: Object }}
  */
 export const useKeyFilter = (hidden) => {
-  const hiddenRef = useRef(hidden)
-  hiddenRef.current = hidden
+  const hiddenRef = useRef(hidden);
+  hiddenRef.current = hidden;
 
-  const filterRef = useRef(null)
+  const filterRef = useRef(null);
 
   // A click in the key, applied to the set already drawn -- not a fetch.
   // Compared by value, like a layer's context: a caller may build the array
   // afresh on every render.
-  const hiddenKey = JSON.stringify(hidden)
+  const hiddenKey = JSON.stringify(hidden);
   useEffect(() => {
-    filterRef.current?.(hidden)
+    filterRef.current?.(hidden);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hiddenKey])
+  }, [hiddenKey]);
 
-  return { hiddenRef, filterRef }
-}
+  return { hiddenRef, filterRef };
+};

@@ -1,4 +1,4 @@
-import { React } from 'perun-core'
+import { React } from 'perun-core';
 
 /**
  * The panel's `×`, wherever something on it can be closed.
@@ -27,4 +27,4 @@ export const CloseButton = ({ className = 'atlas-panel__close', label, title, on
   >
     ×
   </button>
-)
+);

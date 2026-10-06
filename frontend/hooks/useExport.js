@@ -49,7 +49,7 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
    * button that writes an empty file is worse than no button, because it looks
    * like the export worked.
    */
-  const offer = exportable === false ? null : (exportable && exportable !== true ? exportable : {})
+  const offer = exportable === false ? null : (exportable && exportable !== true ? exportable : {});
 
   /**
    * What the buttons write: the whole set, or what a drawn shape caught.
@@ -59,10 +59,10 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
    * because a reader clicked a centre would be the worst moment to do it -- so
    * until the circle covers a feature the buttons go on offering the set.
    */
-  const narrowed = Boolean(selection?.selecting && selection.feedsExport && selection.count > 0)
-  const source = narrowed ? { type: 'FeatureCollection', features: selection.inside } : set
+  const narrowed = Boolean(selection?.selecting && selection.feedsExport && selection.count > 0);
+  const source = narrowed ? { type: 'FeatureCollection', features: selection.inside } : set;
 
-  const canExport = offer && source && (source.features?.length ?? 0) > 0
+  const canExport = offer && source && (source.features?.length ?? 0) > 0;
 
   /**
    * What the file is called.
@@ -78,7 +78,7 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
     // same name and a guess about which is which.
     narrowed ? `within-${Math.round(selection.radius ?? 0) || 'shape'}` : null,
     timeScoped ? `${range.from}_${range.to}` : today()
-  ].filter(Boolean).join('-')
+  ].filter(Boolean).join('-');
 
   /**
    * The set as the files hold it: in degrees.
@@ -92,7 +92,7 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
    * than anyone saves a file, and a copy of the whole set each time would be
    * work thrown away.
    */
-  const written = () => inDegrees(source, srid, map)
+  const written = () => inDegrees(source, srid, map);
 
   /**
    * What a KML placemark is called.
@@ -108,15 +108,15 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
    * own descriptor rather than coming out blank.
    */
   const nameOf = (feature) => {
-    const named = offer?.name ? valueAt(feature?.properties, offer.name) : null
-    return named === null || named === undefined || named === '' ? nameFor(drawnWith?.(feature), feature) : String(named)
-  }
+    const named = offer?.name ? valueAt(feature?.properties, offer.name) : null;
+    return named === null || named === undefined || named === '' ? nameFor(drawnWith?.(feature), feature) : String(named);
+  };
 
-  const columns = { fields: offer?.fields, exclude: offer?.exclude, labelResolver }
+  const columns = { fields: offer?.fields, exclude: offer?.exclude, labelResolver };
 
-  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(written()), 'application/geo+json')
-  const saveCSV = () => download(`${filename}.csv`, toCSV(written(), columns), 'text/csv;charset=utf-8')
-  const saveKML = () => download(`${filename}.kml`, toKML(written(), { ...columns, nameOf }), 'application/vnd.google-earth.kml+xml')
+  const saveGeoJSON = () => download(`${filename}.geojson`, toGeoJSON(written()), 'application/geo+json');
+  const saveCSV = () => download(`${filename}.csv`, toCSV(written(), columns), 'text/csv;charset=utf-8');
+  const saveKML = () => download(`${filename}.kml`, toKML(written(), { ...columns, nameOf }), 'application/vnd.google-earth.kml+xml');
 
   /**
    * A zip, since a shapefile is several files. Deflating it is the browser's and
@@ -124,7 +124,7 @@ export const useExport = ({ set, selection, exportable, labelResolver, timeScope
    * inside the time a browser still counts a download as the click's.
    */
   const saveShapefile = async () =>
-    download(`${filename}.zip`, await zip(toShapefile(written(), { ...columns, stem: filename })), 'application/zip')
+    download(`${filename}.zip`, await zip(toShapefile(written(), { ...columns, stem: filename })), 'application/zip');
 
-  return { offer, canExport, saveGeoJSON, saveCSV, saveKML, saveShapefile }
-}
+  return { offer, canExport, saveGeoJSON, saveCSV, saveKML, saveShapefile };
+};

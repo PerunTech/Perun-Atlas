@@ -1,10 +1,10 @@
 import { React } from 'perun-core';
 import { identifiersOf, withinCircle } from '../data/select';
 
-const { useMemo } = React
+const { useMemo } = React;
 
 /** What a row gets when it asks for a selection and says nothing else. */
-const DEFAULTS = { id: '{pkid}', join: ',' }
+const DEFAULTS = { id: '{pkid}', join: ',' };
 
 /**
  * What the drawn shape has caught.
@@ -44,13 +44,13 @@ const DEFAULTS = { id: '{pkid}', join: ',' }
  * @returns {Object} `{ selecting, feedsExport, count, total, inside, has, metres, context }`.
  */
 export const useSelection = ({ set, shape, dataSrid, select, map }) => {
-  const asked = select === true ? DEFAULTS : (select ? { ...DEFAULTS, ...select } : null)
+  const asked = select === true ? DEFAULTS : (select ? { ...DEFAULTS, ...select } : null);
 
   // Read off the object rather than depending on it: a menu row arrives as a
   // fresh object on every render of whatever holds it, and depending on the
   // object would recompute the whole set on renders that changed nothing.
-  const { mode, id, join } = asked ?? {}
-  const feedsExport = Boolean(asked) && asked.export !== false
+  const { mode, id, join } = asked ?? {};
+  const feedsExport = Boolean(asked) && asked.export !== false;
 
   return useMemo(() => {
     if (!asked) {
@@ -64,10 +64,10 @@ export const useSelection = ({ set, shape, dataSrid, select, map }) => {
         has: () => false,
         metres: () => null,
         context: null
-      }
+      };
     }
 
-    const answer = withinCircle(set, shape, { srid: dataSrid, mode, map })
+    const answer = withinCircle(set, shape, { srid: dataSrid, mode, map });
 
     return {
       selecting: true,
@@ -94,7 +94,7 @@ export const useSelection = ({ set, shape, dataSrid, select, map }) => {
         ids: identifiersOf(answer.inside, { id, join }),
         geojson: { type: 'FeatureCollection', features: answer.inside }
       }
-    }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [set, shape, dataSrid, map, mode, id, join, feedsExport, Boolean(asked)])
-}
+  }, [set, shape, dataSrid, map, mode, id, join, feedsExport, Boolean(asked)]);
+};

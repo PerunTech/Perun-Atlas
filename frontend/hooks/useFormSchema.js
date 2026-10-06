@@ -2,7 +2,7 @@ import { React } from 'perun-core';
 import { fetchSchema, fetchUISchema, pickFields, usableUI } from '../data/form';
 import { bindPath } from '../data/path';
 
-const { useEffect, useMemo, useState } = React
+const { useEffect, useMemo, useState } = React;
 
 /**
  * What the request for one of these documents depends on.
@@ -13,13 +13,13 @@ const { useEffect, useMemo, useState } = React
  * a table and a session and could not have changed. Resolved, the dependency is
  * the request.
  */
-const requestFor = (path, bindings) => (path ? bindPath(path, bindings ?? {}) : null)
+const requestFor = (path, bindings) => (path ? bindPath(path, bindings ?? {}) : null);
 
 /** A document a row either wrote out or named. */
 const sourceOf = (value) => ({
   path: typeof value === 'string' ? value : null,
   inline: value && typeof value === 'object' ? value : null
-})
+});
 
 /**
  * Where the fields beside a shape come from.
@@ -57,37 +57,37 @@ const sourceOf = (value) => ({
  *          refuse rather than a form to leave empty.
  */
 export const useFormSchema = ({ form, bindings }) => {
-  const { path, inline } = sourceOf(form?.schema)
-  const ui = sourceOf(form?.uiSchema)
+  const { path, inline } = sourceOf(form?.schema);
+  const ui = sourceOf(form?.uiSchema);
 
-  const request = requestFor(path, bindings)
-  const uiRequest = requestFor(ui.path, bindings)
+  const request = requestFor(path, bindings);
+  const uiRequest = requestFor(ui.path, bindings);
 
-  const [fetched, setFetched] = useState(null)
-  const [fetchedUI, setFetchedUI] = useState(null)
-  const [loading, setLoading] = useState(Boolean(path || ui.path))
-  const [failed, setFailed] = useState(false)
+  const [fetched, setFetched] = useState(null);
+  const [fetchedUI, setFetchedUI] = useState(null);
+  const [loading, setLoading] = useState(Boolean(path || ui.path));
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!path && !ui.path) {
-      setFetched(null)
-      setFetchedUI(null)
-      setLoading(false)
+      setFetched(null);
+      setFetchedUI(null);
+      setLoading(false);
       // A `form` block that names neither a schema nor a path is a row that
       // meant to have one. Said here because nothing downstream can tell that
       // apart from a screen with no form at all -- it would just be a Save
       // button above nothing.
-      const misconfigured = Boolean(form) && !inline
+      const misconfigured = Boolean(form) && !inline;
       if (misconfigured) {
-        console.error('perun-atlas: draw.form needs `schema` -- either the schema itself, or the path to a service that answers with one. Got', form?.schema)
+        console.error('perun-atlas: draw.form needs `schema` -- either the schema itself, or the path to a service that answers with one. Got', form?.schema);
       }
-      setFailed(misconfigured)
-      return undefined
+      setFailed(misconfigured);
+      return undefined;
     }
 
-    let cancelled = false
-    setLoading(true)
-    setFailed(false)
+    let cancelled = false;
+    setLoading(true);
+    setFailed(false);
 
     // Together, because they describe one form and arriving apart would render
     // it twice -- once in whatever widgets the schema implies, and again in the
@@ -96,29 +96,29 @@ export const useFormSchema = ({ form, bindings }) => {
       path ? fetchSchema(path, bindings) : Promise.resolve(null),
       ui.path ? fetchUISchema(ui.path, bindings) : Promise.resolve(null)
     ]).then(([schema, layout]) => {
-      if (cancelled) return
-      setFetched(schema)
-      setFetchedUI(layout)
+      if (cancelled) return;
+      setFetched(schema);
+      setFetchedUI(layout);
       // Only the schema. A layout that did not arrive costs the form its
       // widgets; a schema that did not arrive costs it its fields.
-      setFailed(Boolean(path) && !schema)
-      setLoading(false)
-    })
+      setFailed(Boolean(path) && !schema);
+      setLoading(false);
+    });
 
-    return () => { cancelled = true }
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, request, ui.path, uiRequest, Boolean(form), Boolean(inline)])
+  }, [path, request, ui.path, uiRequest, Boolean(form), Boolean(inline)]);
 
   // By value, for the same reason the bindings are: a menu row arrives as a
   // fresh object on every render of whatever holds it, and an array compared by
   // identity would narrow the schema again on each one.
-  const picked = form?.pick?.join('\u0000') ?? null
+  const picked = form?.pick?.join('\u0000') ?? null;
 
   const schema = useMemo(
     () => pickFields(path ? fetched : inline, form?.pick),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [fetched, inline, path, picked]
-  )
+  );
 
   // Filtered whichever way it arrived. The form is the same form, and a widget
   // written into a row by hand is as absent from this registry as one read off
@@ -126,7 +126,7 @@ export const useFormSchema = ({ form, bindings }) => {
   const uiSchema = useMemo(
     () => usableUI(ui.path ? fetchedUI : ui.inline, schema) ?? undefined,
     [fetchedUI, ui.inline, ui.path, schema]
-  )
+  );
 
-  return { schema, uiSchema, loading, failed }
-}
+  return { schema, uiSchema, loading, failed };
+};

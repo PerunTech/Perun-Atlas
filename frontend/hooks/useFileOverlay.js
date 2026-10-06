@@ -3,7 +3,7 @@ import { FILE_LIMITS, fileKind, readFile, readLayers, sizeRefusal } from '../dat
 import { loadModule } from '../lib/modules';
 import { assumedText, refusalText } from '../lib/fileText';
 
-const { useRef, useState } = React
+const { useRef, useState } = React;
 
 /**
  * A promise that settles once the browser has painted.
@@ -18,8 +18,8 @@ const { useRef, useState } = React
  * runs just after one.
  */
 const afterPaint = () => new Promise((resolve) => {
-  requestAnimationFrame(() => setTimeout(resolve, 0))
-})
+  requestAnimationFrame(() => setTimeout(resolve, 0));
+});
 
 /**
  * A picked file's contents, read by whichever reader its first bytes ask for.
@@ -29,20 +29,20 @@ const afterPaint = () => new Promise((resolve) => {
  * card is already up by then, so the reader sees one wait, for the file.
  */
 const readPicked = async (picked) => {
-  const bytes = await picked.arrayBuffer()
-  const kind = fileKind(bytes, picked.name)
-  if (kind === 'text') return readFile(new TextDecoder().decode(bytes))
-  if (kind === 'part') return { refused: 'shapefilePart' }
+  const bytes = await picked.arrayBuffer();
+  const kind = fileKind(bytes, picked.name);
+  if (kind === 'text') return readFile(new TextDecoder().decode(bytes));
+  if (kind === 'part') return { refused: 'shapefilePart' };
 
-  let reader
+  let reader;
   try {
-    reader = await loadModule('shp')
+    reader = await loadModule('shp');
   } catch (err) {
-    console.warn('perun-atlas: the shapefile reader could not be loaded', err)
-    return { refused: 'readerUnavailable' }
+    console.warn('perun-atlas: the shapefile reader could not be loaded', err);
+    return { refused: 'readerUnavailable' };
   }
-  return readLayers(await reader.readShapefile(bytes, { kind, limit: FILE_LIMITS.bytes }))
-}
+  return readLayers(await reader.readShapefile(bytes, { kind, limit: FILE_LIMITS.bytes }));
+};
 
 /**
  * A file the reader opened over the map, or why one was not opened.
@@ -64,19 +64,19 @@ const readPicked = async (picked) => {
  *        the panel can switch the key's file row back on for the next one.
  */
 export const useFileOverlay = ({ overlay, labels, onChange }) => {
-  const offered = overlay !== false
+  const offered = overlay !== false;
 
   /** `{ name, collection, count }`, the collection in degrees. */
-  const [file, setFile] = useState(null)
+  const [file, setFile] = useState(null);
 
   /** What to tell the reader about the last file that did not open. */
-  const [refusal, setRefusal] = useState(null)
+  const [refusal, setRefusal] = useState(null);
 
   /**
    * What to tell the reader about the file that is open: that a shapefile with
    * no `.prj` was read as longitude and latitude. It goes with the file.
    */
-  const [note, setNote] = useState(null)
+  const [note, setNote] = useState(null);
 
   /**
    * The name of the file being read and drawn, or null.
@@ -85,9 +85,9 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
    * reports that it has drawn -- not when reading ends, because drawing a large
    * file takes as long again. A refusal, a close and a failed draw clear it too.
    */
-  const [opening, setOpening] = useState(null)
+  const [opening, setOpening] = useState(null);
 
-  const inputRef = useRef(null)
+  const inputRef = useRef(null);
 
   /**
    * Which pick is the latest.
@@ -95,43 +95,43 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
    * Reading is asynchronous, and a large file takes long enough for a reader to
    * pick another one. Whichever was picked last wins, however the reads finish.
    */
-  const latest = useRef(0)
+  const latest = useRef(0);
 
-  const choose = () => inputRef.current?.click()
+  const choose = () => inputRef.current?.click();
 
   const open = async (picked) => {
-    const ticket = ++latest.current
+    const ticket = ++latest.current;
 
     // Too large is known before a byte is read, so it is said at once, with no
     // card in between.
-    let result = sizeRefusal(picked.size)
+    let result = sizeRefusal(picked.size);
     if (!result) {
-      setOpening(picked.name)
-      await afterPaint()
-      if (ticket !== latest.current) return
+      setOpening(picked.name);
+      await afterPaint();
+      if (ticket !== latest.current) return;
 
       try {
-        result = await readPicked(picked)
+        result = await readPicked(picked);
       } catch (err) {
-        console.warn('perun-atlas: a file could not be read', err)
-        result = { refused: 'unreadable' }
+        console.warn('perun-atlas: a file could not be read', err);
+        result = { refused: 'unreadable' };
       }
     }
-    if (ticket !== latest.current) return
+    if (ticket !== latest.current) return;
 
     if (result.refused) {
-      setOpening(null)
-      setRefusal(refusalText(result, picked.name, labels))
-      return
+      setOpening(null);
+      setRefusal(refusalText(result, picked.name, labels));
+      return;
     }
 
     // `opening` stays set: the overlay draws this after the render, and says
     // when it has through `drawn`.
-    setRefusal(null)
-    setNote(result.assumed ? assumedText(picked.name, labels) : null)
-    setFile({ name: picked.name, collection: result.collection, count: result.collection.features.length })
-    onChange?.()
-  }
+    setRefusal(null);
+    setNote(result.assumed ? assumedText(picked.name, labels) : null);
+    setFile({ name: picked.name, collection: result.collection, count: result.collection.features.length });
+    onChange?.();
+  };
 
   /**
    * The input's `change`.
@@ -141,28 +141,28 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
    * rather than nothing.
    */
   const onPicked = (event) => {
-    const picked = event.target.files?.[0]
-    event.target.value = ''
-    if (picked) open(picked)
-  }
+    const picked = event.target.files?.[0];
+    event.target.value = '';
+    if (picked) open(picked);
+  };
 
   const close = () => {
-    latest.current += 1
-    setOpening(null)
-    setNote(null)
-    setFile(null)
-    onChange?.()
-  }
+    latest.current += 1;
+    setOpening(null);
+    setNote(null);
+    setFile(null);
+    onChange?.();
+  };
 
   /** The overlay has drawn the file, so the card can come down. */
-  const drawn = () => setOpening(null)
+  const drawn = () => setOpening(null);
 
   /** The engine refused to draw a file the reader passed. Said the way a refusal is. */
   const failed = () => {
-    if (!file) return
-    setRefusal(refusalText({ refused: 'unreadable' }, file.name, labels))
-    close()
-  }
+    if (!file) return;
+    setRefusal(refusalText({ refused: 'unreadable' }, file.name, labels));
+    close();
+  };
 
   return {
     offered,
@@ -178,5 +178,5 @@ export const useFileOverlay = ({ overlay, labels, onChange }) => {
     failed,
     dismiss: () => setRefusal(null),
     dismissNote: () => setNote(null)
-  }
-}
+  };
+};

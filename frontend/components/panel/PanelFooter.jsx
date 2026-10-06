@@ -1,4 +1,4 @@
-import { React } from 'perun-core'
+import { React } from 'perun-core';
 
 /**
  * The line under the map: the window being shown, the way back to the one the
@@ -35,4 +35,4 @@ export const PanelFooter = ({ timeScoped, range, initial, applyPreset, onClose, 
       )}
     </div>
   </div>
-)
+);

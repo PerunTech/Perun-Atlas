@@ -4,8 +4,8 @@ import { fillBody, postTo, shapeContext } from '../data/save';
 import { useFormSchema } from './useFormSchema';
 import { useSelection } from './useSelection';
 
-const { useMemo, useState } = React
-const { alertUserResponse } = elements
+const { useMemo, useState } = React;
+const { alertUserResponse } = elements;
 
 /**
  * Which icon an answer gets, when the answer cannot say for itself.
@@ -20,7 +20,7 @@ const { alertUserResponse } = elements
  * keeps it, because `WARNING` is a thing this cannot work out from a body it
  * does not read and a status it was not given.
  */
-const alertType = (data, ok) => (data?.type ? undefined : (ok ? 'success' : 'error'))
+const alertType = (data, ok) => (data?.type ? undefined : (ok ? 'success' : 'error'));
 
 /**
  * Drawing a shape and sending it somewhere.
@@ -65,12 +65,12 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
    */
   // A save or a selection. Either is a reason to put a shape on the map, and a
   // screen that draws a radius to see what falls inside it has nothing to send.
-  const drawable = Boolean(draw?.save?.onSave || draw?.select)
-  const [drawing, setDrawing] = useState(false)
-  const [shape, setShape] = useState(null)
-  const [note, setNote] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [reload, setReload] = useState(0)
+  const drawable = Boolean(draw?.save?.onSave || draw?.select);
+  const [drawing, setDrawing] = useState(false);
+  const [shape, setShape] = useState(null);
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [reload, setReload] = useState(0);
 
   /**
    * The fields beside the shape, when a row describes them with a schema.
@@ -83,9 +83,9 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
    *
    * Seeded from the row, so a screen can open with a value already in it.
    */
-  const [formData, setFormData] = useState(() => draw?.form?.data ?? {})
+  const [formData, setFormData] = useState(() => draw?.form?.data ?? {});
 
-  const fields = useFormSchema({ form: draw?.form, bindings })
+  const fields = useFormSchema({ form: draw?.form, bindings });
 
   /**
    * Whether the form is answerable as it stands.
@@ -107,9 +107,9 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
    * asked for that and nothing else: what gets sent is still what was typed.
    */
   const formErrors = useMemo(() => {
-    if (!fields.schema) return []
-    return validator.validateFormData(withGroups(formData, fields.schema), fields.schema)?.errors ?? []
-  }, [formData, fields.schema])
+    if (!fields.schema) return [];
+    return validator.validateFormData(withGroups(formData, fields.schema), fields.schema)?.errors ?? [];
+  }, [formData, fields.schema]);
 
   /**
    * What the shape covers, when a row asked.
@@ -118,17 +118,17 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
    * storing it would be a second copy of an answer that changes on every
    * keystroke in the radius field.
    */
-  const selection = useSelection({ set, shape, dataSrid, select: draw?.select, map })
+  const selection = useSelection({ set, shape, dataSrid, select: draw?.select, map });
 
   /** Nothing drawn and nothing pending. */
   const clearDrawing = () => {
-    setDrawing(false)
-    setShape(null)
-    setNote('')
+    setDrawing(false);
+    setShape(null);
+    setNote('');
     // Back to what the row seeded, not to empty: a screen that opens with a
     // value in a field should open that way again after a discard.
-    setFormData(draw?.form?.data ?? {})
-  }
+    setFormData(draw?.form?.data ?? {});
+  };
 
   /**
    * Send the drawn shape to the service the row named.
@@ -151,7 +151,7 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
    * the drawn shape, which is not the same question as what to put on screen.
    */
   const saveShape = async () => {
-    if (!shape || saving) return
+    if (!shape || saving) return;
 
     // A form that was configured and is not here. The button is already
     // disabled for this, and it is guarded again because the button is one
@@ -159,8 +159,8 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
     // otherwise post a body with every field the form was carrying missing,
     // and the record would be written.
     if (draw.form && !fields.schema) {
-      console.error('perun-atlas: nothing sent -- this row configures a form and its fields are not loaded.')
-      return
+      console.error('perun-atlas: nothing sent -- this row configures a form and its fields are not loaded.');
+      return;
     }
 
     // A form that is not answered. Said out loud rather than returned quietly,
@@ -171,12 +171,12 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
       alertUserResponse({
         type: 'error',
         response: labels.saveIncomplete ?? 'Some of these fields are mandatory and are empty. Nothing was sent.'
-      })
+      });
       console.error(
         'perun-atlas: nothing sent -- the form is not answerable as it stands:',
         formErrors.map((error) => `${error.property ?? ''} ${error.message ?? ''}`.trim()).join('; ')
-      )
-      return
+      );
+      return;
     }
 
     const { context, units, tooSmall } = shapeContext(shape, {
@@ -187,7 +187,7 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
       selected: selection.context,
       form: formData,
       map
-    })
+    });
 
     // Said here, before the request, because this is the one place that knows
     // both numbers. The service cannot tell the difference, and the reader would
@@ -197,33 +197,33 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
         type: 'error',
         response: labels.saveTooSmall
           ?? `This deployment stores geometry in EPSG:${dataSrid ?? '?'}, where ${Math.round(shape.radius)} m is less than one unit. Nothing was sent.`
-      })
+      });
       console.error(
         `perun-atlas: a radius of ${Math.round(shape.radius)} m is ${units} units in `
         + `EPSG:${dataSrid}, which rounds to zero. A projection measured in degrees cannot carry an `
         + 'integer radius: send {draw.metres} for the size and {draw.ring} for the shape instead.'
-      )
+      );
       // The path as it reached the browser, because that is the thing to change
       // and the row it came from has already had its %TOKEN%s substituted --
       // so this is the only place the two halves are visible together.
-      console.error('perun-atlas: the configured path is', draw.save.onSave)
-      return
+      console.error('perun-atlas: the configured path is', draw.save.onSave);
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
 
     const answer = await postTo(draw.save.onSave, context, {
       body: draw.save.body === undefined ? undefined : fillBody(draw.save.body, context),
       contentType: draw.save.contentType,
       encoding: draw.save.encoding,
       failure: draw.save.failure
-    })
+    });
 
-    setSaving(false)
+    setSaving(false);
 
     if (answer.ok) {
-      clearDrawing()
-      setReload((n) => n + 1)
+      clearDrawing();
+      setReload((n) => n + 1);
     }
 
     // The body as it arrived, or the transport's own words when there is no body
@@ -232,8 +232,8 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
     alertUserResponse({
       response: answer.data || answer.message,
       type: alertType(answer.data, answer.ok)
-    })
-  }
+    });
+  };
 
   return {
     drawable,
@@ -269,5 +269,5 @@ export const useDrawnShape = ({ draw, dataSrid, set, bindings, labels = {}, map 
     finishDrawing: () => setDrawing(false),
     clearDrawing,
     saveShape
-  }
-}
+  };
+};
