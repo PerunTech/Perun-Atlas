@@ -1,6 +1,6 @@
 {
   "name": "perun-atlas",
-  "version": "1.0.0",
+  "version": "1.0.0-rc.1",
   "description": "Shared map layer for svarog bundles.",
   "main": "backend/www/perun-atlas.js",
   "repository": {

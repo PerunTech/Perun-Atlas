@@ -129,6 +129,45 @@ Loaded by the shell as an `IPerunPlugin` script. Its `sortOrder` (4) must stay
 above `spatial`'s (3): this bundle resolves the `spatial` global as its own script
 evaluates, so spatial has to load first.
 
+## Versions
+
+The version is the one in `backend/pom.xml`: the OSGi bundle the shell loads this
+from carries it as its `Bundle-Version`. Between releases the pom names the next
+one with `-SNAPSHOT`, as Maven expects. spatial is versioned the same way.
+
+`package.json` names the last version cut, a release or a release candidate,
+and the bundle's `version` export reports it at runtime. Each is tagged with its
+number, as a lightweight tag, on the commit whose `package.json` says it. That
+commit names its git dependencies by tag or by commit, never by branch.
+
+- A candidate sets `package.json` to the pom's number with `-rc.N`
+  (`1.0.0-rc.1`), rebuilds the bundle, and is tagged. The pom keeps its
+  `-SNAPSHOT`, so nothing is released to Maven.
+- A release drops the `-SNAPSHOT` from the pom, sets `package.json` to the same
+  number, rebuilds, and is tagged (`1.0.0`). The next commit moves the pom to
+  the next snapshot, and `package.json` stays until the next candidate. Push the
+  release commit on its own first: CI deploys only the commit at the head of a
+  push, so pushed together with the snapshot it would never be deployed.
+
+Push each tag by name (`git push origin 1.0.0-rc.1`); `--follow-tags` skips
+lightweight tags. A consumer depends on this package by tag:
+
+```json
+"perun-atlas": "git+https://git@gitlab.prtech.mk/svarog4/perun-atlas#semver:^1.0.0-rc.1"
+```
+
+pnpm takes the newest tag in the range, and the lockfile records its commit.
+`^1.0.0-rc.1` takes candidates of 1.0.0 and then 1.0.0 itself, once a
+`pnpm update perun-atlas` asks for it; `^1.0.0` skips candidates. spatial
+arrives with this package, at the version it names, so a consumer names no
+spatial of its own. perun-core it pins itself, by commit and with an override,
+because this package and spatial each declare one and only the consumer's
+override makes them one copy.
+
+The tags have to stay lightweight: for an annotated tag pnpm 9 and 10 record
+the tag's own hash and pnpm 11 the commit's, and pnpm 11 then refuses a lockfile
+the others wrote.
+
 ## Reading a response
 
 Every fetch logs what came back, on every environment, with nothing to switch on.
