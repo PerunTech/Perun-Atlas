@@ -10,10 +10,10 @@
   "dependencies": {
     "@tmcw/togeojson": "^7.1.2",
     "but-unzip": "^0.1.10",
-    "perun-core": "git+https://git@gitlab.prtech.mk/svarog4/perun-core#dev",
+    "perun-core": "git+https://git@gitlab.prtech.mk/svarog4/perun-core#8552d71e0f3d75e997f0423cd4dbfd7a3e889361",
     "proj4": "2.10.0",
     "shpjs": "^6.2.0",
-    "spatial": "git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#dev"
+    "spatial": "git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#semver:^4.2.1-rc.1"
   },
   "engines": {
     "node": ">=22.12.0"
