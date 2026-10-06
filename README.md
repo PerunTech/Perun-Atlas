@@ -87,8 +87,9 @@ pnpm run lint      # what CI asks; lint:fix repairs your working tree instead
 ```
 
 Vitest, no DOM. Everything under test is the half of this package that does not
-need a map: projections and rings, descriptors and palettes, the join, the CSV
-and the KML, the save body and its verdict, and the files a reader opens. The
+need a map: the settings and where each comes from, projections and rings,
+descriptors and palettes, the join, the CSV and the KML, the save body and its
+verdict, and the files a reader opens. The
 shapefiles among those are in `test/fixtures/shapefiles/`, made by GDAL with the
 script beside them.
 
