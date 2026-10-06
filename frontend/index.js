@@ -12,7 +12,7 @@ import { AtlasMap, Choropleth, CirclePicker, ConfiguredMap, DateRange, DrawBar, 
  *
  * A library plugin: it exports components and helpers, and registers no routes of
  * its own. Consumers take this rather than `spatial`, so that the engine's API has
- * exactly one caller and its 2.0 migration has exactly one place to happen.
+ * exactly one caller and a change to it has exactly one place to happen.
  *
  * Loaded by the shell as an IPerunPlugin script. Its sort order must place it
  * after spatial, whose global this bundle resolves as it evaluates.

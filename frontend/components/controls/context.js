@@ -6,12 +6,10 @@ const { createContext, useContext } = React;
 /**
  * The map an `AtlasMap` is showing, for everything it renders.
  *
- * A control reads its map from here rather than naming the engine's, which is
- * what lets one component serve whichever map it is put on. Today that is
- * always the page's map, the one instance spatial builds as its script
- * evaluates and `AtlasMap` adopts. Once `AtlasMap` builds a map of its own per
- * mount, this is where that map is handed down, and nothing that reads it has
- * to change.
+ * A control or a layer reads its map from here rather than naming the
+ * engine's, which is what lets one component serve whichever map it is put on.
+ * Each `AtlasMap` builds a map of its own, and this is where it hands that map
+ * down, so two of them on one page each draw on their own.
  *
  * Not exported from the package: no consumer reads the map yet, and a screen
  * that needs it has `onReady`.

@@ -61,9 +61,9 @@ export const ZOOM_LABELS = {
 /**
  * Unique enough for `aria-describedby`, and stable across a re-render.
  *
- * Only one map can be mounted at a time, so a counter is more than this needs --
- * but an id that collides is an id that points a screen reader at the wrong
- * control, and a counter costs a line.
+ * More than one map can be on a page, each with a rail, and an id that collides
+ * is an id that points a screen reader at the wrong control. A counter costs a
+ * line.
  */
 let instances = 0;
 
@@ -122,8 +122,8 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
     // limits arrives, which is how a basemap narrows the range under us.
     map.on('zoomlevelschange', readRange);
 
-    // The map is adopted rather than created here, so it may have moved between
-    // this state being initialised and the listeners being attached.
+    // The map is AtlasMap's rather than this control's, so it may have moved
+    // between this state being initialised and the listeners being attached.
     readRange();
 
     return () => {

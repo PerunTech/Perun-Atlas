@@ -127,7 +127,8 @@ Add a setting by adding a row to `frontend/config/Schema.js` and nothing else.
 
 Loaded by the shell as an `IPerunPlugin` script. Its `sortOrder` (4) must stay
 above `spatial`'s (3): this bundle resolves the `spatial` global as its own script
-evaluates, so spatial has to load first.
+evaluates, so spatial has to load first. The deployment's spatial has to be 4.2.1
+or later (see "A map per mount").
 
 ## Versions
 
@@ -197,13 +198,21 @@ shape a service takes when it has written a plain-text error into the stream
 instead of a protobuf body, it would otherwise be indistinguishable from a query
 that legitimately matched nothing, and the body is where the message is.
 
-## Known constraint
+## A map per mount
 
-`spatial` constructs one Leaflet map when its script evaluates, so `AtlasMap`
-adopts that instance rather than creating one, and only one may be mounted at a
-time. Lifting this is the point of `createMap`, which arrives with spatial 4.2.1:
-once `AtlasMap` builds a map per mount with it, it hands that map to its controls
-through the context they already read it from, and no consumer is affected.
+`AtlasMap` builds a map of its own each time it mounts, with spatial's
+`createMap`, and removes it on unmount, with its layers, its controls and its
+drawing tools. So a page can show more than one, such as a panel and a picker in
+a dialog over it, and each draws, measures and clusters on its own. The controls
+and layers an `AtlasMap` renders read its map from a context, and `onReady`
+hands it out. A map takes the deployment's settings as they stand when it is
+built and does not follow them afterwards.
+
+This needs spatial 4.2.1 or later; `4.2.1-rc.1` is the first build that has it.
+On an older spatial, which has only the one map it builds as its script
+evaluates, `AtlasMap` renders a refusal naming the version and passes the same
+error to `onError`. Before 1.0.0 this package borrowed that one map
+instead, so only one `AtlasMap` could be mounted at a time.
 
 ## Scope
 

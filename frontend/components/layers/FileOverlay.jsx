@@ -1,11 +1,12 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
 import { fromDegrees } from '../../data';
+import { useAtlasMap } from '../controls/context';
 import { OVERLAY_POINT, OVERLAY_STYLE, overlayRecord } from '../../appearance/overlay';
 import { FIT_PADDING } from '../../lib/zoom';
 import '../../style/overlay.css';
 
-const { Map, factory } = core;
+const { factory } = core;
 const { useEffect, useRef } = React;
 
 /**
@@ -22,8 +23,8 @@ const { useEffect, useRef } = React;
 const POINT_PANE = 'atlasFilePoints';
 const POINT_PANE_Z = 620;
 
-const pointPane = () => {
-  if (!Map.getPane(POINT_PANE)) Map.createPane(POINT_PANE).style.zIndex = String(POINT_PANE_Z);
+const pointPane = (map) => {
+  if (!map.getPane(POINT_PANE)) map.createPane(POINT_PANE).style.zIndex = String(POINT_PANE_Z);
   return POINT_PANE;
 };
 
@@ -55,6 +56,7 @@ const pointPane = () => {
  *        file: a geometry the reader passed as well-formed and Leaflet did not.
  */
 export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatureClick, onDrawn, onError }) => {
+  const map = useAtlasMap();
   const groupRef = useRef(null);
 
   // Read when the file draws and when a feature is clicked, not when either is
@@ -73,8 +75,12 @@ export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatu
 
     let group;
     try {
-      group = factory.geoJSON(fromDegrees(file.collection, srid), {
-        pointToLayer: (feature, latlng) => factory.circleMarker(latlng, { ...OVERLAY_POINT, pane: pointPane() }),
+      group = factory.geoJSON(fromDegrees(file.collection, srid, map), {
+        // Read back through this map's projection, the one `fromDegrees` fell
+        // back on. An engine without the option reads the page's, which is the
+        // same one.
+        crs: map.getCRS(),
+        pointToLayer: (feature, latlng) => factory.circleMarker(latlng, { ...OVERLAY_POINT, pane: pointPane(map) }),
         // By geometry, because a circle marker is a path too: Leaflet's GeoJSON
         // layer applies `style` to it after `pointToLayer`, and one style for
         // everything turned every ring into a faint dashed disc.
@@ -95,7 +101,7 @@ export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatu
     }
 
     groupRef.current = group;
-    if (!hiddenRef.current) group.addTo(Map);
+    if (!hiddenRef.current) group.addTo(map);
 
     /**
      * Framed once, when the file opens.
@@ -107,25 +113,25 @@ export const FileOverlay = ({ file, srid, hidden = false, labelResolver, onFeatu
     if (framedRef.current !== file) {
       framedRef.current = file;
       const bounds = group.getBounds();
-      if (bounds.isValid()) Map.fitBounds(bounds, { padding: FIT_PADDING });
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: FIT_PADDING });
     }
 
     handlers.current.onDrawn?.();
 
     return () => {
-      Map.removeLayer(group);
+      map.removeLayer(group);
       groupRef.current = null;
     };
-  }, [file, srid]);
+  }, [map, file, srid]);
 
   // A click in the key. The layers are kept, so switching the file back on
   // costs nothing and does not move the view.
   useEffect(() => {
     const group = groupRef.current;
     if (!group) return;
-    if (hidden) Map.removeLayer(group);
-    else if (!Map.hasLayer(group)) group.addTo(Map);
-  }, [hidden]);
+    if (hidden) map.removeLayer(group);
+    else if (!map.hasLayer(group)) group.addTo(map);
+  }, [map, hidden]);
 
   return null;
 };

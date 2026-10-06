@@ -16,7 +16,6 @@ import { ZoomBar } from './controls/ZoomBar';
 import { ZoomRail, ZOOM_LABELS } from './controls/ZoomRail';
 import '../style/controls.css';
 
-const { Map } = core;
 const { useEffect, useMemo, useRef, useState } = React;
 
 /**
@@ -25,7 +24,7 @@ const { useEffect, useMemo, useRef, useState } = React;
  * Consumers embed this and add layers through the children render prop; nothing
  * outside perun-atlas should need to touch spatial's `Map` or `factory`.
  *
- * Controls: spatial's map is built with its own zoom and attribution controls
+ * Controls: spatial builds a map with its own zoom and attribution controls
  * switched off, because its toolbar supplies them and this component does not
  * mount that toolbar. Both are put on here instead — zoom on by default, in the
  * bottom right, positionable with `zoomControl` / `zoomPosition` and drawn as a
@@ -65,43 +64,17 @@ const { useEffect, useMemo, useRef, useState } = React;
  * `view` opens the map somewhere other than the deployment's own centre and
  * zoom, on a basemap other than the first: `{ center: [lat, lng], zoom,
  * basemap }`, any of them, as a link carries them. Read once, when the map is
- * adopted. A basemap the catalogue does not list, or no longer lists, falls
+ * built. A basemap the catalogue does not list, or no longer lists, falls
  * back to the first, so an old link still opens.
  *
- * Note on lifecycle: spatial constructs a single Leaflet map when its script
- * evaluates, so this component adopts that instance rather than creating one, and
- * hands it back on unmount. That is the constraint `createMap`, new in spatial
- * 4.2.1, lifts: once this component builds a map of its own, the context hands that
- * map to the controls instead, and no consumer is affected. It also means two AtlasMaps cannot be shown at once, which is fine for
- * an embedded panel and is checked for rather than left to fail obscurely.
+ * Note on lifecycle: each mount builds a map of its own with spatial's
+ * `createMap`, new in 4.2.1, and removes it on unmount, which takes its layers,
+ * its controls and its tools with it. So any number of AtlasMaps can be shown
+ * at once, each with its own view, and everything one renders reads that one's
+ * map from the context. The page's map, the one spatial builds as its script
+ * evaluates, is left alone. An engine from before `createMap` has only that
+ * one to offer, and gets a refusal naming the version instead of a map.
  */
-
-let mounted = false;
-
-/**
- * The layers spatial puts on its own map when it builds it: empty groups that
- * its tools draw into. They belong to the engine, not to a screen, and a screen
- * that removes them leaves those tools drawing into nothing.
- *
- * Read here rather than inside the component, because module scope is the one
- * moment that is after spatial's script and before any screen has mounted.
- */
-const engineLayers = new Set();
-Map.eachLayer(layer => engineLayers.add(layer));
-
-/**
- * Take off everything a screen put on, and leave the engine's own layers.
- *
- * The map is one instance shared with anything else in the page that draws on
- * spatial directly -- a coordinate picker, a legacy screen -- and there is no
- * guarantee the previous tenant removed what it added. So adopt it clean and
- * hand it back clean, and neither side inherits the other's layers.
- */
-const clearLayers = () => {
-  const added = [];
-  Map.eachLayer(layer => { if (!engineLayers.has(layer)) added.push(layer); });
-  added.forEach(layer => Map.removeLayer(layer));
-};
 
 export const AtlasMap = ({
   session,
@@ -133,14 +106,12 @@ export const AtlasMap = ({
   children
 }) => {
   const containerRef = useRef(null);
-  const adoptedStyleRef = useRef(null);
-  // The listener that moves the rail's tile ceiling when the reader picks
-  // another basemap. The controls' own listeners go with the controls.
-  const baseOffRef = useRef(null);
-  // The map and the settings it was set up with, once it is adopted, which is
+  // The map this mount built, for the cleanup and the resize observer.
+  const mapRef = useRef(null);
+  // The map and the settings it was built with, once it is built, which is
   // when the controls go on it; and the basemaps and overlays once they are in,
   // which is when the switcher and the children do.
-  const [adopted, setAdopted] = useState(null);
+  const [built, setBuilt] = useState(null);
   const [layers, setLayers] = useState(null);
   const ready = layers !== null;
   const [failure, setFailure] = useState(null);
@@ -149,61 +120,49 @@ export const AtlasMap = ({
   useEffect(() => {
     let cancelled = false;
 
-    if (mounted) {
+    if (typeof core.createMap !== 'function') {
       const err = new Error(
-        'perun-atlas: a map is already mounted. spatial provides one instance per page ' +
-        'until 2.0 introduces createMap; render at most one AtlasMap at a time.'
+        'perun-atlas: this map needs spatial 4.2.1 or later, which builds a map per ' +
+        'screen with createMap. The spatial on this page has no createMap, so no map is shown.'
       );
       setFailure(err);
       onError?.(err);
       return undefined;
     }
-    mounted = true;
 
     const start = async () => {
       try {
         const config = await resolve(overrides);
         if (cancelled) return;
 
-        // Where the settings are about to put the map, first, and without
-        // animating. The engine applies them by calling the map's own setters,
-        // and on the first screen of a page the map is still at zoom 0: raising
-        // the floor to the deployment's minimum zooms it, and Leaflet animates
-        // that zoom -- towards 0,0 -- a frame and a quarter of a second after the
-        // call. By then the view below is set, and the animation ends on top of
-        // it. A set framed on its data usually arrives later and hides it; a set
-        // that comes back empty, and a view opened from a link, are left at 0,0
-        // at the minimum zoom. Found in the bench on 29 September, with spatial
-        // from 3f7151d, the build that called itself 5.0, to its newest alike. At
-        // the settings' own zoom there is nothing for those setters to animate.
-        Map.setView(config.center, config.zoom, { animate: false });
-
-        // Push what the deployment declared into the engine before the map is
-        // otherwise touched, so spatial reads this rather than globals from the page.
+        // Push what the deployment declared into the engine first, so spatial
+        // reads this rather than globals from the page. A map takes the
+        // settings as they stand when it is built, and does not follow them
+        // afterwards.
         applyToEngine(config);
 
-        // Adopt spatial's container directly rather than calling Map.render(),
-        // which reaches for the host's navbar and footer and hides them.
-        const element = Map.getContainer();
-
-        // spatial builds that container with an inline `height: 100vh`, so it
-        // sizes itself to the window and ignores the box it is put in --
-        // overflowing a short panel and leaving a tall one half empty.
-        // Deployments have been undoing it per screen with rules like
-        // `#holding-map #map { height: 100% !important }`. Take it over while
-        // the map is ours, and hand it back exactly as we found it.
-        adoptedStyleRef.current = { height: element.style.height, width: element.style.width };
+        // A box of the map's own inside the container, rather than the container
+        // itself: Leaflet adds its classes and an inline position to the element
+        // it is given, and a re-render with another `className` or `style` would
+        // take them off again. It has the shape of spatial's `#map`, which this
+        // component used to borrow, filling its box, so the deployment's
+        // stylesheets meet what they met before. Not the id: there can be two.
+        const element = document.createElement('div');
         element.style.height = '100%';
         element.style.width = '100%';
-
         containerRef.current?.appendChild(element);
 
-        clearLayers();
-
-        Map.setMinZoom(config.minZoom).setMaxZoom(config.maxZoom);
-        // Not animated either: a zoom animation on a map still being assembled
-        // lands after whatever comes next, which is the case above again.
-        Map.setView(view?.center ?? config.center, view?.zoom ?? config.zoom, { animate: false });
+        // Built where the view says and inside the zoom limits from the start,
+        // so nothing is animated into place on a map still being assembled. A
+        // part the link leaves out is undefined, and `createMap` then takes the
+        // setting.
+        const map = core.createMap(element, {
+          center: view?.center ?? config.center,
+          zoom: view?.zoom ?? config.zoom,
+          minZoom: config.minZoom,
+          maxZoom: config.maxZoom
+        });
+        mapRef.current = map;
 
         // The controls render from this component's output, each a component
         // of its own in `controls/`, and go on the map now, before the layers:
@@ -212,7 +171,7 @@ export const AtlasMap = ({
         // effect, and on this shell's React 16 a state change in a promise
         // continuation renders and commits before the call returns, so they are
         // all on the map before the next line runs, in the order they render.
-        setAdopted({ map: Map, config });
+        setBuilt({ map, config });
 
         // Layers take the deployment's ceiling rather than a constant, so a
         // basemap stops where the map does.
@@ -220,7 +179,7 @@ export const AtlasMap = ({
         if (cancelled) return;
 
         const base = layerNamed(basemap, view?.basemap) ?? firstOf(basemap);
-        if (base) base.addTo(Map);
+        if (base) base.addTo(map);
 
         // The deepest zoom this basemap has a real tile for; `data/layers.js`
         // carries the figure per provider. Above it Leaflet enlarges the last
@@ -232,12 +191,11 @@ export const AtlasMap = ({
 
         // And again whenever the reader picks another basemap, which is the
         // switcher's `baselayerchange` -- each provider stops at its own depth,
-        // so the mark read off the first one is wrong for any other.
-        const onBaseChange = event => readNativeMax(event.layer);
-        Map.on('baselayerchange', onBaseChange);
-        baseOffRef.current = () => Map.off('baselayerchange', onBaseChange);
+        // so the mark read off the first one is wrong for any other. On this
+        // map alone, so it goes when the map does.
+        map.on('baselayerchange', event => readNativeMax(event.layer));
 
-        Map.invalidateSize();
+        map.invalidateSize();
 
         // `onReady` before `setLayers`, and the order carries weight on React 16.
         //
@@ -255,7 +213,7 @@ export const AtlasMap = ({
         // exist. Harmless if React ever batches these: both updates then flush
         // together and the children mount with the parent already correct, which
         // is exactly what this is arranging by hand.
-        onReady?.({ map: Map, config, basemap, overlays });
+        onReady?.({ map, config, basemap, overlays });
         setLayers({ basemap, overlays });
       } catch (err) {
         if (cancelled) return;
@@ -269,19 +227,26 @@ export const AtlasMap = ({
 
     return () => {
       cancelled = true;
-      mounted = false;
-      // The controls come off with their own components. What is left is this
-      // component's: its listener, the screen's layers and the container.
-      baseOffRef.current?.();
-      baseOffRef.current = null;
-      clearLayers();
-      const element = Map.getContainer();
-      if (element && adoptedStyleRef.current) {
-        element.style.height = adoptedStyleRef.current.height;
-        element.style.width = adoptedStyleRef.current.width;
-        adoptedStyleRef.current = null;
+      // spatial's `remove`: Leaflet's, with the map's own tools turned off
+      // first. Every layer and every control comes off. The controls and
+      // layers this component rendered take theirs off as they unmount too, and
+      // whichever runs second finds nothing left, which Leaflet lets pass.
+      //
+      // Then every listener on it, which Leaflet leaves. A removed map is not
+      // always let go: Leaflet 1.5 keeps the touch handlers of a drag it has
+      // finished as properties of `document`, so a map pressed with the pointer
+      // stays reachable from there for as long as the page lives. Without its
+      // listeners it holds nothing of this screen, such as the setter the
+      // basemap listener above closes over, and with it everything this
+      // component rendered.
+      const map = mapRef.current;
+      mapRef.current = null;
+      if (map) {
+        const element = map.getContainer();
+        map.remove();
+        map.off();
+        element.parentNode?.removeChild(element);
       }
-      if (element?.parentNode) element.parentNode.removeChild(element);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -317,7 +282,7 @@ export const AtlasMap = ({
       if (frame !== null) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         frame = null;
-        Map.invalidateSize();
+        mapRef.current?.invalidateSize();
       });
     });
 
@@ -360,7 +325,7 @@ export const AtlasMap = ({
     );
   }
 
-  const config = adopted?.config;
+  const config = built?.config;
 
   // Everything below reads the map from the context rather than naming the
   // engine's, so a control or a layer serves whichever map it is put on.
@@ -371,9 +336,9 @@ export const AtlasMap = ({
   // (firstChild)` -- so the zoom, added after the credit line, sits above it,
   // and the credit keeps the map edge.
   return (
-    <AtlasMapContext.Provider value={adopted?.map ?? null}>
+    <AtlasMapContext.Provider value={built?.map ?? null}>
       <div ref={containerRef} className={className} style={{ height: '100%', ...style }} />
-      {adopted && (
+      {built && (
         <>
           {fullscreen && <FullscreenControl position={fullscreenPosition} />}
           {locate && <LocateControl position={locatePosition} />}
@@ -398,7 +363,7 @@ export const AtlasMap = ({
           position={zoomPosition}
           marks={marks}
           labels={zoomLabels}
-          onFit={fit && extent ? () => adopted.map.fitBounds(extent, { padding: FIT_PADDING }) : undefined}
+          onFit={fit && extent ? () => built.map.fitBounds(extent, { padding: FIT_PADDING }) : undefined}
         />
       )}
       {ready && children}

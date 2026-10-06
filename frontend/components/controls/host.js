@@ -37,9 +37,9 @@ const hostControl = () => {
  * once, at `onAdd`, and always onto the page's map. A tree portalled into this
  * container is part of the screen's own tree instead: its props update in
  * place, and the older render cycle's sweep, which unmounts every root it finds
- * in a control, has no root here to find. (It still takes every control out of
- * its corner, this one included, and the tree waits in the detached container
- * until the screen closes.) The container is the same `div.leaflet-control`
+ * in a control, has no root here to find. (It also takes every control out of
+ * the page's map's corners, and only that map's, so it does not reach the map
+ * an `AtlasMap` builds.) The container is the same `div.leaflet-control`
  * that `control()` made, so the markup does not change.
  *
  * Added in a layout effect, so the control is on the map within the commit

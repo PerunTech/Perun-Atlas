@@ -153,6 +153,7 @@ const core = {
     getZoom: () => view.zoom,
     distance
   },
+  createMap: (element, options = {}) => mapWith(options),
   factory: { CRS, latLng, latLngBounds, point: (x, y) => ({ x, y }) }
 };
 

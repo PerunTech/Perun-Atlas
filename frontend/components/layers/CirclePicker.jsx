@@ -1,14 +1,15 @@
 import { React } from 'perun-core';
 import { core, tools } from '../../spatial';
+import { useAtlasMap } from '../controls/context';
 import '../../style/draw.css';
 
-const { Map, factory } = core;
+const { factory } = core;
 const { useEffect, useRef } = React;
 
 /** Takes the named layers off the map, if they are on it. */
-const clear = (...refs) => refs.forEach((ref) => {
+const clear = (map, ...refs) => refs.forEach((ref) => {
   if (ref.current) {
-    Map.removeLayer(ref.current);
+    map.removeLayer(ref.current);
     ref.current = null;
   }
 });
@@ -41,8 +42,10 @@ const PREVIEW = { ...STYLE, dashArray: '5 4', fillOpacity: 0.06 };
  * typing a radius into whatever the caller renders, is how they say *exactly
  * 3 km*. Both end in the same `{ lat, lng, radius }`.
  *
- * The drawing itself is the engine's: `tools.draw.circle`, a port of leaflet.pm
- * carrying the live preview, the hint line and the cursor tooltip already. It is
+ * The drawing itself is the engine's: the map's own `draw.circle`, a port of
+ * leaflet.pm carrying the live preview, the hint line and the cursor tooltip
+ * already, or the module-level `tools.draw.circle` on an engine whose maps carry
+ * no tools of their own, which is the same set on the page's map. It is
  * armed while `drawing` is true and disarmed the moment a shape is finished, and
  * the layer it leaves behind is removed — what stays on the map is the
  * controlled circle below, drawn from `value`, so there is never a moment with
@@ -73,6 +76,7 @@ export const CirclePicker = ({
   style,
   editable = true
 }) => {
+  const map = useAtlasMap();
   const circleRef = useRef(null);
   const centreRef = useRef(null);
   const handleRef = useRef(null);
@@ -93,7 +97,7 @@ export const CirclePicker = ({
    * later change to `value` could move.
    */
   useEffect(() => {
-    const circle = tools?.draw?.circle;
+    const circle = (map.draw ?? tools?.draw)?.circle;
     if (!drawing || !circle) {
       if (!drawing && circle?.isEnabled?.()) circle.disable();
       if (drawing && !circle) {
@@ -107,14 +111,14 @@ export const CirclePicker = ({
 
       const centre = layer.getLatLng();
       const radius = layer.getRadius();
-      Map.removeLayer(layer);
+      map.removeLayer(layer);
 
       const next = { lat: centre.lat, lng: centre.lng, radius };
       report.current?.(next);
       drawn.current?.(next);
     };
 
-    Map.on('new_shape', onShape);
+    map.on('new_shape', onShape);
     circle.enable({
       templineStyle: PREVIEW,
       hintlineStyle: { ...PREVIEW, fillOpacity: 0 },
@@ -129,11 +133,11 @@ export const CirclePicker = ({
     });
 
     return () => {
-      Map.off('new_shape', onShape);
+      map.off('new_shape', onShape);
       if (circle.isEnabled?.()) circle.disable();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drawing]);
+  }, [map, drawing]);
 
   /**
    * The circle follows `value`, and the handles follow the circle.
@@ -146,7 +150,7 @@ export const CirclePicker = ({
    * rather than one rounded through two conversions.
    */
   useEffect(() => {
-    if (!value || !(value.radius > 0)) { clear(circleRef, centreRef, handleRef); return undefined; }
+    if (!value || !(value.radius > 0)) { clear(map, circleRef, centreRef, handleRef); return undefined; }
 
     const centre = factory.latLng({ lat: value.lat, lng: value.lng });
 
@@ -159,13 +163,13 @@ export const CirclePicker = ({
         // build has no measure module the option is simply unread.
         showMeasurements: true,
         interactive: false
-      }).addTo(Map);
+      }).addTo(map);
     } else {
       circleRef.current.setLatLng(centre);
       circleRef.current.setRadius(value.radius);
     }
 
-    if (!editable) { clear(centreRef, handleRef); return undefined; }
+    if (!editable) { clear(map, centreRef, handleRef); return undefined; }
 
     const east = factory.latLng({ lat: centre.lat, lng: circleRef.current.getBounds().getEast() });
 
@@ -174,7 +178,7 @@ export const CirclePicker = ({
         icon: factory.divIcon({ className: 'atlas-draw-handle atlas-draw-handle--centre', html: '' }),
         draggable: true,
         zIndexOffset: 1000
-      }).addTo(Map);
+      }).addTo(map);
 
       centreRef.current.on('drag', (e) => {
         const at = e.target.getLatLng();
@@ -189,12 +193,12 @@ export const CirclePicker = ({
         icon: factory.divIcon({ className: 'atlas-draw-handle atlas-draw-handle--edge', html: '' }),
         draggable: true,
         zIndexOffset: 1000
-      }).addTo(Map);
+      }).addTo(map);
 
       handleRef.current.on('drag', (e) => {
         const at = e.target.getLatLng();
         const middle = centreRef.current?.getLatLng() ?? centre;
-        report.current?.({ lat: middle.lat, lng: middle.lng, radius: Map.distance(middle, at) });
+        report.current?.({ lat: middle.lat, lng: middle.lng, radius: map.distance(middle, at) });
       });
     } else {
       handleRef.current.setLatLng(east);
@@ -202,13 +206,13 @@ export const CirclePicker = ({
 
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.lat, value?.lng, value?.radius, editable]);
+  }, [map, value?.lat, value?.lng, value?.radius, editable]);
 
   // Everything above is imperative and lives on the map. The effect that draws
   // it deliberately has no cleanup -- tearing the circle down and rebuilding it
   // on every change to the radius would flicker it -- so unmounting is what
   // takes it off.
-  useEffect(() => () => clear(circleRef, centreRef, handleRef), []);
+  useEffect(() => () => clear(map, circleRef, centreRef, handleRef), [map]);
 
   return null;
 };

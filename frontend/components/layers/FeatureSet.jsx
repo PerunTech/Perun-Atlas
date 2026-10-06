@@ -13,9 +13,10 @@ import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
 import { placeKey } from '../../lib/route';
 import { placeSet } from '../../lib/surface';
 import { FIT_PADDING } from '../../lib/zoom';
+import { useAtlasMap } from '../controls/context';
 import '../../style/features.css';
 
-const { Map, factory } = core;
+const { factory } = core;
 const { useEffect, useRef } = React;
 
 /** Nothing switched off, as one array rather than a new one per render. */
@@ -114,6 +115,7 @@ export const FeatureSet = ({
   onLoad,
   onError
 }) => {
+  const map = useAtlasMap();
   // Everything a draw put on the map, so a redraw can take it all off again.
   // A list rather than one layer: a clustered set is two or three, because the
   // cluster cannot be the home of every kind of layer. See `placeSet`.
@@ -148,11 +150,11 @@ export const FeatureSet = ({
     const { entryFor } = kinds;
 
     /** Permanent labels are banded by zoom, so they follow the zoom rather than the fetch. */
-    const sync = () => syncLabels(labelledRef.current, Map.getZoom());
+    const sync = () => syncLabels(labelledRef.current, map.getZoom());
 
     const clear = () => {
       labelledRef.current = [];
-      layersRef.current.forEach((layer) => Map.removeLayer(layer));
+      layersRef.current.forEach((layer) => map.removeLayer(layer));
       layersRef.current = [];
     };
 
@@ -203,6 +205,9 @@ export const FeatureSet = ({
         let points = 0;
 
         const group = factory.geoJSON(collection, {
+          // Read through this map's projection rather than the page's. The
+          // deployment's stored projection still wins where the engine has it.
+          crs: map.getCRS(),
           // spatial draws its markers as styled divs, so the look is a class, a
           // style, or both — see `applyStyle`.
           pointToLayer: (feature, latlng) => {
@@ -277,7 +282,7 @@ export const FeatureSet = ({
 
         // On the map, plainly or clustered, with the groups that go beside a
         // cluster. See `placeSet`.
-        const placed = placeSet({ map: Map, factory, group, cluster, points });
+        const placed = placeSet({ map, factory, group, cluster, points });
         const { surface, clustering, settings } = placed;
         layersRef.current = placed.layers;
 
@@ -327,7 +332,7 @@ export const FeatureSet = ({
         let following = null;
         if (clustering && routed.length) {
           following = followClusters({
-            map: Map,
+            map,
             surface,
             lines: routed,
             markerAt,
@@ -340,7 +345,7 @@ export const FeatureSet = ({
         onLegend?.(kinds.drawn());
 
         sync();
-        Map.on('zoomend', sync);
+        map.on('zoomend', sync);
 
         /**
          * Clustered markers arrive long after the draw, and bring labels with them.
@@ -358,10 +363,10 @@ export const FeatureSet = ({
          * the map, which was before these, so by the time this runs the markers
          * it is correcting are already there.
          */
-        if (clustering) Map.on('moveend', sync);
+        if (clustering) map.on('moveend', sync);
 
         const extent = extentOf(members);
-        if (fit && extent) Map.fitBounds(extent, { padding: FIT_PADDING });
+        if (fit && extent) map.fitBounds(extent, { padding: FIT_PADDING });
 
         /**
          * A later change to what is switched off, applied to this draw.
@@ -393,14 +398,14 @@ export const FeatureSet = ({
       cancelled = true;
       filterRef.current = null;
       cleanup.forEach((off) => off());
-      Map.off('zoomend', sync);
+      map.off('zoomend', sync);
       // Unconditionally: a draw that never clustered never registered this, and
       // taking off a handler that is not on is what Leaflet does with it anyway.
-      Map.off('moveend', sync);
+      map.off('moveend', sync);
       clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicePath, contextKey, reload]);
+  }, [map, servicePath, contextKey, reload]);
 
   return null;
 };

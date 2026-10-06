@@ -7,8 +7,9 @@ import { useKeyFilter } from '../../hooks/useKeyFilter';
 import { asNode } from '../../lib/dom';
 import { changesFor, restack, shownOf } from '../../lib/filter';
 import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
+import { useAtlasMap } from '../controls/context';
 
-const { Map, factory } = core;
+const { factory } = core;
 const { useEffect, useRef } = React;
 
 /** Nothing switched off, as one array rather than a new one per render. */
@@ -103,6 +104,7 @@ export const Choropleth = ({
   popup,
   labelResolver
 }) => {
+  const map = useAtlasMap();
   const layerRef = useRef(null);
   const requestRef = useRef(0);
 
@@ -132,7 +134,7 @@ export const Choropleth = ({
 
       // The view this answer will be for, kept so that a later `moveend` can be
       // measured against it. See `shrunk`.
-      fetched = { zoom: Map.getZoom(), bounds: Map.getBounds() };
+      fetched = { zoom: map.getZoom(), bounds: map.getBounds() };
 
       try {
         onLoadStart?.();
@@ -140,7 +142,7 @@ export const Choropleth = ({
         // and a caller's `map` key is about the map's controls, not its extent.
         const collection = await fetchGeometry(servicePath, {
           ...(context || {}),
-          map: { ...(context?.map || {}), bbox: bboxIn(srid) }
+          map: { ...(context?.map || {}), bbox: bboxIn(srid, map) }
         });
         if (cancelled || request !== requestRef.current) return;
 
@@ -148,13 +150,16 @@ export const Choropleth = ({
           ? joinStatus(collection, statusRows, join)
           : collection;
 
-        if (layerRef.current) Map.removeLayer(layerRef.current);
+        if (layerRef.current) map.removeLayer(layerRef.current);
 
         // One per area, in draw order, with the band it is filled from. See
         // `lib/filter.js`.
         const members = [];
 
         const group = factory.geoJSON(joined, {
+          // Read through this map's projection rather than the page's. The
+          // deployment's stored projection still wins where the engine has it.
+          crs: map.getCRS(),
           style: (feature) => pathOptions(descriptor, { fillColor: fill(feature) }),
           onEachFeature: (feature, layer) => {
             members.push({ layer, feature, key: band(feature), hidden: false });
@@ -191,7 +196,7 @@ export const Choropleth = ({
 
         // Before the group goes on the map, so a hidden band is never painted.
         filter(hiddenRef.current);
-        layerRef.current = group.addTo(Map);
+        layerRef.current = group.addTo(map);
 
         const report = (keys) => onShown?.(shownOf(joined, keys, band));
 
@@ -256,8 +261,8 @@ export const Choropleth = ({
      */
     let fetched = null;
     const shrunk = () => Boolean(fetched)
-      && Map.getZoom() === fetched.zoom
-      && fetched.bounds.contains(Map.getBounds());
+      && map.getZoom() === fetched.zoom
+      && fetched.bounds.contains(map.getBounds());
 
     const later = () => {
       clearTimeout(pending);
@@ -265,22 +270,22 @@ export const Choropleth = ({
     };
 
     draw();
-    Map.on('moveend', later);
+    map.on('moveend', later);
 
     return () => {
       cancelled = true;
       filterRef.current = null;
       clearTimeout(pending);
-      Map.off('moveend', later);
+      map.off('moveend', later);
       if (layerRef.current) {
-        Map.removeLayer(layerRef.current);
+        map.removeLayer(layerRef.current);
         layerRef.current = null;
       }
     };
     // Compared by value: the context is a small flat object rebuilt on every
     // render, so by identity this would refetch on each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicePath, field, srid, reload, statusRows, JSON.stringify(context ?? {})]);
+  }, [map, servicePath, field, srid, reload, statusRows, JSON.stringify(context ?? {})]);
 
   return null;
 };

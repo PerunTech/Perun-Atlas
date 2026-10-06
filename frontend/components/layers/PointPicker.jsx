@@ -1,8 +1,9 @@
 import { React } from 'perun-core';
 import { core } from '../../spatial';
+import { useAtlasMap } from '../controls/context';
 import '../../style/picker.css';
 
-const { Map, factory } = core;
+const { factory } = core;
 const { useEffect, useRef } = React;
 
 /**
@@ -48,6 +49,7 @@ export const PointPicker = ({
   size = [20, 28],
   anchor = [10, 28]
 }) => {
+  const map = useAtlasMap();
   const markerRef = useRef(null);
   // Bound once, so the map keeps one handler however often the caller re-renders.
   const report = useRef(onChange);
@@ -55,16 +57,16 @@ export const PointPicker = ({
 
   useEffect(() => {
     const onClick = (e) => report.current?.({ lat: e.latlng.lat, lng: e.latlng.lng });
-    Map.on('click', onClick);
+    map.on('click', onClick);
 
     return () => {
-      Map.off('click', onClick);
+      map.off('click', onClick);
       if (markerRef.current) {
-        Map.removeLayer(markerRef.current);
+        map.removeLayer(markerRef.current);
         markerRef.current = null;
       }
     };
-  }, []);
+  }, [map]);
 
   /**
    * The pin follows `value`. Its appearance is read when the pin is created and
@@ -73,7 +75,7 @@ export const PointPicker = ({
   useEffect(() => {
     if (!value) {
       if (markerRef.current) {
-        Map.removeLayer(markerRef.current);
+        map.removeLayer(markerRef.current);
         markerRef.current = null;
       }
       return;
@@ -87,12 +89,12 @@ export const PointPicker = ({
     const marker = factory.marker(value, {
       icon: factory.divIcon({ className, html, iconSize: size, iconAnchor: anchor }),
       draggable
-    }).addTo(Map);
+    }).addTo(map);
 
     marker.on('drag', (e) => report.current?.({ ...e.target.getLatLng() }));
     markerRef.current = marker;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value?.lat, value?.lng]);
+  }, [map, value?.lat, value?.lng]);
 
   return null;
 };
