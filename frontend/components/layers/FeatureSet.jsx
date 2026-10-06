@@ -165,11 +165,8 @@ export const FeatureSet = ({
      * `lib/features/route.js` says why the position is the join and what
      * re-aiming an end means; this is where the layers for it are collected.
      *
-     * A null-prototype object rather than a `Map`, because `Map` in this file
-     * is the engine's map singleton destructured from `core` above -- `new
-     * Map()` here builds a Leaflet map, or throws. Null-prototype because the
-     * keys are built from response data, and a position should never collide
-     * with a member of `Object.prototype`.
+     * Null-prototype, because the keys are built from response data, and a
+     * position should never collide with a member of `Object.prototype`.
      */
     const markerAt = Object.create(null);
 
