@@ -33,22 +33,27 @@ component API is not finished — that is the signal, not the workaround.
 | `test/` | The unit suite, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
 
-`hooks/`, `lib/` and `components/panel/` are the three directories nothing
-exports. That is what makes them free to change shape without the change being
-a breaking one.
+Only the components and `config/` are exported. Everything else under
+`frontend/` — `appearance/`, `bootstrap/`, `data/`, `hooks/`, `lib/` and
+`components/panel/` — is the package's own, which is what makes it free to
+change shape without the change being a breaking one.
 
 ## What a consumer gets
 
 ```js
 import { ConfiguredMap, FeaturePanel, AtlasMap, PointPicker } from 'perun-atlas';
-import * as atlas from 'perun-atlas';   // atlas.appearance, .bootstrap, .config, .data
+import * as atlas from 'perun-atlas';   // atlas.config.SCHEMA, atlas.version
 ```
 
-Thirteen components, and four namespaces beside them. `ConfiguredMap` is the one
-most screens want: it reads a menu row and builds the rest. `docs/menu-row.md`
-describes every key a row may set.
+Thirteen components, the settings schema as `config`, and the package's `name`
+and `version`. `ConfiguredMap` is the one most screens want: it reads a menu row
+and builds the rest. `docs/menu-row.md` describes every key a row may set.
 
-`appearance` was called `style` until the stylesheets took that name back.
+That is the whole of it, and from 1.0.0 it is what a version number promises.
+Before 1.0.0 the bundle also exported `appearance`, `bootstrap` and `data`, the
+functions the components are built out of. No consumer read them, and as
+exports every change to one would have been a breaking change, so they are the
+package's own now. One a consumer needs can come back as an export of its own.
 
 ## Building
 

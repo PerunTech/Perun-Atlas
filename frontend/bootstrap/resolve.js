@@ -77,21 +77,3 @@ export const resolve = async (overrides = {}) => {
 
   return resolved;
 };
-
-/**
- * Describes where each setting would come from, without applying any of it.
- * Useful from a console when a deployment is behaving unexpectedly.
- */
-export const explain = async () => {
-  const [remote, legacy, defaults] = [await remoteSource(), legacySource(), defaultSource()];
-
-  return Object.fromEntries(
-    Object.keys(SCHEMA).map(key => [
-      key,
-      key in remote ? { source: 'SVAROG_SYS_PARAMS', value: remote[key] }
-        : key in legacy ? { source: `window.${SCHEMA[key].legacy}`, value: legacy[key] }
-          : key in defaults ? { source: 'schema default', value: defaults[key] }
-            : { source: 'unresolved', value: undefined }
-    ])
-  );
-};

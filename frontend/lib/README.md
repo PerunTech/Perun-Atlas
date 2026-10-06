@@ -1,9 +1,8 @@
 The small shared pieces.
 
-Package-private, and the only directory here that is: `bootstrap`, `config`,
-`data` and `appearance` are all exported from `frontend/index.js`, and nothing
-under `lib/` is. That is what makes it free to change shape without the change
-being a breaking one.
+Package-private, like everything here but the components and `config`, which
+`frontend/index.js` exports. That is what makes it free to change shape without
+the change being a breaking one.
 
 It lived under `components/` until the panel's state moved into `hooks/`, and
 two of these went with it — a hook reaching into a directory named for
