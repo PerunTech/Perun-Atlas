@@ -1,5 +1,5 @@
-import { popupFor } from '../appearance/descriptor';
-import { applyStyle, asNode } from './dom';
+import { popupFor } from '../../appearance/descriptor';
+import { applyStyle, asNode } from '../dom';
 
 /**
  * Turning popup rows into elements.

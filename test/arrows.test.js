@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { drawArrows } from '../frontend/lib/arrows';
+import { drawArrows } from '../frontend/lib/features/arrows';
 
 const at = (lat, lng) => ({ lat, lng });
 

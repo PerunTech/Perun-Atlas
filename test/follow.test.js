@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { followClusters, GLIDE_LIMIT } from '../frontend/lib/follow';
-import { placeKey } from '../frontend/lib/route';
+import { followClusters, GLIDE_LIMIT } from '../frontend/lib/features/follow';
+import { placeKey } from '../frontend/lib/features/route';
 
 const at = (lat, lng) => ({ lat, lng });
 

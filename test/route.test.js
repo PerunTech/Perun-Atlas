@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, easeInOut, placeKey, reversed, routeEnds } from '../frontend/lib/route';
+import { between, easeInOut, placeKey, reversed, routeEnds } from '../frontend/lib/features/route';
 
 const at = (lat, lng) => ({ lat, lng });
 const marker = (latlng) => ({ getLatLng: () => latlng });

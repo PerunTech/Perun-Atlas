@@ -5,14 +5,14 @@ import { fetchGeometry } from '../../data/geometry';
 import { detailsFor, labelFor, pathOptions } from '../../appearance/descriptor';
 import { drawnKinds } from '../../appearance/legend';
 import { useKeyFilter } from '../../hooks/useKeyFilter';
-import { drawArrows } from '../../lib/arrows';
+import { drawArrows } from '../../lib/features/arrows';
 import { applyStyle } from '../../lib/dom';
-import { changesFor, extentOf, restack, shownOf } from '../../lib/filter';
-import { followClusters } from '../../lib/follow';
-import { bindLabel, syncLabels } from '../../lib/labels';
-import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
-import { placeKey } from '../../lib/route';
-import { placeSet } from '../../lib/surface';
+import { changesFor, extentOf, restack, shownOf } from '../../lib/features/filter';
+import { followClusters } from '../../lib/features/follow';
+import { bindLabel, syncLabels } from '../../lib/features/labels';
+import { popupContent, POPUP_OPTIONS } from '../../lib/features/popup';
+import { placeKey } from '../../lib/features/route';
+import { placeSet } from '../../lib/features/surface';
 import { FIT_PADDING } from '../../lib/zoom';
 import { useAtlasMap } from '../context';
 import '../../style/features.css';
@@ -162,8 +162,8 @@ export const FeatureSet = ({
     /**
      * Where each marker is, and where each line thinks its ends are.
      *
-     * `lib/route.js` says why the position is the join and what re-aiming an
-     * end means; this is where the layers for it are collected.
+     * `lib/features/route.js` says why the position is the join and what
+     * re-aiming an end means; this is where the layers for it are collected.
      *
      * A null-prototype object rather than a `Map`, because `Map` in this file
      * is the engine's map singleton destructured from `core` above -- `new
@@ -183,7 +183,7 @@ export const FeatureSet = ({
     /**
      * One entry per feature layer, in the order the producer sent them, with
      * the legend row it belongs to. What the legend's filter works through --
-     * see `lib/filter.js`.
+     * see `lib/features/filter.js`.
      */
     const members = [];
 
@@ -327,8 +327,9 @@ export const FeatureSet = ({
          *
          * A cluster moves a marker; the line ending on it does not hear about
          * it. `followClusters` re-aims each flat line at whatever the cluster is
-         * drawing for its ends, and moves it there -- see `lib/follow.js` and
-         * `lib/route.js` for why the end moves rather than the line hiding.
+         * drawing for its ends, and moves it there -- see
+         * `lib/features/follow.js` and `lib/features/route.js` for why the end
+         * moves rather than the line hiding.
          */
         let following = null;
         if (clustering && routed.length) {

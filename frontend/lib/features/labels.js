@@ -1,5 +1,5 @@
-import { labelVisible } from '../appearance/descriptor';
-import { applyStyle, asNode } from './dom';
+import { labelVisible } from '../../appearance/descriptor';
+import { applyStyle, asNode } from '../dom';
 
 /**
  * A feature's permanent label: binding it to the layer, and keeping it to the

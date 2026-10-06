@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { changesFor, extentOf, restack, shownOf } from '../frontend/lib/filter';
+import { changesFor, extentOf, restack, shownOf } from '../frontend/lib/features/filter';
 
 const member = (key, extra = {}) => ({ key, hidden: false, layer: {}, ...extra });
 

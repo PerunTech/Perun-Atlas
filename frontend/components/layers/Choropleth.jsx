@@ -6,8 +6,8 @@ import { detailsFor, pathOptions } from '../../appearance/descriptor';
 import { bandOf, categoriesDrawn, colourBy, joinStatus } from '../../appearance/choropleth';
 import { useKeyFilter } from '../../hooks/useKeyFilter';
 import { asNode } from '../../lib/dom';
-import { changesFor, restack, shownOf } from '../../lib/filter';
-import { popupContent, POPUP_OPTIONS } from '../../lib/popup';
+import { changesFor, restack, shownOf } from '../../lib/features/filter';
+import { popupContent, POPUP_OPTIONS } from '../../lib/features/popup';
 import { useAtlasMap } from '../context';
 
 const { factory } = core;
@@ -154,7 +154,7 @@ export const Choropleth = ({
         if (layerRef.current) map.removeLayer(layerRef.current);
 
         // One per area, in draw order, with the band it is filled from. See
-        // `lib/filter.js`.
+        // `lib/features/filter.js`.
         const members = [];
 
         const group = factory.geoJSON(joined, {

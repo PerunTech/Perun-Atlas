@@ -1,4 +1,4 @@
-import { applyStyle } from './dom';
+import { applyStyle } from '../dom';
 
 /**
  * When a set of points is worth collapsing, and what one cluster is drawn as.
