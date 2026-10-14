@@ -172,9 +172,9 @@ pnpm takes the newest tag in the range, and the lockfile records its commit.
 `^1.0.0-rc.1` takes candidates of 1.0.0 and then 1.0.0 itself, once a
 `pnpm update perun-atlas` asks for it; `^1.0.0` skips candidates. spatial
 arrives with this package, at the version it names, so a consumer names no
-spatial of its own. perun-core it pins itself, by commit and with an override,
-because this package and spatial each declare one and only the consumer's
-override makes them one copy.
+spatial of its own. perun-core it names itself, by version
+(`#semver:^4.5.8-rc.1`) and with an override, because this package and spatial
+each declare one and only the consumer's override makes them one copy.
 
 The tags have to stay lightweight: for an annotated tag pnpm 9 and 10 record
 the tag's own hash and pnpm 11 the commit's, and pnpm 11 then refuses a lockfile
