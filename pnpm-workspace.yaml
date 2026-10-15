@@ -20,10 +20,3 @@ blockExoticSubdeps: false
 # field of package.json. Both are declared, and must be kept in step.
 overrides:
   dompurify: ^3.4.15
-  # spatial 4.2.1 declares perun-core#dev, a branch, beside this package's
-  # own #semver:^4.5.8-rc.1. Left alone the two resolve apart -- the branch to
-  # its tip on the day of a resolve -- and this install holds two perun-cores.
-  # The override makes them one, at the version package.json names. It reaches
-  # this repository's install only; a consumer's overrides are its own. It can
-  # go once this package depends on a spatial that names perun-core by version.
-  perun-core: git+https://git@gitlab.prtech.mk/svarog4/perun-core#semver:^4.5.8-rc.1

@@ -6,7 +6,6 @@ settings:
 
 overrides:
   dompurify: ^3.4.15
-  perun-core: git+https://git@gitlab.prtech.mk/svarog4/perun-core#semver:^4.5.8-rc.1
 
 importers:
 
@@ -28,8 +27,8 @@ importers:
         specifier: ^6.2.0
         version: 6.2.0
       spatial:
-        specifier: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#semver:^4.2.1
-        version: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#6763ae8e8b3397622c434c98399d4ac7e86b1c52(@types/react@19.2.18)(monaco-editor@0.56.0)
+        specifier: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#semver:^4.2.2-rc.1
+        version: git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#00c5f27b0135bb7fd87ccbc6e2237ccae09762b3(@types/react@19.2.18)(monaco-editor@0.56.0)
     devDependencies:
       '@xmldom/xmldom':
         specifier: ^0.9.12
@@ -1159,9 +1158,6 @@ packages:
     peerDependencies:
       redux: ^5.0.0
 
-  redux@4.2.1:
-    resolution: {integrity: sha512-LAUYz4lc+Do8/g7aeRa8JkyDErK6ekstQaqWQrNRW//MY1TvCEpMtpTWvlQ+FPbWCx+Xixu/6SHt5N0HR+SB4w==}
-
   redux@5.0.1:
     resolution: {integrity: sha512-M9/ELqF6fy8FwmkpnF0S3YKOqMyoWJ4+CS5Efg2ct3oY9daQvd/Pc71FpGZsVsbl3Cpb+IIcjBDUnnyBdQbq4w==}
 
@@ -1207,9 +1203,9 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
 
-  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#6763ae8e8b3397622c434c98399d4ac7e86b1c52:
-    resolution: {commit: 6763ae8e8b3397622c434c98399d4ac7e86b1c52, repo: https://git@gitlab.prtech.mk/svarog4/svarog-spatial, type: git}
-    version: 4.2.1
+  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#00c5f27b0135bb7fd87ccbc6e2237ccae09762b3:
+    resolution: {commit: 00c5f27b0135bb7fd87ccbc6e2237ccae09762b3, repo: https://git@gitlab.prtech.mk/svarog4/svarog-spatial, type: git}
+    version: 4.2.2-rc.1
     engines: {node: '>=22.12.0'}
 
   ssf@0.11.2:
@@ -2500,10 +2496,6 @@ snapshots:
     dependencies:
       redux: 5.0.1
 
-  redux@4.2.1:
-    dependencies:
-      '@babel/runtime': 7.29.7
-
   redux@5.0.1: {}
 
   require-from-string@2.0.2: {}
@@ -2560,7 +2552,7 @@ snapshots:
   source-map@0.6.1:
     optional: true
 
-  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#6763ae8e8b3397622c434c98399d4ac7e86b1c52(@types/react@19.2.18)(monaco-editor@0.56.0):
+  spatial@git+https://git@gitlab.prtech.mk/svarog4/svarog-spatial#00c5f27b0135bb7fd87ccbc6e2237ccae09762b3(@types/react@19.2.18)(monaco-editor@0.56.0):
     dependencies:
       leaflet: 1.5.1
       leaflet-polylinedecorator: 1.6.0
@@ -2568,7 +2560,7 @@ snapshots:
       leaflet.markercluster: 1.5.3(leaflet@1.5.1)
       perun-core: git+https://git@gitlab.prtech.mk/svarog4/perun-core#7dd4a92c600d6f2224ac8c815a6acde0d3e355bf(@types/react@19.2.18)(monaco-editor@0.56.0)
       proj4: 2.10.0
-      redux: 4.2.1
+      redux: 5.0.1
     transitivePeerDependencies:
       - '@types/react'
       - debug
