@@ -1,6 +1,6 @@
 import { REQUIRED, SCHEMA } from '../config/Schema';
 import { coerce } from './coerce';
-import { remoteSource, legacySource, defaultSource } from './sources';
+import { remoteSource, defaultSource } from './sources';
 
 /**
  * Resolves the configuration a map needs before it can be constructed.
@@ -8,45 +8,20 @@ import { remoteSource, legacySource, defaultSource } from './sources';
  * Precedence, highest first:
  *   1. explicit overrides passed by the caller  (tests, embedding)
  *   2. remote parameters from SVAROG_SYS_PARAMS (the deployment's own values)
- *   3. legacy window globals                    (deprecated, warned)
- *   4. schema defaults
+ *   3. schema defaults
  *
  * A required setting with no value anywhere throws, naming the parameter. That is
  * deliberate: a deployment missing its CRS should fail at startup with something
  * an administrator can act on, rather than render a plausible map of the wrong
  * country. Section H of the plan has the reasoning.
  */
-/**
- * Names the globals a deployment is still relying on.
- *
- * Only the ones that actually won: a global that a seeded parameter outranks is
- * dead weight in index.html, not a dependency, and reporting it as one sends an
- * administrator to change a line that has no effect. Saying which globals still
- * decide something is also saying which lines are now safe to delete.
- */
-const warnOnLegacy = (legacy, remote, overrides) => {
-  const used = Object.keys(legacy).filter(key => !(key in remote) && !(key in overrides));
-  if (!used.length) return;
-
-  console.warn(
-    `perun-atlas: ${used.length} setting(s) still come from window globals — ` +
-    used.map(key => `window.${SCHEMA[key].legacy}`).join(', ') + '. ' +
-    'Seed ' + used.map(key => SCHEMA[key].param).join(', ') + ' in SVAROG_SYS_PARAMS; ' +
-    'this fallback is temporary.'
-  );
-};
-
 export const resolve = async (overrides = {}) => {
   const remote = await remoteSource();
-  const legacy = legacySource();
   const layered = {
     ...defaultSource(),
-    ...legacy,
     ...remote,
     ...overrides
   };
-
-  warnOnLegacy(legacy, remote, overrides);
 
   const resolved = {};
   const problems = [];

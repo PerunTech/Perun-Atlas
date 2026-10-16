@@ -1,9 +1,8 @@
 /**
  * Type coercion for configuration values.
  *
- * Remote parameters arrive as strings whatever their declared type, `window`
- * globals arrive as whatever a config.js author wrote, and defaults arrive
- * already typed. Everything funnels through here, so the rest of the project
+ * Remote parameters arrive as strings whatever their declared type, overrides
+ * arrive as whatever the caller passed, and defaults arrive already typed. Everything funnels through here, so the rest of the project
  * can assume a resolved value is the shape its schema entry promised.
  *
  * A coercion that cannot produce the declared type throws rather than falling

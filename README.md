@@ -20,7 +20,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/index.js` | The whole public surface — see below. The build's entry: `vite.config.mjs` makes it one UMD file, `backend/www/perun-atlas.js`, which the shell loads as an `IPerunPlugin` script. |
 | `frontend/spatial.js` | The single point of contact with the map engine. |
 | `frontend/config/` | `SCHEMA` — every environment setting declared once. |
-| `frontend/bootstrap/` | Resolves configuration: overrides → SVAROG_SYS_PARAMS → `window` (deprecated) → defaults. Throws, loudly, on a missing required value. |
+| `frontend/bootstrap/` | Resolves configuration: overrides → SVAROG_SYS_PARAMS → defaults. Throws, loudly, on a missing required value. |
 | `frontend/data/` | Everything that crosses the wire or the projection: geometry fetching and geobuf decoding, bounding boxes and rings, rows, writes, exports, which features a drawn shape covers, the GEO_LAYER_TYPE catalogue. |
 | `frontend/appearance/` | What a feature looks like and what it says, decided from a descriptor. Plain data — no DOM, no engine — which is what makes it the half of the package the suite can test. `frontend/appearance/README.md` lists the files. |
 | `frontend/style/` | The stylesheets, and only those. A deployment overrides them; read `frontend/style/README.md` before debugging one. |
@@ -128,8 +128,8 @@ that only appears in the running app.
 ## Configuration
 
 Settings resolve from `SVAROG_SYS_PARAMS`, editable live through the admin
-console. `window` globals still work but warn — they are a migration shim, not
-architecture. A required setting with no value throws at startup naming the
+console, and from nothing else: the `window.sysCrs`-style globals pages used to
+set are not read. A required setting with no value throws at startup naming the
 parameter, rather than falling back to a plausible map of the wrong country.
 
 Add a setting by adding a row to `frontend/config/Schema.js` and nothing else.

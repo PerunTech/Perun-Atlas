@@ -56,13 +56,11 @@ describe('resolve', () => {
     expect(asked).toContain(`${PARAMS}sys.gis.default_srid`);
   });
 
-  it('takes a parameter over a window global, and a global over a default', async () => {
-    seeded = { ...REQUIRED, SPATIAL_MEASUREMENT_SYSTEM: 'metric' };
-    globalThis.window.measurementSystem = 'imperial';
-    globalThis.window.switchBboxOrder = 'true';
+  it('takes a parameter over a default', async () => {
+    seeded = { ...REQUIRED, SPATIAL_SWITCH_BBOX_ORDER: 'true' };
     const resolved = await resolve();
-    expect(resolved.units).toBe('metric');
     expect(resolved.bboxOrder).toBe(true);
+    expect(resolved.units).toBe('metric');
   });
 
   it('takes an override over everything', async () => {
@@ -70,27 +68,32 @@ describe('resolve', () => {
     expect((await resolve({ zoom: 14 })).zoom).toBe(14);
   });
 
-  /**
-   * A global a seeded parameter outranks is dead weight in index.html, and
-   * naming it would send an administrator to change a line that does nothing.
-   */
-  it('warns about the globals that still decide something, and only those', async () => {
+  /** The globals perun-assets' geospatial.js used to set from the SYS_* parameters. */
+  const OLD_GLOBALS = {
+    sysCrs: 'EPSG:4326',
+    sysCenter: { lat: 1, lng: 2 },
+    sysBounds: [{ lat: 0, lng: 0 }, { lat: 3, lng: 3 }],
+    measurementSystem: 'imperial',
+    switchBboxOrder: 'true'
+  };
+
+  it('reads nothing from the window globals pages used to set', async () => {
     seeded = { ...REQUIRED };
-    globalThis.window.sysCrs = 'EPSG:4326';
-    globalThis.window.measurementSystem = 'imperial';
-    await resolve();
-    expect(warn).toHaveBeenCalledTimes(1);
-    const [said] = warn.mock.calls[0];
-    expect(said).toMatch(/window\.measurementSystem/);
-    expect(said).toMatch(/SPATIAL_MEASUREMENT_SYSTEM/);
-    expect(said).not.toMatch(/sysCrs/);
+    Object.assign(globalThis.window, OLD_GLOBALS);
+    const resolved = await resolve();
+    expect(resolved.crs).toBe('EPSG:3857');
+    expect(resolved.center).toEqual({ lat: 35.1, lng: 33.4 });
+    expect(resolved.bounds).toBeUndefined();
+    expect(resolved.units).toBe('metric');
+    expect(resolved.bboxOrder).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
   });
 
-  it('does not warn about a global an override outranks', async () => {
-    seeded = { ...REQUIRED };
-    globalThis.window.measurementSystem = 'imperial';
-    await resolve({ units: 'metric' });
-    expect(warn).not.toHaveBeenCalled();
+  it('refuses to start on those globals alone', async () => {
+    Object.assign(globalThis.window, OLD_GLOBALS);
+    await expect(resolve()).rejects.toThrow(
+      'missing required setting(s): crs (parameter SPATIAL_CRS), center (parameter SPATIAL_CENTER)'
+    );
   });
 
   it('reads an empty parameter, or one whose request failed, as unset', async () => {

@@ -43,27 +43,6 @@ export const batchSource = async (session) => {
   return res?.data?.params ?? {};
 };
 
-/**
- * Legacy `window` globals.
- *
- * A compatibility shim so deployments keep working while SPATIAL_* parameters are
- * seeded.
- */
-export const legacySource = () => {
-  const found = {};
-
-  Object.entries(SCHEMA).forEach(([key, entry]) => {
-    if (!entry.legacy) return;
-    const value = window[entry.legacy];
-    if (value !== undefined && value !== null && value !== '') found[key] = value;
-  });
-
-  // Deliberately silent. Finding a global is not the same as using one -- a
-  // seeded parameter outranks it -- and only `resolve` knows which won. It says
-  // so there, where the answer is true.
-  return found;
-};
-
 /** Schema defaults. Lowest precedence, and never required. */
 export const defaultSource = () =>
   Object.fromEntries(
