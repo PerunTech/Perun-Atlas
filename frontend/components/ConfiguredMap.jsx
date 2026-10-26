@@ -1,4 +1,4 @@
-import { React, PropTypes, connect, utils } from 'perun-core';
+import { React, connect, useIntl, utils } from 'perun-core';
 import { FeaturePanel } from './FeaturePanel';
 import { takeLink } from '../lib/link';
 
@@ -43,7 +43,8 @@ const { useMemo, useState } = React;
  *        names so the bundle can open the same button again. Without it the
  *        screen offers no link. See `lib/link.js`.
  */
-export const ConfiguredMap = (props, context) => {
+export const ConfiguredMap = (props) => {
+  const intl = useIntl();
   const { objConfig, objectId, session, labelDomain = 'main', title, className, linkId, onClose } = props;
 
   /**
@@ -66,7 +67,7 @@ export const ConfiguredMap = (props, context) => {
    */
   const getLabel = (code) => {
     if (!code) return undefined;
-    const value = labelsManager(code, context, labelDomain);
+    const value = labelsManager(code, intl, labelDomain);
     return !value || value === `perun.${labelDomain}.${code}` ? undefined : value;
   };
 
@@ -78,10 +79,9 @@ export const ConfiguredMap = (props, context) => {
 
   const presets = useMemo(
     () => (objConfig?.presets || []).map(({ months, label }) => ({ months, label: getLabel(label) ?? `${months}` })),
-    // getLabel closes over the intl context, which changes with the locale and is
-    // not a value this can depend on; the configuration is what varies.
+    // getLabel is rebuilt every render; what it reads is intl and labelDomain.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [objConfig]
+    [objConfig, intl, labelDomain]
   );
 
   /**
@@ -97,7 +97,7 @@ export const ConfiguredMap = (props, context) => {
       Object.entries(objConfig?.labels || {}).map(([key, code]) => [key, getLabel(code)])
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [objConfig]
+    [objConfig, intl, labelDomain]
   );
 
   const service = objConfig?.service;
@@ -140,10 +140,6 @@ export const ConfiguredMap = (props, context) => {
       onClose={onClose}
     />
   );
-};
-
-ConfiguredMap.contextTypes = {
-  intl: PropTypes.object.isRequired
 };
 
 /**
