@@ -3,8 +3,10 @@ import { core } from '../spatial';
 import { applyToEngine } from '../bootstrap/apply';
 import { resolve } from '../bootstrap/resolve';
 import { fetchLayers, firstOf, layerNamed } from '../data/tiles';
+import { FAILURE_CARD, failureNotice, say } from '../lib/notices';
 import { FIT_PADDING } from '../lib/zoom';
 import { AtlasMapContext } from './context';
+import { UnavailableCard } from './notices/UnavailableCard';
 import { AttributionControl } from './controls/AttributionControl';
 import { CoordinatesControl } from './controls/CoordinatesControl';
 import { FullscreenControl } from './controls/FullscreenControl';
@@ -74,6 +76,10 @@ const { useEffect, useMemo, useRef, useState } = React;
  * map from the context. The page's map, the one spatial builds as its script
  * evaluates, is left alone. An engine from before `createMap` has only that
  * one to offer, and gets a refusal naming the version instead of a map.
+ *
+ * A map that cannot be built shows a card in its place saying why, with the
+ * parameters at fault for an administrator and a way to try again.
+ * `noticeLabels` holds its words, by the keys in `lib/notices.js`.
  */
 
 export const AtlasMap = ({
@@ -99,6 +105,7 @@ export const AtlasMap = ({
   scale = true,
   scalePosition = 'bottomleft',
   scaleRatio = true,
+  noticeLabels,
   className = 'atlas-map',
   style,
   onReady,
@@ -116,6 +123,8 @@ export const AtlasMap = ({
   const ready = layers !== null;
   const [failure, setFailure] = useState(null);
   const [nativeMax, setNativeMax] = useState(null);
+  // Bumped by the card's Try again, which builds the map from the start.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,6 +134,7 @@ export const AtlasMap = ({
         'perun-atlas: this map needs spatial 4.2.1 or later, which builds a map per ' +
         'screen with createMap. The spatial on this page has no createMap, so no map is shown.'
       );
+      err.engine = true;
       setFailure(err);
       onError?.(err);
       return undefined;
@@ -249,7 +259,15 @@ export const AtlasMap = ({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [attempt]);
+
+  const retry = () => {
+    setFailure(null);
+    setBuilt(null);
+    setLayers(null);
+    setNativeMax(null);
+    setAttempt(n => n + 1);
+  };
 
   /**
    * Leaflet measures its container once and caches the result, so a map that
@@ -318,9 +336,20 @@ export const AtlasMap = ({
   }, [nativeMax, zoomMarks, zoomLabels]);
 
   if (failure) {
+    const found = failureNotice(failure);
+    const card = FAILURE_CARD[found.kind];
     return (
-      <div className={`${className} atlas-map-error`} role="alert">
-        {failure.message}
+      <div className={`${className} atlas-map-error`} style={{ height: '100%', ...style }}>
+        <UnavailableCard
+          icon={card.icon}
+          title={say(card.title, noticeLabels)}
+          hint={say(card.hint, noticeLabels)}
+          rows={found.rows}
+          details={found.rows.length ? null : failure.message}
+          copy={[failure.message, window.server && `Server: ${window.server}`].filter(Boolean).join('\n\n')}
+          onRetry={found.retry ? retry : undefined}
+          labels={noticeLabels}
+        />
       </div>
     );
   }

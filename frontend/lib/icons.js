@@ -22,7 +22,7 @@
  * Four line segments cannot fail to render and cannot fall out of date: a plus
  * is a plus. Tabler is MIT, and these are `IconPlus`, `IconMinus`,
  * `IconMaximize`, `IconMinimize` and `IconZoomScan` at v3.36.0, on the set's
- * 24x24 outline grid.
+ * 24x24 outline grid. The card's glyphs, from `map` on, are v3.46.0.
  */
 
 /** The `d` of each path in the icon, in Tabler's own order. */
@@ -51,7 +51,26 @@ export const GLYPHS = {
     'M16 20h2a2 2 0 0 0 2 -2v-2',
     'M8 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0',
     'M16 16l-2.5 -2.5'
-  ]
+  ],
+  map: ['M3 7l6 -3l6 3l6 -3v13l-6 3l-6 -3l-6 3v-13', 'M9 4v13', 'M15 7v13'],
+  'map-off': [
+    'M8.32 4.34l.68 -.34l6 3l6 -3v13m-2.67 1.335l-3.33 1.665l-6 -3l-6 3v-13l2.665 -1.333',
+    'M9 4v1m0 4v8',
+    'M15 7v4m0 4v5',
+    'M3 3l18 18'
+  ],
+  'cloud-off': [
+    'M9.58 5.548c.24 -.11 .492 -.207 .752 -.286c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 .957 -.383 1.824 -1.003 2.454m-2.997 1.033h-11.343c-2.572 -.004 -4.657 -2.011 -4.657 -4.487c0 -2.475 2.085 -4.482 4.657 -4.482c.13 -.582 .37 -1.128 .7 -1.62',
+    'M3 3l18 18'
+  ],
+  copy: [
+    'M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666',
+    'M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1'
+  ],
+  check: ['M5 12l5 5l10 -10'],
+  refresh: ['M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4', 'M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4'],
+  'chevron-down': ['M6 9l6 6l6 -6'],
+  'chevron-up': ['M6 15l6 -6l6 6']
 };
 
 /** What the rest of the map's controls are drawn at. */

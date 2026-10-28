@@ -5,7 +5,9 @@ import { SCHEMA } from '../config/Schema';
  * Where configuration values come from, in precedence order.
  *
  * Each source answers with a plain { key: rawValue } object and knows nothing
- * about types, defaults or validation — resolve() composes them.
+ * about types, defaults or validation — resolve() composes them. The remote
+ * source also says which parameters it could not ask about, so a request that
+ * failed is not reported as a parameter nobody set.
  */
 
 /**
@@ -25,12 +27,17 @@ export const remoteSource = async () => {
     entries.map(([key, entry]) =>
       axios
         .get(`${window.server}/WsConf/params/get/sys/${entry.param}`)
-        .then(res => [key, res?.data?.VALUE])
-        .catch(() => [key, undefined])
+        .then(res => ({ key, value: res?.data?.VALUE }))
+        .catch(() => ({ key, failed: true }))
     )
   );
 
-  return Object.fromEntries(results.filter(([, value]) => value !== undefined && value !== ''));
+  return {
+    values: Object.fromEntries(results
+      .filter(({ value }) => value !== undefined && value !== '')
+      .map(({ key, value }) => [key, value])),
+    unreachable: results.filter(({ failed }) => failed).map(({ key }) => key)
+  };
 };
 
 /**
