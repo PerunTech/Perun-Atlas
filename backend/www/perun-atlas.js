@@ -20,6 +20,8 @@
   min-height: 18rem;
   padding: 16px;
   overflow: auto;
+  /* A host's modal can set \`word-break: break-all\`, which these would inherit. */
+  word-break: normal;
   background-color: var(--ap-map-bg, #dfe6e8);
   background-image:
     linear-gradient(rgba(74, 92, 102, 0.09) 1px, transparent 1px),
@@ -218,6 +220,7 @@
   gap: 8px;
   margin: 0 0 8px;
   font-family: var(--ap-font, system-ui, sans-serif);
+  word-break: normal;
 }
 
 .atlas-basemap-notice__pill {
@@ -308,6 +311,7 @@
   margin: 8px 0 0;
   padding: 8px 0 0;
   text-indent: 0;
+  word-break: normal;
   border-top: 1px solid #ddd;
   font-size: 12px;
   line-height: 1.45;
