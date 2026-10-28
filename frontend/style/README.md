@@ -26,10 +26,10 @@ the rest of the look.
 
 ## The cascade runs the other way
 
-The build injects these at `document.head.firstChild` (`build/style-insert.js`),
-so **every one of the deployment's stylesheets loads after them and wins on
-equal specificity.** That is deliberate — the deployment owns the look — but it
-has a consequence worth knowing before debugging one of these:
+The build injects these at `document.head.firstChild` (`stylesAtTopOfHead` in
+`vite.config.mjs`), so **every one of the deployment's stylesheets loads after
+them and wins on equal specificity.** That is deliberate — the deployment owns
+the look — but it has a consequence worth knowing before debugging one of these:
 
 A bare element selector in a deployment sheet reaches into this package, and an
 inherited property carries further than the element it was written for. These
