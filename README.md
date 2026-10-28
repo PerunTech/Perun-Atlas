@@ -28,7 +28,6 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape with its save and what it caught, the export, the record pane, what the layer last reported. `frontend/hooks/README.md` says why they are hooks. |
 | `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `features/` is the part only the two layers drawing a fetched set use. `frontend/lib/README.md` lists them. |
 | `frontend/modules/` | Libraries loaded on demand, each built by `vite.modules.config.mjs` as an ES module of its own beside the bundle: `shp.js`, the shapefile reader, is `backend/www/shp.perun-atlas.js`. Bytes in, plain data out; nothing here imports the engine or perun-core. |
-| `build/` | The function that injects this package's CSS at `head.firstChild`, one `<style>` per sheet; `vite.config.mjs` puts it beside every stylesheet import. `frontend/style/README.md` says why that matters. |
 | `docs/menu-row.md` | Every key a menu row may set for `ConfiguredMap`, with its defaults. The contract consuming bundles write rows against. |
 | `test/` | The unit suite, laid out as `frontend/` is, and the two stubs standing in for the shell. |
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
