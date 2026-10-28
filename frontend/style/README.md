@@ -6,7 +6,8 @@ styled — `panel.css` by `FeaturePanel`, `form.css` by `DateRange` and
 `DrawBar`, `draw.css` by `DrawBar` and `CirclePicker`, `features.css` by
 `FeatureSet`, `legend.css` by `Legend`, `picker.css` by `PointPicker`,
 `controls.css` by `AtlasMap`, `zoom.css` by `ZoomRail`, `overlay.css` by
-`FileOverlay` and `FeaturePanel`, `notice.css` by `UnavailableCard`, and `coordinates.css`, `locate-control.css`
+`FileOverlay` and `FeaturePanel`, `notice.css` by `UnavailableCard`,
+`BasemapNotice` and `LayerSwitcher`, and `coordinates.css`, `locate-control.css`
 and `measure-control.css` by the controls of those names. The last three came
 from spatial with their controls, and spatial loads its own copies of them
 until a 6.0 removes its React parts.

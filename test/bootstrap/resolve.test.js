@@ -44,6 +44,7 @@ describe('resolve', () => {
       bboxOrder: false,
       units: 'metric',
       attribution: '',
+      fallbackBasemap: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       dataSrid: '4326'
     });
     expect(warn).not.toHaveBeenCalled();

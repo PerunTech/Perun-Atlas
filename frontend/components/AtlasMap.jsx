@@ -2,10 +2,11 @@ import { React } from 'perun-core';
 import { core } from '../spatial';
 import { applyToEngine } from '../bootstrap/apply';
 import { resolve } from '../bootstrap/resolve';
-import { fetchLayers, firstOf, layerNamed } from '../data/tiles';
-import { FAILURE_CARD, failureNotice, say } from '../lib/notices';
+import { fallbackBasemap, fetchLayers, firstOf, layerNamed } from '../data/tiles';
+import { basemapNotice, FAILURE_CARD, failureNotice, say } from '../lib/notices';
 import { FIT_PADDING } from '../lib/zoom';
 import { AtlasMapContext } from './context';
+import { BasemapNotice } from './notices/BasemapNotice';
 import { UnavailableCard } from './notices/UnavailableCard';
 import { AttributionControl } from './controls/AttributionControl';
 import { CoordinatesControl } from './controls/CoordinatesControl';
@@ -19,6 +20,24 @@ import { ZoomRail, ZOOM_LABELS } from './controls/ZoomRail';
 import '../style/controls.css';
 
 const { useEffect, useMemo, useRef, useState } = React;
+
+/**
+ * The catalogue's layers, with the fallback basemap added where it has none.
+ */
+const loadLayers = async (session, map, config, labels) => {
+  const { basemap, overlays, catalogue } = await fetchLayers(session, { maxZoom: config.maxZoom });
+  if (catalogue === 'ok') return { basemap, overlays, notice: null };
+
+  const crs = map.getCRS?.()?.code;
+  const fallback = fallbackBasemap(config.fallbackBasemap, { crs, maxZoom: config.maxZoom });
+  const withFallback = fallback.layer
+    ? { ...basemap, [say('basemapDefaultGroup', labels)]: { [fallback.name]: fallback.layer } }
+    : basemap;
+  return { basemap: withFallback, overlays, notice: basemapNotice(catalogue, fallback, crs) };
+};
+
+const eachLayer = (grouped, fn) =>
+  Object.values(grouped ?? {}).forEach(group => Object.values(group).forEach(fn));
 
 /**
  * A map, mounted into whatever container this component renders.
@@ -78,8 +97,10 @@ const { useEffect, useMemo, useRef, useState } = React;
  * one to offer, and gets a refusal naming the version instead of a map.
  *
  * A map that cannot be built shows a card in its place saying why, with the
- * parameters at fault for an administrator and a way to try again.
- * `noticeLabels` holds its words, by the keys in `lib/notices.js`.
+ * parameters at fault for an administrator and a way to try again. A catalogue
+ * with no basemap gets the `fallbackBasemap` setting where the CRS allows it,
+ * and a note along the bottom saying so. `noticeLabels` holds their words, by
+ * the keys in `lib/notices.js`.
  */
 
 export const AtlasMap = ({
@@ -123,6 +144,8 @@ export const AtlasMap = ({
   const ready = layers !== null;
   const [failure, setFailure] = useState(null);
   const [nativeMax, setNativeMax] = useState(null);
+  const [notice, setNotice] = useState(null);
+  const [reloading, setReloading] = useState(false);
   // Bumped by the card's Try again, which builds the map from the start.
   const [attempt, setAttempt] = useState(0);
 
@@ -185,7 +208,7 @@ export const AtlasMap = ({
 
         // Layers take the deployment's ceiling rather than a constant, so a
         // basemap stops where the map does.
-        const { basemap, overlays } = await fetchLayers(session, { maxZoom: config.maxZoom });
+        const { basemap, overlays, notice: note } = await loadLayers(session, map, config, noticeLabels);
         if (cancelled) return;
 
         const base = layerNamed(basemap, view?.basemap) ?? firstOf(basemap);
@@ -224,6 +247,7 @@ export const AtlasMap = ({
         // together and the children mount with the parent already correct, which
         // is exactly what this is arranging by hand.
         onReady?.({ map, config, basemap, overlays });
+        setNotice(note);
         setLayers({ basemap, overlays });
       } catch (err) {
         if (cancelled) return;
@@ -266,7 +290,24 @@ export const AtlasMap = ({
     setBuilt(null);
     setLayers(null);
     setNativeMax(null);
+    setNotice(null);
     setAttempt(n => n + 1);
+  };
+
+  const reloadLayers = async () => {
+    const { map, config } = built;
+    setReloading(true);
+    const next = await loadLayers(session, map, config, noticeLabels);
+    if (mapRef.current !== map) return;
+    setReloading(false);
+    if (next.notice?.unreachable) return;
+
+    eachLayer(layers.basemap, layer => map.removeLayer(layer));
+    const base = firstOf(next.basemap);
+    if (base) base.addTo(map);
+    setNativeMax(base?.options?.maxNativeZoom ?? null);
+    setNotice(next.notice);
+    setLayers({ basemap: next.basemap, overlays: next.overlays });
   };
 
   /**
@@ -384,7 +425,22 @@ export const AtlasMap = ({
           {measure && <MeasureControl position={measurePosition} tools={measureTools} />}
         </>
       )}
-      {ready && layerSwitcher && <LayerSwitcher basemap={layers.basemap} overlays={layers.overlays} />}
+      {ready && layerSwitcher && (
+        <LayerSwitcher
+          basemap={layers.basemap}
+          overlays={layers.overlays}
+          note={notice?.kind === 'fallback' && !notice.unreachable ? say('basemapDefaultNote', noticeLabels) : undefined}
+        />
+      )}
+      {ready && notice && (
+        <BasemapNotice
+          key={`${notice.kind}-${notice.unreachable}`}
+          notice={notice}
+          labels={noticeLabels}
+          reloading={reloading}
+          onRetry={notice.unreachable ? reloadLayers : undefined}
+        />
+      )}
       {/* Once the basemaps are in, because it marks where the first one stops
           sharpening. */}
       {ready && zoomControl === 'rail' && (

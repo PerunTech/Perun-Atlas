@@ -1,5 +1,7 @@
 /*
- * The card in place of a map that cannot be drawn.
+ * What the map says when it cannot be drawn, or is drawn on a basemap nobody
+ * chose: the card in its place, the note along its bottom and the line under
+ * the layer switcher's list.
  *
  * Every colour comes from the panel's tokens, falling back to the values the
  * deployment sets, so a map outside a panel still reads. Margins, padding and
@@ -191,4 +193,121 @@
 .atlas-unavailable__btn--primary:hover {
   border-color: transparent;
   background: var(--ap-accent-hover, #3b4a52);
+}
+
+/*
+ * spatial centres this corner with `left: 50%`, which also caps a shrink-wrapped
+ * corner at half the map. The note needs more than that to stay on one line.
+ */
+.control-bottomcenter:has(.atlas-basemap-notice) {
+  width: max-content;
+  max-width: calc(100% - 140px);
+}
+
+.control-bottomcenter:has(.atlas-basemap-notice) > .leaflet-control {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.atlas-basemap-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-family: var(--ap-font, system-ui, sans-serif);
+}
+
+.atlas-basemap-notice__pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  background: var(--ap-surface, #fff);
+  border: 1px solid var(--ap-line, #e4e5ea);
+  border-radius: 18px;
+  box-shadow: var(--ap-shadow-chip, 0 1px 3px rgba(16, 18, 28, 0.16)), 0 8px 24px rgba(16, 18, 28, 0.1);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ap-ink, #14161a);
+}
+
+.atlas-basemap-notice__pill > .atlas-icon {
+  flex: 0 0 auto;
+  color: var(--ap-accent, #4a5c66);
+}
+
+.atlas-basemap-notice--warning .atlas-basemap-notice__pill > .atlas-icon {
+  color: #b45309;
+}
+
+.atlas-basemap-notice__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.atlas-basemap-notice__action {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ap-border, #dcdde3);
+  border-radius: 999px;
+  background: var(--ap-surface, #fff);
+  font: 500 12px/1 var(--ap-font, system-ui, sans-serif);
+  color: var(--ap-ink, #14161a);
+  cursor: pointer;
+}
+
+.atlas-basemap-notice__action:hover {
+  border-color: var(--ap-border-strong, #bdbfc9);
+}
+
+.atlas-basemap-notice__action:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.atlas-basemap-notice__dismiss {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ap-ink-2, #4b5563);
+  cursor: pointer;
+}
+
+.atlas-basemap-notice__dismiss:hover {
+  background: var(--ap-accent-tint, #eef1f2);
+}
+
+.atlas-basemap-notice__details {
+  box-sizing: border-box;
+  max-width: 28rem;
+  margin: 0;
+  padding: 12px 14px;
+  text-indent: 0;
+  background: var(--ap-surface, #fff);
+  border: 1px solid var(--ap-line, #e4e5ea);
+  border-radius: var(--ap-r-lg, 12px);
+  box-shadow: var(--ap-shadow-card, 0 8px 24px rgba(16, 18, 28, 0.1));
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ap-ink-2, #4b5563);
+}
+
+.atlas-switcher-note {
+  max-width: 14rem;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  text-indent: 0;
+  border-top: 1px solid #ddd;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ap-ink-2, #4b5563);
 }

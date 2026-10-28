@@ -1,6 +1,7 @@
 import { React, PropTypes } from 'perun-core';
 import { data } from '../../spatial';
 import { useAtlasMap } from '../context';
+import '../../style/notice.css';
 
 const { layerControl } = data;
 const { useLayoutEffect } = React;
@@ -15,12 +16,22 @@ const { useLayoutEffect } = React;
  *
  * @param {Object} basemap - As `fetchLayers` returns them.
  * @param {Object} overlays - The same.
+ * @param {string} [note] - A line under the list.
  */
-export const LayerSwitcher = ({ basemap, overlays }) => {
+export const LayerSwitcher = ({ basemap, overlays, note }) => {
   const map = useAtlasMap();
 
   useLayoutEffect(() => {
     const added = layerControl(basemap, overlays, { collapsed: true }).addTo(map);
+
+    // The engine's control has no slot for a note, and redraws only its two
+    // lists, so a line after them stays.
+    if (note) {
+      const line = document.createElement('p');
+      line.className = 'atlas-switcher-note';
+      line.textContent = note;
+      added.getContainer().querySelector('.leaflet-control-layers-list')?.appendChild(line);
+    }
 
     return () => {
       // A collapsed switcher closes when the map is clicked, and subscribes
@@ -31,12 +42,13 @@ export const LayerSwitcher = ({ basemap, overlays }) => {
       map.off('click', added.collapse, added);
       added.remove();
     };
-  }, [map, basemap, overlays]);
+  }, [map, basemap, overlays, note]);
 
   return null;
 };
 
 LayerSwitcher.propTypes = {
   basemap: PropTypes.object,
-  overlays: PropTypes.object
+  overlays: PropTypes.object,
+  note: PropTypes.string
 };

@@ -197,6 +197,8 @@ code that is not registered, shows the default.
 | `noService`, `noServiceHint` | The card for a button with no `service`: No map for this button yet · (`map_service_missing` if registered, else) This button doesn't have a map service set up. Your administrator can add one to the button's configuration. |
 | `adminDetails`, `copyDetails`, `detailsCopied`, `retry` | Details for administrators · Copy details · Copied · Try again. The details themselves are English. |
 | `settingNotSet`, `settingUnreadable`, `settingNoAnswer` | Not set · Can't read {value} · No answer |
+| `basemapDefault`, `basemapDefaultNote`, `basemapDefaultGroup` | The note when the catalogue has no basemap and the default is drawn: Showing {name}, the default basemap. Your administrator can add others. · the same under the layer switcher's list · Default (the switcher's group) |
+| `basemapUnreachable`, `basemapNone`, `basemapNoneUnreachable`, `basemapRetry`, `dismiss` | Couldn't load this system's basemaps. Showing {name} for now. · No basemap is set up for this map. Your administrator can add one. · Couldn't load this system's basemaps. · Retry · Dismiss |
 
 ## map
 

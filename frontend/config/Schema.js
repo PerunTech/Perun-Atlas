@@ -39,6 +39,12 @@ export const SCHEMA = {
     default: 'metric'
   },
   attribution: { type: 'string', param: 'SPATIAL_ATTRIBUTION', default: '' },
+  fallbackBasemap: {
+    type: 'string',
+    param: 'SPATIAL_FALLBACK_BASEMAP',
+    default: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    doc: 'Tile URL drawn when the layer catalogue lists no basemap, on a Web Mercator map only. "none" turns it off.'
+  },
 
   /**
    * The CRS the database stores geometry in, which is not the CRS the map draws
