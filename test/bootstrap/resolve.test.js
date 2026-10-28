@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('perun-core', () => ({ axios: { get: vi.fn() }, utils: {}, elements: {} }));
 
 const { axios } = await import('perun-core');
-const { resolve } = await import('../../frontend/bootstrap/resolve');
+const { ConfigError, resolve } = await import('../../frontend/bootstrap/resolve');
+const { SCHEMA } = await import('../../frontend/config/Schema');
 
 const SERVER = 'https://svarog.test';
 const PARAMS = `${SERVER}/WsConf/params/get/sys/`;
@@ -43,6 +44,7 @@ describe('resolve', () => {
       bboxOrder: false,
       units: 'metric',
       attribution: '',
+      fallbackBasemap: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       dataSrid: '4326'
     });
     expect(warn).not.toHaveBeenCalled();
@@ -118,6 +120,45 @@ describe('resolve', () => {
     expect(failure.message).toMatch(/^perun-atlas: configuration could not be resolved\./);
     expect(failure.message).toMatch(/cannot read "center" as a \{ lat, lng \} pair/);
     expect(failure.message).toMatch(/cannot read "zoom" as an integer/);
-    expect(failure.message).toMatch(/crs \(parameter SPATIAL_CRS\), center \(parameter SPATIAL_CENTER\)/);
+    expect(failure.message).toMatch(/missing required setting\(s\): crs \(parameter SPATIAL_CRS\)$/);
+  });
+
+  it('carries what is wrong as data, an unreadable value apart from a missing one', async () => {
+    seeded = { SPATIAL_CENTER: 'nowhere' };
+    const failure = await resolve().catch((err) => err);
+    expect(failure).toBeInstanceOf(ConfigError);
+    expect(failure.problems.missing).toEqual([
+      { key: 'crs', param: 'SPATIAL_CRS', doc: SCHEMA.crs.doc }
+    ]);
+    expect(failure.problems.invalid).toEqual([expect.objectContaining({
+      key: 'center',
+      param: 'SPATIAL_CENTER',
+      got: 'nowhere',
+      expected: 'a { lat, lng } pair'
+    })]);
+    expect(failure.problems.unreachable).toEqual([]);
+  });
+
+  it('tells a required setting whose request failed from one nobody set', async () => {
+    seeded = { SPATIAL_CENTER: '35.1,33.4' };
+    axios.get.mockImplementation(async (url) => {
+      if (url.endsWith('SPATIAL_CRS')) throw new Error('Network Error');
+      return { data: { VALUE: seeded[url.slice(PARAMS.length)] } };
+    });
+    const failure = await resolve().catch((err) => err);
+    expect(failure.problems.missing).toEqual([]);
+    expect(failure.problems.unreachable).toEqual([
+      { key: 'crs', param: 'SPATIAL_CRS', doc: SCHEMA.crs.doc }
+    ]);
+    expect(failure.message).toMatch(/no answer for required setting\(s\): crs \(parameter SPATIAL_CRS\)/);
+  });
+
+  it('takes an override for a setting whose request failed', async () => {
+    seeded = { SPATIAL_CENTER: '35.1,33.4' };
+    axios.get.mockImplementation(async (url) => {
+      if (url.endsWith('SPATIAL_CRS')) throw new Error('Network Error');
+      return { data: { VALUE: seeded[url.slice(PARAMS.length)] } };
+    });
+    expect((await resolve({ crs: 'EPSG:4326' })).crs).toBe('EPSG:4326');
   });
 });

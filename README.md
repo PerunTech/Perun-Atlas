@@ -24,7 +24,7 @@ component API is not finished — that is the signal, not the workaround.
 | `frontend/data/` | Everything that crosses the wire or the projection: geometry fetching and geobuf decoding, bounding boxes and rings, rows, writes, exports, which features a drawn shape covers, the GEO_LAYER_TYPE catalogue. |
 | `frontend/appearance/` | What a feature looks like and what it says, decided from a descriptor. Plain data — no DOM, no engine — which is what makes it the half of the package the suite can test. `frontend/appearance/README.md` lists the files. |
 | `frontend/style/` | The stylesheets, and only those. A deployment overrides them; read `frontend/style/README.md` before debugging one. |
-| `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. `panel/` holds the pieces `FeaturePanel` is drawn out of. `controls/` holds every control that goes on a map, one file each. `context.js` is the map an `AtlasMap` hands its layers and controls. |
+| `frontend/components/` | The map, the screen around it and the chrome on it. `layers/` render nothing and put their features on the map through Leaflet. `panel/` holds the pieces `FeaturePanel` is drawn out of. `controls/` holds every control that goes on a map, one file each. `notices/` holds what a map says when it cannot be drawn or has no basemap of its own. `context.js` is the map an `AtlasMap` hands its layers and controls. |
 | `frontend/hooks/` | The panel's state, in the pieces it is made of: the date window, the choropleth's rows, the drawn shape with its save and what it caught, the export, the record pane, what the layer last reported. `frontend/hooks/README.md` says why they are hooks. |
 | `frontend/lib/` | The small shared pieces the components and the hooks are both built out of. `features/` is the part only the two layers drawing a fetched set use. `frontend/lib/README.md` lists them. |
 | `frontend/modules/` | Libraries loaded on demand, each built by `vite.modules.config.mjs` as an ES module of its own beside the bundle: `shp.js`, the shapefile reader, is `backend/www/shp.perun-atlas.js`. Bytes in, plain data out; nothing here imports the engine or perun-core. |
@@ -34,8 +34,8 @@ component API is not finished — that is the signal, not the workaround.
 | `backend/` | OSGi wrapper. Serves the bundle and registers it as a Perun plugin. No web services. |
 
 Only the components and `config/` are exported. Everything else under
-`frontend/` — `appearance/`, `bootstrap/`, `data/`, `hooks/`, `lib/` and
-`components/panel/` — is the package's own, which is what makes it free to
+`frontend/` — `appearance/`, `bootstrap/`, `data/`, `hooks/`, `lib/`,
+`components/panel/` and `components/notices/` — is the package's own, which is what makes it free to
 change shape without the change being a breaking one.
 
 ## What a consumer gets
@@ -130,7 +130,14 @@ that only appears in the running app.
 Settings resolve from `SVAROG_SYS_PARAMS`, editable live through the admin
 console, and from nothing else: the `window.sysCrs`-style globals pages used to
 set are not read. A required setting with no value throws at startup naming the
-parameter, rather than falling back to a plausible map of the wrong country.
+parameter, rather than falling back to a plausible map of the wrong country. The
+map shows a card in its place that says so, tells a parameter nobody set from one
+that could not be read or did not answer, and offers to try again.
+
+When `GEO_LAYER_TYPE` gives no basemap, a Web Mercator map draws
+`SPATIAL_FALLBACK_BASEMAP` instead (OpenStreetMap's tiles by default; `none`
+turns it off) and says so along its bottom edge. OpenStreetMap's tile servers
+are for light use only, so a system with real traffic should register its own.
 
 Add a setting by adding a row to `frontend/config/Schema.js` and nothing else.
 

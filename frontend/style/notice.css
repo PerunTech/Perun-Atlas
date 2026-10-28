@@ -1,0 +1,313 @@
+/*
+ * What the map says when it cannot be drawn, or is drawn on a basemap nobody
+ * chose: the card in its place, the note along its bottom and the line under
+ * the layer switcher's list.
+ *
+ * Every colour comes from the panel's tokens, falling back to the values the
+ * deployment sets, so a map outside a panel still reads. Margins, padding and
+ * fonts are said on each class because the deployment's bare `p`, `button` and
+ * `code` rules would otherwise reach in (see README.md).
+ */
+
+.atlas-unavailable {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 18rem;
+  padding: 16px;
+  overflow: auto;
+  background-color: var(--ap-map-bg, #dfe6e8);
+  background-image:
+    linear-gradient(rgba(74, 92, 102, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 92, 102, 0.09) 1px, transparent 1px);
+  background-size: 32px 32px;
+  font-family: var(--ap-font, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+}
+
+.atlas-unavailable__card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 30rem;
+  max-width: 100%;
+  margin: auto;
+  padding: 20px 24px 18px;
+  text-align: center;
+  background: var(--ap-surface, #fff);
+  border: 1px solid var(--ap-line, #e4e5ea);
+  border-radius: var(--ap-r-lg, 12px);
+  box-shadow: var(--ap-shadow-card, 0 8px 24px rgba(16, 18, 28, 0.1));
+  color: var(--ap-ink, #14161a);
+}
+
+.atlas-unavailable__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--ap-accent-tint, #eef1f2);
+  color: var(--ap-accent, #4a5c66);
+}
+
+.atlas-unavailable__title {
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.atlas-unavailable__hint {
+  max-width: 25rem;
+  margin: 6px 0 0;
+  padding: 0;
+  text-indent: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ap-ink-2, #4b5563);
+}
+
+.atlas-unavailable__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--ap-r-sm, 6px);
+  background: transparent;
+  font: 500 12.5px/1.2 var(--ap-font, system-ui, sans-serif);
+  color: var(--ap-accent, #4a5c66);
+  cursor: pointer;
+}
+
+.atlas-unavailable__toggle:hover {
+  background: var(--ap-accent-tint, #eef1f2);
+}
+
+.atlas-unavailable__details {
+  align-self: stretch;
+  margin-top: 6px;
+  padding: 2px 14px;
+  text-align: left;
+  background: var(--ap-surface-2, #fafafb);
+  border: 1px solid var(--ap-line, #ebecf0);
+  border-radius: var(--ap-r-md, 9px);
+}
+
+.atlas-unavailable__row {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ap-line, #ebecf0);
+}
+
+.atlas-unavailable__row:last-child {
+  border-bottom: 0;
+}
+
+.atlas-unavailable__param {
+  padding: 0;
+  background: none;
+  font: 500 12px/1.4 var(--ap-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  color: var(--ap-ink, #14161a);
+}
+
+.atlas-unavailable__status {
+  justify-self: start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: #eceef1;
+  color: var(--ap-ink-2, #4b5563);
+}
+
+.atlas-unavailable__status--invalid {
+  background: #fdf1dc;
+  color: #7a4306;
+}
+
+.atlas-unavailable__doc {
+  grid-column: 2;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ap-ink-3, #6b7280);
+}
+
+.atlas-unavailable__note {
+  margin: 0;
+  padding: 10px 0;
+  text-indent: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  color: var(--ap-ink-2, #4b5563);
+}
+
+.atlas-unavailable__row + .atlas-unavailable__note {
+  border-top: 1px solid var(--ap-line, #ebecf0);
+}
+
+.atlas-unavailable__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.atlas-unavailable__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 9px 14px;
+  border: 1px solid var(--ap-border, #dcdde3);
+  border-radius: var(--ap-r-md, 9px);
+  background: var(--ap-surface, #fff);
+  font: 500 12.5px/1.2 var(--ap-font, system-ui, sans-serif);
+  color: var(--ap-ink, #14161a);
+  cursor: pointer;
+}
+
+.atlas-unavailable__btn:hover {
+  border-color: var(--ap-border-strong, #bdbfc9);
+}
+
+.atlas-unavailable__btn--primary {
+  border-color: transparent;
+  background: var(--ap-accent, #4a5c66);
+  color: #fff;
+}
+
+.atlas-unavailable__btn--primary:hover {
+  border-color: transparent;
+  background: var(--ap-accent-hover, #3b4a52);
+}
+
+/*
+ * spatial centres this corner with `left: 50%`, which also caps a shrink-wrapped
+ * corner at half the map. The note needs more than that to stay on one line.
+ */
+.control-bottomcenter:has(.atlas-basemap-notice) {
+  width: max-content;
+  max-width: calc(100% - 140px);
+}
+
+.control-bottomcenter:has(.atlas-basemap-notice) > .leaflet-control {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.atlas-basemap-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-family: var(--ap-font, system-ui, sans-serif);
+}
+
+.atlas-basemap-notice__pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  background: var(--ap-surface, #fff);
+  border: 1px solid var(--ap-line, #e4e5ea);
+  border-radius: 18px;
+  box-shadow: var(--ap-shadow-chip, 0 1px 3px rgba(16, 18, 28, 0.16)), 0 8px 24px rgba(16, 18, 28, 0.1);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ap-ink, #14161a);
+}
+
+.atlas-basemap-notice__pill > .atlas-icon {
+  flex: 0 0 auto;
+  color: var(--ap-accent, #4a5c66);
+}
+
+.atlas-basemap-notice--warning .atlas-basemap-notice__pill > .atlas-icon {
+  color: #b45309;
+}
+
+.atlas-basemap-notice__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.atlas-basemap-notice__action {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ap-border, #dcdde3);
+  border-radius: 999px;
+  background: var(--ap-surface, #fff);
+  font: 500 12px/1 var(--ap-font, system-ui, sans-serif);
+  color: var(--ap-ink, #14161a);
+  cursor: pointer;
+}
+
+.atlas-basemap-notice__action:hover {
+  border-color: var(--ap-border-strong, #bdbfc9);
+}
+
+.atlas-basemap-notice__action:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.atlas-basemap-notice__dismiss {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ap-ink-2, #4b5563);
+  cursor: pointer;
+}
+
+.atlas-basemap-notice__dismiss:hover {
+  background: var(--ap-accent-tint, #eef1f2);
+}
+
+.atlas-basemap-notice__details {
+  box-sizing: border-box;
+  max-width: 28rem;
+  margin: 0;
+  padding: 12px 14px;
+  text-indent: 0;
+  background: var(--ap-surface, #fff);
+  border: 1px solid var(--ap-line, #e4e5ea);
+  border-radius: var(--ap-r-lg, 12px);
+  box-shadow: var(--ap-shadow-card, 0 8px 24px rgba(16, 18, 28, 0.1));
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ap-ink-2, #4b5563);
+}
+
+.atlas-switcher-note {
+  max-width: 14rem;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  text-indent: 0;
+  border-top: 1px solid #ddd;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ap-ink-2, #4b5563);
+}

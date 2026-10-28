@@ -1,6 +1,8 @@
 import { React, connect, useIntl, utils } from 'perun-core';
 import { FeaturePanel } from './FeaturePanel';
+import { UnavailableCard } from './notices/UnavailableCard';
 import { takeLink } from '../lib/link';
+import { say } from '../lib/notices';
 
 const { labelsManager } = utils;
 const { useMemo, useState } = React;
@@ -103,10 +105,17 @@ export const ConfiguredMap = (props) => {
   const service = objConfig?.service;
 
   if (!service) {
+    const details = `The button${linkId ? ` ${linkId}` : ''} has no "service" in its objectConfiguration.`;
     return (
-      <div className='atlas-panel-unavailable'>
-        {getLabel('map_service_missing') ?? 'This button has no map service configured.'}
-      </div>
+      <UnavailableCard
+        className='atlas-panel-unavailable'
+        icon='map'
+        title={say('noService', labels)}
+        hint={getLabel('map_service_missing') ?? say('noServiceHint', labels)}
+        details={details}
+        copy={details}
+        labels={labels}
+      />
     );
   }
 

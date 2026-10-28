@@ -191,6 +191,14 @@ code that is not registered, shows the default.
 | `save`, `discard` | Save · Discard |
 | `saveTooSmall`, `saveIncomplete` | Explains why nothing was sent: the radius rounds to zero, or mandatory form fields are empty. |
 | `formLoading`, `formFailed` | Loading the fields… · These fields did not load, so there is nothing to save into. |
+| `mapNotSetUp`, `mapNotSetUpHint` | The card in place of a map whose settings are missing or unreadable: This map isn't set up yet · Some settings the map needs are missing or can't be read, so it can't be drawn. Ask your administrator to check the map's system parameters. |
+| `mapUnreachable`, `mapUnreachableHint` | The same card when the settings did not load: Couldn't reach the server · The map's settings didn't load, so it can't be drawn yet. This is usually brief. Try again in a moment. |
+| `mapEngineOld`, `mapEngineOldHint`, `mapFailed`, `mapFailedHint` | The same card for an engine without `createMap`, and for anything else. |
+| `noService`, `noServiceHint` | The card for a button with no `service`: No map for this button yet · (`map_service_missing` if registered, else) This button doesn't have a map service set up. Your administrator can add one to the button's configuration. |
+| `adminDetails`, `copyDetails`, `detailsCopied`, `retry` | Details for administrators · Copy details · Copied · Try again. The details themselves are English. |
+| `settingNotSet`, `settingUnreadable`, `settingNoAnswer` | Not set · Can't read {value} · No answer |
+| `basemapDefault`, `basemapDefaultNote`, `basemapDefaultGroup` | The note when the catalogue has no basemap and the default is drawn: Showing {name}, the default basemap. Your administrator can add others. · the same under the layer switcher's list · Default (the switcher's group) |
+| `basemapUnreachable`, `basemapNone`, `basemapNoneUnreachable`, `basemapRetry`, `dismiss` | Couldn't load this system's basemaps. Showing {name} for now. · No basemap is set up for this map. Your administrator can add one. · Couldn't load this system's basemaps. · Retry · Dismiss |
 
 ## map
 

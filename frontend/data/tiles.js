@@ -57,21 +57,25 @@ const readRow = (row, table = LAYER_TABLE) => ({
 const PROVIDERS = [
   {
     match: /openstreetmap\.org/i,
+    name: 'OpenStreetMap',
     maxNativeZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   },
   {
     match: /opentopomap\.org/i,
+    name: 'OpenTopoMap',
     maxNativeZoom: 17,
     attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)'
   },
   {
     match: /cartocdn\.com/i,
+    name: 'CARTO',
     maxNativeZoom: 20,
     attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>'
   },
   {
     match: /arcgisonline\.com/i,
+    name: 'Esri',
     attribution: 'Tiles &copy; <a href="https://www.esri.com">Esri</a>'
   }
 ];
@@ -143,8 +147,10 @@ const buildTileLayer = (row, { maxZoom } = {}) => {
  * @param {string} session - svarog session.
  * @param {Object} [options] - `maxZoom`, the deployment's ceiling, applied to
  *        every tiled layer so they follow the map rather than a constant.
- * @returns {Promise<{ basemap: Object, overlays: Object }>} Grouped Leaflet layers,
- *          shaped for spatial's layer control: { groupName: { label: layer } }.
+ * @returns {Promise<{ basemap: Object, overlays: Object, catalogue: string }>}
+ *          Grouped Leaflet layers, shaped for spatial's layer control:
+ *          { groupName: { label: layer } }. `catalogue` is `ok`, `empty` when
+ *          no row made a basemap, or `unreachable` when the rows did not arrive.
  */
 export const fetchLayers = async (session, options = {}) => {
   const basemap = {};
@@ -158,7 +164,7 @@ export const fetchLayers = async (session, options = {}) => {
     });
 
   const rows = response?.data;
-  if (!Array.isArray(rows)) return { basemap, overlays };
+  if (!Array.isArray(rows)) return { basemap, overlays, catalogue: 'unreachable' };
 
   rows.forEach(raw => {
     const row = readRow(raw);
@@ -170,7 +176,28 @@ export const fetchLayers = async (session, options = {}) => {
     target[row.group][row.label] = layer;
   });
 
-  return { basemap, overlays };
+  return { basemap, overlays, catalogue: firstOf(basemap) ? 'ok' : 'empty' };
+};
+
+const FALLBACK_OFF = /^(none|off|false)$/i;
+
+// XYZ tiles are published on the Web Mercator grid; on any other CRS they would
+// draw in the wrong place rather than not at all.
+const WEB_MERCATOR = ['EPSG:3857', 'EPSG:900913'];
+
+/**
+ * The basemap to draw when the catalogue gave none, or why there is none.
+ *
+ * @param {string} url - The `fallbackBasemap` setting.
+ * @param {Object} options - `crs`, the map's CRS code, and `maxZoom`.
+ * @returns {{ layer: Object, name: string } | { layer: null, reason: 'off'|'crs' }}
+ */
+export const fallbackBasemap = (url, { crs, maxZoom } = {}) => {
+  if (!url || FALLBACK_OFF.test(url.trim())) return { layer: null, reason: 'off' };
+  if (!WEB_MERCATOR.includes(crs)) return { layer: null, reason: 'crs' };
+
+  const layer = buildTileLayer({ protocol: 'tile', url }, { maxZoom });
+  return { layer, name: providerFor(url).name ?? 'Default basemap' };
 };
 
 /** The first layer of the first group — what a map should show before a user chooses. */

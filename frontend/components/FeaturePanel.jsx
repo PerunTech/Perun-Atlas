@@ -179,6 +179,9 @@ export const FeaturePanel = ({
    */
   const [drawnOn, setDrawnOn] = useState(undefined);
 
+  // A map that failed to build never mounts the layer that would end `loading`.
+  const [mapFailed, setMapFailed] = useState(false);
+
   /**
    * The panel's own state, in the pieces it is made of.
    *
@@ -430,11 +433,14 @@ export const FeaturePanel = ({
               {...{ layerSwitcher: true, ...map }}
               extent={extent}
               view={view}
+              noticeLabels={labels}
               onReady={(ready) => {
+                setMapFailed(false);
                 setDrawnOn(ready.map);
                 setDataSrid(ready.config?.dataSrid ?? null);
                 viewLink.attach(ready);
               }}
+              onError={() => setMapFailed(true)}
             >
               {/* One layer or the other, never both. The callbacks are the same
                   pair of hands either way -- which is what let this be a branch
@@ -545,7 +551,7 @@ export const FeaturePanel = ({
             </AtlasMap>
           </div>
 
-          {(loading || saving || fileOverlay.opening) && (
+          {!mapFailed && (loading || saving || fileOverlay.opening) && (
             <LoadingCard saving={saving} opening={fileOverlay.opening} labels={labels} />
           )}
 

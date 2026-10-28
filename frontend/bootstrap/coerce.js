@@ -12,9 +12,11 @@
  */
 
 const fail = (key, value, expected) => {
-  throw new TypeError(
+  const err = new TypeError(
     `perun-atlas: cannot read "${key}" as ${expected} (got ${JSON.stringify(value)})`
   );
+  err.expected = expected;
+  throw err;
 };
 
 const parseMaybeJson = (value) => {
