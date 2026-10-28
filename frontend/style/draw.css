@@ -1,19 +1,5 @@
-/*
- * Drawing a shape, and the controls that go with it.
- *
- * Structure only, like the rest of this package's stylesheets: a deployment's
- * own sheet is later in the cascade and decides the colours. Everything here
- * that has a colour takes it from the panel's tokens, so a screen described
- * entirely in a menu row still gets handles that match its accent.
- */
-
 .atlas-panel__draw {
-  /* Its own row in the toolbar rather than another item in it: the shape's
-     controls belong together, and the save button has to sit at the end of the
-     row it belongs to rather than at the end of whatever else the toolbar
-     happens to be carrying. The button that arms the map is not here -- it is in
-     the panel's actions, with the file buttons -- so this row exists only while
-     there is something to put in it. */
+  /* Its own row, so the save button sits at the end of the shape's controls. */
   flex-basis: 100%;
   display: flex;
   flex-wrap: wrap;
@@ -21,13 +7,6 @@
   gap: 8px;
 }
 
-/*
- * What to click, while the map is armed and nothing is drawn yet.
- *
- * The instruction the button used to carry. Here it is a sentence in a row
- * instead of a sentence in a button, which is the difference between text that
- * reflows a toolbar and text that reads.
- */
 .atlas-panel__drawhint {
   flex-basis: 100%;
   margin: 0;
@@ -35,34 +14,14 @@
   color: var(--ap-muted, #6b6f7a);
 }
 
-/*
- * A field: a word, and a box holding the control it names.
- *
- * The border and the ground belong to the box rather than to the input,
- * because the radius is a number and a unit and those are one measurement. On
- * the input, the border stopped after the number and left `m` outside it --
- * a fourth loose item in a row of four, where the row actually holds two
- * fields. Inside, the number is the thing being edited and the unit is the
- * thing it is measured in, which is what they are.
- *
- * Focus moves to the box with it. `:focus-within` draws the ring the input
- * used to draw and the input's own outline is suppressed, so a keyboard reader
- * gets one ring around the control rather than one inside it.
- */
+/* The border is on the box, so the number and its unit read as one measurement; `:focus-within`
+   draws the ring the input no longer does. */
 .atlas-panel__drawfield {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  /* Said, not inherited. These registries serve a bare
-     `label { display: block; margin-bottom: 3px; padding-left: 15px;
-     text-indent: -15px }` for their forms, and a deployment's sheet is later
-     in the cascade than this package's. The class wins the display, but the
-     rest went on applying -- and `text-indent` inherits, so it reached the
-     unit inside the field and pulled `m` fifteen pixels left, over the number
-     it measures, taking the span's width to nothing on the way: a flex base
-     size of `max-content - 15px` clamps at zero.
-     These two labels are the package's own and are not part of that form
-     convention, so they say what they are. */
+  /* Set in full: the registries' bare `label` rule comes later, and its inherited `text-indent`
+     pulled the unit fifteen pixels over the number. */
   margin: 0;
   padding: 0;
   text-indent: 0;
@@ -86,8 +45,7 @@
   outline-offset: 1px;
 }
 
-/* Disabled is drawn here because there is nothing left on the input to draw
-   it on -- see `box` in DrawBar. */
+/* Drawn on the box, since the input no longer has a border (see `box` in DrawBar). */
 .atlas-panel__drawbox--off {
   opacity: 0.55;
 }
@@ -100,8 +58,6 @@
   color: var(--ap-ink, #14161a);
   font: var(--ap-value-font, 500 12px/1.4 system-ui, sans-serif);
   font-variant-numeric: tabular-nums;
-  /* Against the unit, so the two read as one measurement however many digits
-     the reader dragged their way to. */
   text-align: end;
 }
 
@@ -110,14 +66,8 @@
   outline: none;
 }
 
-/*
- * No steppers.
- *
- * They sit where the unit now is, they are the one control in this row a
- * deployment's stylesheet cannot reach, and at a step of 100 they move a
- * radius the reader dragged to 6663 in jumps that lose it. Arrow keys still
- * step by `step`, so a keyboard keeps everything the arrows offered.
- */
+/* No steppers: a deployment's sheet cannot reach them, and at a step of 100 they lose the reader's
+   value. Arrow keys still step. */
 .atlas-panel__drawbox input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
@@ -134,14 +84,7 @@
   font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
 }
 
-/*
- * The note, which is a sentence and takes what is left of the row.
- *
- * A fixed width was wrong in both directions: too narrow to read a sentence
- * back on a wide panel, and wide enough to push the buttons onto their own
- * line on a narrow one. Growing from a floor does both jobs, and it is the
- * floor rather than the width that decides when the row wraps.
- */
+/* Grows from a floor, which rather than a width decides when the row wraps. */
 .atlas-panel__drawfield--wide {
   flex: 1 1 18em;
   min-width: 12em;
@@ -157,22 +100,8 @@
   font-variant-numeric: normal;
 }
 
-/*
- * The fields a row described, as one item in this row.
- *
- * What lays them along the row rather than down it is in `form.css`, shared
- * with the date filter because both are RJSF and both were getting it wrong the
- * same way. This is the box's own behaviour in the row, and under it what only
- * this form needs.
- *
- * `0 1 auto`, not `1 1 auto`: a form that grows takes the whole line and puts
- * the radius, the count and the buttons on lines of their own -- and inside it,
- * a group stretched to the full width is a group per line. Sized to its content
- * it is what it is, another control in a row of them, and it wraps as a whole
- * when the row runs out. `min-width: 0` so it still gives room back when the
- * row wraps -- without the zero minimum a flex item refuses to shrink below its
- * content and a long field pushes the actions off the end.
- */
+/* `0 1 auto`, since a form that grows takes the whole line; `min-width: 0` so it still shrinks when
+   the row wraps. Laying the fields along the row is in `form.css`. */
 .atlas-panel__drawform {
   flex: 0 1 auto;
   min-width: 0;
@@ -182,45 +111,15 @@
   margin: 0;
 }
 
-/*
- * A group is a box around fields, and a row of controls has no room for boxes.
- *
- * RJSF wraps each grouppath in a `div.form-group.field-object` holding a
- * fieldset, and that wrapper is a block: as a flex item it takes the whole line
- * whatever its fields measure, so two groups are two lines and three are three
- * -- which is the entire reason the fields beside a shape were stacking while
- * every one of them would have fitted across.
- *
- * `display: contents` takes the wrapper's own box away and leaves its children
- * in the row, so a field is an item of this row no matter how deep the schema
- * put it. The fieldset inside goes the same way for the same reason.
- *
- * It costs the fieldset's grouping, which is a fair trade only because the
- * titles are hidden -- see `form.css`: a fieldset with no legend has no accessible name to
- * lose, and every field keeps its own label.
- */
+/* `display: contents` drops RJSF's grouppath wrappers, blocks that put each group on its own line.
+   Fine only because the titles are hidden (see `form.css`) and every field keeps its label. */
 .atlas-panel__drawform .rjsf fieldset .form-group.field-object,
 .atlas-panel__drawform .rjsf fieldset fieldset {
   display: contents;
 }
 
-/*
- * A field's own label.
- *
- * These registries ship `label { display: block; margin-bottom: 3px;
- * padding-left: 15px; text-indent: -15px }` for their forms, and a form built
- * from a table's schema is exactly the markup that rule was written for -- it
- * simply arrived somewhere else. At the record-form size a label is 16px over a
- * 37px control, which is right on a page and is three times the height of the
- * row it is in here.
- *
- * This and the rules under it name the draw row alone. The date filter is the
- * other form on this panel and it is older than all of them: a deployment has
- * had it to style since it shipped, and `atlas-panel.css` styles it -- so a
- * default written now would either lose to that or, worse, win by a property
- * the deployment happened not to name. What both forms share is in
- * `form.css`: the fieldset that flows them along the row, and the legend.
- */
+/* The registries' bare `label` rule makes a label 16px over a 37px control. These rules name the
+   draw row alone, since the deployment already styles the date filter. */
 .atlas-panel__drawform .rjsf label {
   display: block;
   margin: 0 0 2px;
@@ -230,20 +129,12 @@
   color: var(--ap-muted, #6b6f7a);
 }
 
-/*
- * The controls, drawn as the row's own are.
- *
- * The same border, radius, ground and 12px value font as
- * `.atlas-panel__drawbox` -- from the same tokens, so a deployment restyling
- * the panel restyles these with it. A field that arrived from a schema should
- * not be a different-looking control from the radius beside it.
- */
+/* The same border, radius, ground and font as `.atlas-panel__drawbox`, from the same tokens. */
 .atlas-panel__drawform .rjsf input,
 .atlas-panel__drawform .rjsf select,
 .atlas-panel__drawform .rjsf textarea {
   height: auto;
-  /* A form control is 100% of its field on a page, where a field is a column.
-     Here a field is as wide as what it holds. */
+  /* As wide as what it holds, not a page column. */
   width: auto;
   max-width: 100%;
   padding: 5px 8px;
@@ -262,44 +153,26 @@
   outline-offset: 1px;
 }
 
-/*
- * One edge of a box this package draws, painted green by the app's form sheet.
- *
- * `.form-control { border-bottom: 1px solid #385a38 !important }` is the
- * underline these registries give a record form's inputs, and RJSF puts
- * `form-control` on every control it renders -- so the box above arrives with
- * three grey sides and a green one, beside a radius field that has four.
- *
- * `!important` is the only thing that reaches a declaration carrying it, and
- * this is the narrowest place to spend it: the fields beside a drawn shape, and
- * not the date filter, which a deployment styles for itself and whose inputs
- * this should keep its hands off.
- */
+/* The app's form sheet underlines `.form-control` in green with `!important`, which only
+   `!important` reaches. Draw row only; the date filter is the deployment's. */
 .atlas-panel__drawform .rjsf input,
 .atlas-panel__drawform .rjsf select,
 .atlas-panel__drawform .rjsf textarea {
   border-bottom: 1px solid var(--ap-rule, #d8dde3) !important;
 }
 
-/* Two lines to start with, and the reader's to drag. A text area sized for a
-   record form is most of this row's height before anything is typed in it. */
+/* A text area sized for a record form fills most of the row before anything is typed. */
 .atlas-panel__drawform .rjsf textarea {
   min-height: 2.6em;
   resize: vertical;
 }
 
-/* A field is a box, not a table box. Some of these deployments lay a form group
-   out as one, which shrink-wraps to its widest line and makes a field as wide
-   as the longest error message under it. Said for the draw row only: the date
-   filter has been laid out by these sheets for as long as it has existed, and
-   this is not the change to start moving it with. */
+/* Some deployments lay a form group out as a table box, which shrink-wraps to its longest error
+   message. Draw row only. */
 .atlas-panel__drawform .rjsf .form-group {
   display: block;
 }
 
-/* What a field is refusing, under the field rather than beside it. Kept to the
-   row's own size; the colour is the deployment's, as every other warning on
-   this screen is. */
 .atlas-panel__drawform .rjsf .error-detail {
   margin: 2px 0 0;
   padding: 0;
@@ -307,19 +180,7 @@
   font: var(--ap-label-font, 500 11px/1.4 system-ui, sans-serif);
 }
 
-/*
- * What the shape covers.
- *
- * Beside the radius that decides it rather than under the map, because the two
- * are one control: the number being typed and the answer to typing it. It reads
- * as a count and a scale -- the caught figure carries the weight, the set it was
- * taken from sits behind it -- so that a reader sees `12` first and `/ 340` only
- * if they want to know what 12 is out of.
- *
- * `tabular-nums` because it changes under the reader's eye while a radius is
- * being typed, and digits that shift the width as they change read as movement
- * rather than as counting.
- */
+/* Tabular figures, so the count does not shift sideways while a radius is being typed. */
 .atlas-panel__drawcount {
   display: inline-flex;
   align-items: baseline;
@@ -348,13 +209,7 @@
   margin-inline-start: auto;
 }
 
-/*
- * The handles.
- *
- * Small, because they sit on top of the thing being measured, and square for the
- * edge against round for the centre so the two are told apart at a glance
- * rather than by trying one.
- */
+/* Square for the edge, round for the centre, so the two are told apart at a glance. */
 .atlas-draw-handle {
   background: var(--ap-surface, #ffffff);
   border: 2px solid var(--ap-accent, #b3261e);

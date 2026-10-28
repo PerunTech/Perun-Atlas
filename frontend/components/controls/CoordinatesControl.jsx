@@ -18,7 +18,6 @@ const AXIS_LABELS = {
   ordinate_y: ['ordinate_y', 'Y']
 };
 
-/** The map's own system, as `readout` wants it: a code, a name and a pair of conversions. */
 const mapSystem = (map) => {
   const crs = map.getCRS();
 
@@ -30,48 +29,18 @@ const mapSystem = (map) => {
   };
 };
 
-/** Where to read from before the pointer has been anywhere. */
 const opening = (map) => {
   try {
     return map.getCenter();
   } catch {
-    // A map with no view yet. The configured centre is what it will open on.
+    // A map with no view yet opens on the configured centre.
     return setting('center');
   }
 };
 
-/**
- * Where the pointer is, in a system the reader picks.
- *
- * Two things at once, and they are worth separating. The readout follows the
- * pointer and quotes its position; the same two boxes take a position typed into
- * them and move the map there. One is for reading this map against something
- * else -- a record's own GPS fields, a paper sheet, a parcel reference -- and
- * the other is for finding a place someone has been handed the coordinates of.
- *
- * The system is the reader's choice, and the map's projection is not. A Leaflet
- * event carries WGS84 latitude and longitude however the map is projected, so
- * every system offered here converts from that: no tile is invalidated, no WMS
- * layer is left projected the old way, and the view never moves. Which systems
- * are offered is the `coordinateSystems` setting; the engine's `readout.resolve`
- * says what an entry looks like and what an empty list falls back to.
- *
- * Typing goes back through whichever system is on screen, so pressing Enter on
- * a position quoted in one system never reads it as another.
- *
- * Centred under the map by default rather than tucked in a corner: it describes
- * the map instead of acting on it. `bottomcenter` is spatial's own region, so on
- * an engine without it the readout goes to the bottom left, where it used to be.
- *
- * Ported from spatial's `ui.CoordinatesControl`, which is frozen, with the same
- * markup, classes and label codes. It reads its map from `AtlasMap`.
- *
- * @param {string} [position] - Where it sits.
- * @param {number} [precision] - Decimal places for degrees. A system carrying its
- *        own `decimals` keeps it; this is the default for the ones that do not.
- * @param {Array} [systems] - Overrides the `coordinateSystems` setting, for a
- *        screen that knows better than its deployment does. Same shape.
- */
+// Follows the pointer, and takes a typed position to move the map there. Every system converts from
+// the WGS84 position a Leaflet event carries, so the map's projection never changes. Ported from
+// spatial's frozen `ui.CoordinatesControl`.
 export const CoordinatesControl = ({ position = 'bottomcenter', precision, systems }) => {
   const map = useAtlasMap();
 
@@ -98,9 +67,7 @@ const Readout = ({ precision = 5, systems: configured }) => {
   const [rejected, setRejected] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // A map's CRS can be changed while this is mounted, and the system built out
-  // of it has to follow. `setCRS` re-applies the view, so `viewreset` is the
-  // event that fires -- there is no CRS event to listen for.
+  // No CRS event exists; `setCRS` re-applies the view, so `viewreset` fires.
   const [crsCode, setCrsCode] = useState(() => map.getCRS()?.code);
   useEffect(() => {
     const follow = () => setCrsCode(map.getCRS()?.code);
@@ -110,20 +77,17 @@ const Readout = ({ precision = 5, systems: configured }) => {
 
   const systems = useMemo(
     () => readout.resolve(configured ?? setting('coordinateSystems'), mapSystem(map), precision),
-    // crsCode is not read in there; it is what makes this run again.
+    // crsCode isn't read in there; it is what makes this run again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [configured, precision, crsCode, map]
   );
 
   const system = systems.find(candidate => candidate.key === chosen) ?? systems[0];
 
-  /* Throttled, because this fires on every pointer move across the map and
-     each one is a projection. Built once: a throttle rebuilt every render
-     throttles nothing. */
+  // Every pointer move is a projection, so throttled, and built once so the throttle holds.
   const track = useMemo(() => util.throttle((event) => setPosition(event.latlng), 100), []);
 
-  /* Not while someone is typing -- the pointer is over the box rather than the
-     map, and whatever they had half-written would be overwritten as they went. */
+  // Not while someone is typing, or their half-written value would be overwritten.
   useEffect(() => {
     if (draft) return undefined;
 
@@ -141,14 +105,10 @@ const Readout = ({ precision = 5, systems: configured }) => {
     setDraft(values.map((value, at) => (at === index ? text : value)));
   };
 
-  /* Plain, not memoised: it closes over `values`, which is rebuilt on every
-     render by design -- the readout follows the pointer. A `useCallback` over
-     that memoises nothing and only says otherwise. */
   const locate = () => {
     const latlng = system?.toLatLng(values);
 
-    // Checked on the latitude and longitude rather than on what was typed,
-    // so one rule covers a national grid's easting as well as a degree.
+    // Checked on the latitude and longitude, so one rule covers a grid easting and a degree.
     if (!latlng || !readout.inside(latlng, setting('bounds'))) {
       setRejected(true);
       return;
@@ -164,8 +124,7 @@ const Readout = ({ precision = 5, systems: configured }) => {
     if (event.key === 'Escape') { setDraft(null); setRejected(false); event.target.blur(); }
   };
 
-  /* Leaving the control resumes tracking. Moving between its two boxes does
-     not, which is what the relatedTarget check is for. */
+  // Moving between the two boxes keeps the draft; leaving the control resumes tracking.
   const onBlur = (event) => {
     if (event.currentTarget.contains(event.relatedTarget)) return;
     setDraft(null);
@@ -182,7 +141,7 @@ const Readout = ({ precision = 5, systems: configured }) => {
         clearTimeout(confirmation.current);
         confirmation.current = setTimeout(() => setCopied(false), 1500);
       })
-      // An insecure origin, or permission refused. The readout still reads.
+      // An insecure origin, or permission refused.
       .catch(() => {});
   };
 

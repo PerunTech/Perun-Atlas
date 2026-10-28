@@ -42,13 +42,7 @@ describe('colourBy', () => {
     expect(fill(feature({ status: { AREA_STATUS: '2' } }))).toBe('#c62828');
   });
 
-  /**
-   * The case a joined row actually arrives in. These services prefix every
-   * column with its table, so a joined record is `{ 'AREA_HEALTH.AREA_STATUS':
-   * '2' }` -- one flat key with a dot in it, not two levels. `data/path` tries
-   * the remaining path as a literal own property at each step, which is what
-   * makes one configured field name work against both shapes.
-   */
+  // These services prefix every column with its table, so a joined record has one flat dotted key.
   it('reads a dotted path that is one flat key with a dot in it', () => {
     const fill = colourBy({ field: 'status.AREA_HEALTH.AREA_STATUS', palette: PALETTE });
     expect(fill(feature({ status: { 'AREA_HEALTH.AREA_STATUS': '2' } }))).toBe('#c62828');

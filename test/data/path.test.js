@@ -4,9 +4,7 @@ import { bindPath, reader, valueAt } from '../../frontend/data/path';
 describe('valueAt', () => {
   it('walks a dotted path and stops at nothing', () => {
     expect(valueAt({ a: { b: 'c' } }, 'a.b')).toBe('c');
-    // Whatever stopped it, not a normalised nothing: `null` reached from a
-    // present-but-empty field and `undefined` from an absent one are different
-    // answers, and `cell` writes an empty string for both anyway.
+    // `null` from an empty field and `undefined` from an absent one are different answers.
     expect(valueAt({ a: null }, 'a.b')).toBeNull();
     expect(valueAt(undefined, 'a')).toBeUndefined();
   });

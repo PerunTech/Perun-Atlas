@@ -3,20 +3,7 @@ import { crsFor } from '../data/project';
 
 const { Map, store } = core;
 
-/**
- * Hands the resolved configuration to the engine.
- *
- * spatial replaced its `window.sys*` globals with `config.configure()`, and in
- * 4.2.1 removed them, so a deployment's parameters reach the engine as values
- * rather than as script tags a human keeps in step. perun-atlas already resolves
- * those parameters from SVAROG_SYS_PARAMS, which makes it the natural caller:
- * the database is the single source and `index.html` carries no configuration.
- *
- * The two projects name these things differently, and deliberately so — `units`
- * and `bboxOrder` read better in a schema than `measurementSystem` and
- * `switchBboxOrder` — so the mapping lives here, in one table, rather than by
- * renaming either side.
- */
+// Our setting names → spatial's configure() names.
 const TO_ENGINE = {
   crs: 'crs',
   center: 'center',
@@ -28,19 +15,6 @@ const TO_ENGINE = {
   bboxOrder: 'switchBboxOrder'
 };
 
-/**
- * Warns when the engine did not end up on the CRS this deployment declared.
- *
- * Until spatial 4.2.1 this was the common case rather than a fault: a map's CRS
- * was fixed when the bundle evaluated, so it came from a `window.sysCrs` on the
- * page and SPATIAL_CRS could not reach it. A deployment that set the parameter
- * and not the global ran on spatial's own default, asked its basemap for tiles
- * far outside the Web Mercator grid, and got back nothing but HTTP 400.
- *
- * `configure({ crs })` now applies, so this is a check rather than a warning
- * about a known limitation — it should only fire if the code is one spatial
- * cannot resolve, and it names the code so that is obvious.
- */
 const verifyCrs = (declared) => {
   if (!declared) return;
 
@@ -56,33 +30,16 @@ const verifyCrs = (declared) => {
   );
 };
 
-/**
- * Tells the engine which CRS incoming geometry is in.
- *
- * This does not go through `configure()`, because spatial does not read it from
- * there: its GeoJSON override reads `dbCRSCode` out of its own store on every
- * `addData`. Set it before any geometry is drawn or the default applies, and the
- * default is wrong wherever the database and the map disagree — coordinates are
- * unprojected through the *map's* CRS, so degrees from a 4326 database are read
- * as Web Mercator metres and every feature lands within a few hundred microdegrees
- * of 0,0. It fails silently: the layer draws, `fitBounds` frames it, and the map
- * shows the Gulf of Guinea.
- *
- * Every bundle drawing a map has had to do this for itself — this is that copy,
- * made shared, which is the whole point of this package.
- */
+// spatial reads this from its store on every addData, not from configure(). Left unset, degrees
+// from a 4326 database are read as metres and every feature lands near 0,0.
 const applyDataCrs = (srid) => {
   if (!srid) return;
 
   store.addState('dbCRSCode', { dbCRS: srid });
 
-  // `crsFor` is the same table the bounding box is built from, shared rather than
-  // copied: a deployment whose geometry the engine cannot read is one it cannot
-  // address a box to either, and the two should never be able to disagree.
   const converted = crsFor(srid);
   if (converted) {
-    // Also kept for callers that serialise geometry back out, which need the CRS
-    // object rather than the code.
+    // For callers that serialise geometry back out.
     store.addState('dbCRS', converted);
     return;
   }
@@ -97,10 +54,6 @@ const applyDataCrs = (srid) => {
   }
 };
 
-/**
- * @param {Object} config - A resolved configuration, as `resolve()` returns it.
- * @returns {Object} The engine's settings as they now stand, for logging or tests.
- */
 export const applyToEngine = (config = {}) => {
   const settings = {};
 
@@ -110,8 +63,7 @@ export const applyToEngine = (config = {}) => {
 
   const applied = engine.configure(settings);
 
-  // Both checks read the map's CRS, so both have to run after the engine has
-  // been given the chance to change it.
+  // Both read the map's CRS, so they run after configure().
   verifyCrs(config.crs);
   applyDataCrs(config.dataSrid);
 

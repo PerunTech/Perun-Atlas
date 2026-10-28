@@ -4,24 +4,7 @@ import { core } from '../spatial';
 const { factory } = core;
 const { getServerOrigin } = utils;
 
-/**
- * The basemap and overlay catalogue.
- *
- * Deployments configure their layers in the GEO_LAYER_TYPE table, which has an
- * admin console screen in perun-core. There is no service that serves it: the
- * rows are read through svarog's generic table reader, which is what every other
- * bundle drawing a basemap does. `SpatialUtil` has a `getExternalLayerList()`
- * that would be the natural endpoint, but nothing exposes it over REST.
- *
- * Not to be confused with `GET /spatial/getLayers/{session}` — that returns the
- * svarog object types carrying geometry, which is the digitisable-layer
- * catalogue, not this one.
- *
- * Consumers should never parse these rows themselves. Doing it per bundle, in
- * about fifty lines each, is one of the duplications this layer exists to
- * remove.
- */
-
+// No service serves GEO_LAYER_TYPE, so its rows are read through svarog's generic table reader.
 const LAYER_TABLE = 'GEO_LAYER_TYPE';
 const LAYER_TYPE = { BASEMAP: '1', OVERLAY: '2' };
 
@@ -36,24 +19,8 @@ const readRow = (row, table = LAYER_TABLE) => ({
   label: row?.[`${table}.LABEL_CODE`] || row?.[`${table}.TITLE`]
 });
 
-/**
- * What a tile provider actually serves, for the ones whose limits are known.
- *
- * `maxNativeZoom` is the deepest zoom that returns a real tile; past it Leaflet
- * upscales the last one instead of requesting tiles that do not exist. That is
- * what the hardcoded `maxZoom: 20` below used to do -- OpenStreetMap answers
- * HTTP 400 at z20, and OpenTopoMap answers 200 with the *same* placeholder image
- * at every zoom above 17, so zooming in produced blank tiles that read as
- * missing data rather than as the edge of the data.
- *
- * `attribution` is the credit each provider's terms require. It belongs in
- * GEO_LAYER_TYPE, which has no column for it; until it does, a deployment that
- * adds one of these layers is credited without having to know it had to be.
- * Matching on the URL is what this file already does to pick Google's subdomains.
- *
- * Measured against tiles rather than taken from documentation. A provider that is
- * not listed is left unconstrained, which is the behaviour before this existed.
- */
+// Measured limits: past `maxNativeZoom` Leaflet upscales the last real tile instead of requesting
+// blank or failing ones. The credits belong in GEO_LAYER_TYPE, which has no column for them yet.
 const PROVIDERS = [
   {
     match: /openstreetmap\.org/i,
@@ -82,21 +49,12 @@ const PROVIDERS = [
 
 const providerFor = (url) => PROVIDERS.find(entry => entry.match.test(url ?? '')) ?? {};
 
-/**
- * @param {Object} row - A catalogue row, already read by `readRow`.
- * @param {Object} [options] - `maxZoom`, the deployment's own ceiling.
- */
 const buildTileLayer = (row, { maxZoom } = {}) => {
-  // A row with no URL of its own is served by this deployment. That is the
-  // origin, not `window.server` -- which carries the /services path the REST
-  // API lives under, and would send every tile request one level too deep.
+  // The origin, not `window.server`, which carries the REST API's /services path.
   const service = row.url || getServerOrigin();
 
   const provider = providerFor(service);
 
-  // A layer's ceiling follows the deployment's, rather than a constant that
-  // happened to suit one basemap; `maxNativeZoom` keeps requests inside what the
-  // provider will answer.
   const limits = {
     ...(maxZoom != null && { maxZoom }),
     ...(provider.maxNativeZoom != null && { maxNativeZoom: provider.maxNativeZoom })
@@ -117,10 +75,7 @@ const buildTileLayer = (row, { maxZoom } = {}) => {
   }
 
   if (row.protocol === 'tile') {
-    // Leaflet's default subdomains are a, b and c, which is what every {s} in
-    // an OpenStreetMap-family URL expands to. Google's tile hosts are mt0-mt3
-    // instead. Applying those everywhere would point an OpenStreetMap {s} at
-    // hosts that do not resolve, so it is decided per URL.
+    // Google's hosts are mt0-mt3; Leaflet's default a, b, c suit everything else.
     const google = /google|mt\{s\}/i.test(service);
     return factory.tileLayer(service, {
       ...limits,
@@ -129,8 +84,7 @@ const buildTileLayer = (row, { maxZoom } = {}) => {
     });
   }
 
-  // `grid` is the Google Maps API rather than a tile service, and the row's URL
-  // names the variant: google_terrain, google_satellite, google_hybrid.
+  // `grid` is the Google Maps API; the URL names the variant, e.g. google_satellite.
   if (row.protocol === 'grid') {
     if (!row.url?.includes('google')) {
       console.warn(`perun-atlas: grid layer "${row.title}" has no recognised provider in its URL`);
@@ -143,15 +97,7 @@ const buildTileLayer = (row, { maxZoom } = {}) => {
   return null;
 };
 
-/**
- * @param {string} session - svarog session.
- * @param {Object} [options] - `maxZoom`, the deployment's ceiling, applied to
- *        every tiled layer so they follow the map rather than a constant.
- * @returns {Promise<{ basemap: Object, overlays: Object, catalogue: string }>}
- *          Grouped Leaflet layers, shaped for spatial's layer control:
- *          { groupName: { label: layer } }. `catalogue` is `ok`, `empty` when
- *          no row made a basemap, or `unreachable` when the rows did not arrive.
- */
+// `catalogue` is `ok`, `empty` when no row made a basemap, or `unreachable`.
 export const fetchLayers = async (session, options = {}) => {
   const basemap = {};
   const overlays = {};
@@ -181,17 +127,9 @@ export const fetchLayers = async (session, options = {}) => {
 
 const FALLBACK_OFF = /^(none|off|false)$/i;
 
-// XYZ tiles are published on the Web Mercator grid; on any other CRS they would
-// draw in the wrong place rather than not at all.
+// XYZ tiles are on the Web Mercator grid; on any other CRS they would draw in the wrong place.
 const WEB_MERCATOR = ['EPSG:3857', 'EPSG:900913'];
 
-/**
- * The basemap to draw when the catalogue gave none, or why there is none.
- *
- * @param {string} url - The `fallbackBasemap` setting.
- * @param {Object} options - `crs`, the map's CRS code, and `maxZoom`.
- * @returns {{ layer: Object, name: string } | { layer: null, reason: 'off'|'crs' }}
- */
 export const fallbackBasemap = (url, { crs, maxZoom } = {}) => {
   if (!url || FALLBACK_OFF.test(url.trim())) return { layer: null, reason: 'off' };
   if (!WEB_MERCATOR.includes(crs)) return { layer: null, reason: 'crs' };
@@ -200,17 +138,12 @@ export const fallbackBasemap = (url, { crs, maxZoom } = {}) => {
   return { layer, name: providerFor(url).name ?? 'Default basemap' };
 };
 
-/** The first layer of the first group — what a map should show before a user chooses. */
 export const firstOf = (grouped) => {
   const group = Object.values(grouped ?? {})[0];
   return group ? Object.values(group)[0] : null;
 };
 
-/**
- * A layer by the name the switcher lists it under, in whichever group it is,
- * or null. How a link names a basemap: the label code, or the title where a
- * row has none, which is the same for every reader whatever their language.
- */
+// By label code, or title where a row has none, so a link names it the same in every language.
 export const layerNamed = (grouped, name) => {
   if (!name) return null;
   const group = Object.values(grouped ?? {})
@@ -218,7 +151,6 @@ export const layerNamed = (grouped, name) => {
   return group ? group[name] : null;
 };
 
-/** The name of the first of these layers that is on the map, or null. */
 export const shownName = (grouped, map) => {
   for (const layers of Object.values(grouped ?? {})) {
     const shown = Object.entries(layers).find(([, layer]) => map?.hasLayer?.(layer));

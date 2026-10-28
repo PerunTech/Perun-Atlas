@@ -12,12 +12,7 @@ describe('fillBody', () => {
     draw: { metres: 1500, x: 33.941707, y: 35.124805, geojson: { type: 'Polygon', coordinates: [[[1, 2]]] } }
   };
 
-  /**
-   * The distinction the whole function exists for. A service expecting a number
-   * rejects `"1500"`, and one expecting a shape reads that shape's JSON as a
-   * quoted string -- so a template that is exactly one placeholder resolves to
-   * what it names, and one with anything either side of it is interpolated.
-   */
+  // A service expecting a number rejects "1500", and one expecting a shape reads its JSON as a string.
   it('resolves a string that is nothing but a placeholder to the value itself', () => {
     expect(fillBody('{draw.metres}', context)).toBe(1500);
     expect(fillBody('{draw.geojson}', context)).toEqual(context.draw.geojson);
@@ -40,11 +35,7 @@ describe('fillBody', () => {
     });
   });
 
-  /**
-   * Left standing rather than dropped. A record saved with `{note}` written in
-   * a field is wrong and legible; one saved with the field silently empty is
-   * wrong and looks fine.
-   */
+  // A visible `{note}` is wrong but legible; a silently empty field looks fine.
   it('leaves a placeholder it cannot resolve exactly as it found it', () => {
     expect(fillBody('{draw.nothing}', context)).toBe('{draw.nothing}');
     expect(fillBody({ a: '{missing}' }, context)).toEqual({ a: '{missing}' });
@@ -55,11 +46,7 @@ describe('fillBody', () => {
       .toEqual({ QUARANTINE_TYPE: 1, ok: true, none: null });
   });
 
-  /**
-   * A form's data is already the payload the service wants, and the geometry
-   * beside it never will be the form's business -- so the two have to end up in
-   * one object, and a sole placeholder cannot have siblings.
-   */
+  // The form data and the geometry must end up in one object, and a sole placeholder has no siblings.
   describe('the spread key', () => {
     const form = {
       'quarantine.info': { DISEASE: 'FMD', STARTED: '2026-09-22' },
@@ -101,12 +88,6 @@ describe('fillBody', () => {
       expect(fillBody({ '...': '{form}', a: 1 }, { ...context, form: {} })).toEqual({ a: 1 });
     });
 
-    /**
-     * Left standing rather than dropped, on the same argument as an unresolved
-     * placeholder: a body carrying a visible `"...": "{form}"` is a call
-     * somebody looks at, and one quietly missing every field the form was meant
-     * to supply is a record saved empty.
-     */
     it('leaves a spread of something unspreadable in place, where it can be seen', () => {
       expect(fillBody({ '...': '{form}', a: 1 }, context)).toEqual({ '...': '{form}', a: 1 });
       expect(fillBody({ '...': '{draw.metres}' }, context)).toEqual({ '...': 1500 });
@@ -120,17 +101,7 @@ describe('fillBody', () => {
 });
 
 describe('postTo', () => {
-  /**
-   * `postTo` prints the URL and the payload whenever a service refuses, because
-   * a refusal is usually about one of the two and the service that refused
-   * rarely says which. That is deliberate, so it is asserted rather than
-   * silenced -- a run where those lines stopped appearing would be a run where
-   * a failed save had gone quiet.
-   *
-   * Captured rather than left to stderr for the ordinary reason: a suite that
-   * prints a stack trace on a passing test has taught its reader to skim the
-   * output, which is where a real one then hides.
-   */
+  // `postTo` logs the URL and payload on a refusal on purpose, so it is captured and asserted.
   let logged;
 
   beforeEach(() => {
@@ -166,10 +137,7 @@ describe('postTo', () => {
     expect(sent().headers['Content-Type']).toBe('application/json');
   });
 
-  /**
-   * The form convention these registries actually use: one percent-encoded JSON
-   * document as the *key* of the first form entry, with nothing after an `=`.
-   */
+  // These registries' form convention: one percent-encoded JSON document as the first form key.
   it('sends one percent-encoded document when the content type is a form', async () => {
     axios.mockResolvedValue({ data: '' });
     await postTo('/Ws', {}, { body: { A: 'x&y' } });
@@ -191,11 +159,7 @@ describe('postTo', () => {
     expect((await postTo('/Ws', {})).ok).toBe(false);
   });
 
-  /**
-   * A service answering a write with a bare label code and a 200. `failure` is
-   * how a menu row says what a refusal looks like, because `error` is a word in
-   * one deployment's label codes and this package does not know which word.
-   */
+  // `error` is a word in one deployment's label codes, so the row says what a refusal reads like.
   it('reads a bare label code only when the row said what a refusal reads like', async () => {
     axios.mockResolvedValue({ data: 'epi.error.save_quarantine_via_map' });
     expect((await postTo('/Ws', {})).ok).toBe(true);
@@ -208,11 +172,6 @@ describe('postTo', () => {
     expect(logged).not.toHaveBeenCalled();
   });
 
-  /**
-   * Never throws. A write is started by someone pressing a button, and a
-   * rejected promise reaching a render is a blank screen where a message
-   * belongs.
-   */
   it('answers a transport failure in the same shape as every other outcome', async () => {
     axios.mockRejectedValue(new Error('Network Error'));
     expect(await postTo('/Ws', {})).toEqual({ ok: false, message: 'Network Error', data: null });
@@ -221,7 +180,7 @@ describe('postTo', () => {
 });
 
 describe('shapeContext', () => {
-  /** A circle in the deployment's own latitudes, where the scale error is worth having. */
+  // The deployment's own latitudes, where the scale error is worth having.
   const CENTRE = { lat: 35.124805, lng: 33.941707 };
   const SHAPE = { ...CENTRE, radius: 1499.6 };
   const METRES = { save: { onSave: '/Ws/save/{draw.metres}' } };
@@ -241,11 +200,7 @@ describe('shapeContext', () => {
     expect(drawn(METRES).context.draw.metres).toBe(1500);
   });
 
-  /**
-   * The conversion the function exists for. A Web Mercator metre is 0.82
-   * ground metres here, so the stored radius is a fifth longer than the drawn
-   * one -- and rounded, because these services parse it as an integer.
-   */
+  // A Web Mercator metre is 0.82 ground metres here; rounded, since the services parse an integer.
   it('converts the radius into the stored projection and rounds it', () => {
     const { context, units } = drawn(METRES);
     expect(units).toBeCloseTo(1499.6 * unitsPerMetre(CENTRE, 3857), 9);
@@ -269,11 +224,7 @@ describe('shapeContext', () => {
     parts.forEach((part) => expect(part).toMatch(/^\[-?[\d.]+,-?[\d.]+\]$/));
   });
 
-  /**
-   * Closed, where the ring is open: GeoJSON says a linear ring repeats its
-   * first position as its last, and the services that parse the WKT ring close
-   * it themselves.
-   */
+  // GeoJSON repeats a ring's first position as its last; the WKT services close it themselves.
   it('closes the GeoJSON polygon the WKT ring leaves open', () => {
     const vertices = ringIn(CENTRE, 1499.6, 3857, 8);
     const { geojson } = drawn({ ...METRES, points: 8 }).context.draw;
@@ -295,11 +246,7 @@ describe('shapeContext', () => {
     expect(context.draw.metres).toBe(1500);
   });
 
-  /**
-   * Absent rather than empty: an empty selection in the context is a
-   * placeholder that resolves to nothing, where a missing one stays visibly
-   * unconfigured.
-   */
+  // A missing selection stays visibly unconfigured; an empty one resolves to nothing.
   it('names a selection only when there is one', () => {
     expect(drawn(METRES).context.draw).not.toHaveProperty('selected');
     expect(drawn(METRES, { selected: { ids: '4,5' } }).context.draw.selected).toEqual({ ids: '4,5' });
@@ -312,11 +259,7 @@ describe('shapeContext', () => {
   });
 
   describe('a radius too small to send', () => {
-    /**
-     * A deployment storing degrees measures 1500 m as 0.0165 of a unit, which
-     * rounds to nothing -- a save that fails somewhere deep or stores a shape
-     * with no extent.
-     */
+    // 1500 m is 0.0165 of a degree, which rounds to nothing.
     it('is refused in degrees when the path sends the radius', () => {
       const { context, units, tooSmall } = shapeContext(SHAPE, { draw: UNITS, dataSrid: 4326 });
       expect(tooSmall).toBe(true);

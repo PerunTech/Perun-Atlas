@@ -3,11 +3,8 @@ import { crsFor } from '../../frontend/data/project';
 import { identifiersOf, spanTo, withinCircle } from '../../frontend/data/select';
 import { mapWith } from '../stubs/spatial.js';
 
-/**
- * A centre on the island these deployments cover, and features at distances
- * measured with Leaflet's own haversine rather than chosen: 910 m due east,
- * 1112 m due north, 4549 m east, 9097 m east and 14363 m to the north-east.
- */
+// Distances measured with Leaflet's haversine: 910 m due east, 1112 m due north, 4549 m east, 9097 m
+// east and 14363 m to the north-east.
 const CENTRE = { lat: 35.1, lng: 33.9 };
 
 const at = (lng, lat, properties = {}) => ({
@@ -102,10 +99,7 @@ describe('withinCircle', () => {
   });
 
   it('counts a feature exactly on the edge as inside', () => {
-    // Measured rather than asserted as a round number: the edge is wherever the
-    // distance actually falls, and a test that picked 910 would be testing its
-    // own rounding. `<=` is the choice being pinned here -- a radius typed to
-    // the metre should catch what is at that metre.
+    // Measured rather than a round number. `<=` is what is pinned: a radius typed to the metre catches it.
     const edge = withinCircle(set(near), { ...CENTRE, radius: 1 }, { srid: 4326 }).metres(near);
 
     expect(withinCircle(set(near), { ...CENTRE, radius: edge }, { srid: 4326 }).inside).toHaveLength(1);
@@ -133,11 +127,7 @@ describe('withinCircle', () => {
   });
 
   it('reads the collection in the projection it is stored in, not the one it looks like', () => {
-    // The very same numbers. Read as degrees they are 910 m away; read as Web
-    // Mercator metres they are a third of a degree off the Gulf of Guinea, which
-    // is the failure this argument exists to prevent -- and the one nothing on
-    // screen would show, because the engine unprojects for the layer and leaves
-    // the collection alone.
+    // Read as Web Mercator these are off the Gulf of Guinea, and nothing on screen would show it.
     const asDegrees = withinCircle(set(near), { ...CENTRE, radius: 5000 }, { srid: 4326 });
     const asMetres = withinCircle(set(near), { ...CENTRE, radius: 5000 }, { srid: 3857 });
 

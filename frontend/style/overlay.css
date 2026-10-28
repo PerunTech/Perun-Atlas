@@ -1,24 +1,7 @@
-/*
- * A file the reader opened: its shapes on the map, and its chip in the toolbar.
- *
- * Structure only, like the rest of these sheets, except for the overlay's own
- * colour, which is the point of it. That colour is a token, `--ap-overlay`, so
- * a row can set it in `tokens` and a deployment's sheet can set it for every
- * screen. The token reaches the map because the map sits inside the panel,
- * fullscreen included.
- */
+/* `--ap-overlay` reaches the map because the map sits inside the panel, fullscreen included. */
 
-/*
- * Leaflet writes a path's colour as an SVG attribute, and an attribute loses to
- * any CSS property, so this decides the colour wherever the sheet is loaded and
- * the attribute is only the fallback. The key's swatch carries the same class,
- * so the key and the map cannot disagree.
- *
- * The fill only where there is one. A line is a path too, which Leaflet marks
- * `fill="none"`, and a CSS fill wins over that as well: a line would be filled
- * in solid, at the full opacity Leaflet leaves unset for a path it does not
- * fill.
- */
+/* Leaflet's colour attribute loses to any CSS, so this decides the colour and the key's swatch shares
+   the class. Fill only where there is one, or a line would be filled in solid. */
 .atlas-overlay {
   stroke: var(--ap-overlay, #e8590c);
 }
@@ -27,7 +10,6 @@
   fill: var(--ap-overlay, #e8590c);
 }
 
-/* A point is a ring: the colour on the edge, white inside. */
 .atlas-overlay.atlas-overlay--point {
   fill: #ffffff;
 }
@@ -37,12 +19,7 @@
   display: none;
 }
 
-/*
- * The open file: a swatch, its name, how many features it drew, and the button
- * that closes it. It sits in the actions group, which a deployment's sheet does
- * not let shrink, so the chip has a width of its own and the name gives way
- * inside it, with an ellipsis. The full name is its title.
- */
+/* The actions group does not shrink, so the chip has its own width and the name ellipsises. */
 .atlas-panel__file {
   display: inline-flex;
   align-items: center;
@@ -75,10 +52,7 @@
   flex: 0 0 auto;
 }
 
-/*
- * Said, not inherited: a deployment's sheet may style every `button`, and this
- * one is a small cross inside a chip. See `frontend/style/README.md`.
- */
+/* Set in full, since a deployment's sheet may style every `button` (see README.md). */
 .atlas-panel__fileclose {
   flex: 0 0 auto;
   width: 20px;
@@ -100,12 +74,6 @@
   color: var(--ap-ink, #14161a);
 }
 
-/*
- * Why a file was not opened. Its own line, because the message carries a name
- * and numbers and is worth reading whole. The mark on its edge is the overlay's
- * colour, which says which control it is about. Warning colours are the
- * deployment's, as everywhere else on this screen.
- */
 .atlas-panel__filerefused {
   flex-basis: 100%;
   display: flex;
@@ -124,11 +92,6 @@
   overflow-wrap: anywhere;
 }
 
-/*
- * Something to know about the file that did open: a shapefile with no .prj was
- * read as longitude and latitude. Laid out like a refusal, with a dashed mark
- * and quieter ink, since nothing went wrong and the file is on the map.
- */
 .atlas-panel__filenote {
   flex-basis: 100%;
   display: flex;

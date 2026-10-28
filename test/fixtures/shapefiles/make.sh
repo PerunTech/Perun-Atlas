@@ -1,12 +1,10 @@
 #!/bin/sh
-# Rebuilds the shapefile fixtures `test/shp.test.js` reads. Needs GDAL (ogr2ogr,
+# Rebuilds the shapefile fixtures `test/modules/shp.test.js` reads. Needs GDAL (ogr2ogr,
 # gdalsrsinfo) and zip. The files are committed, so the suite needs neither.
 #
 #   sh test/fixtures/shapefiles/make.sh
 #
-# Every fixture holds the same two sites, or the two areas, written by GDAL the
-# way a GIS office's tools would write them: ESRI's .prj dialect, a .cpg saying
-# UTF-8.
+# Written as a GIS office's tools would: ESRI's .prj dialect, a .cpg saying UTF-8.
 set -eu
 cd "$(dirname "$0")"
 work=$(mktemp -d)
@@ -39,10 +37,8 @@ layer utm 32634 && pack utm sites.shp sites.shx sites.dbf sites.prj sites.cpg
 layer etrs 25834 && pack etrs sites.shp sites.shx sites.dbf sites.prj sites.cpg
 # MGI 1901 / Balkans zone 7: a datum whose .prj carries no shift to WGS 84.
 layer grid 6316 && pack grid sites.shp sites.shx sites.dbf sites.prj sites.cpg
-# The same grid, written with a stated shift, which is then added to the .prj
-# as TOWGS84 -- ESRI's dialect has no place for one, so GDAL leaves it out.
-# Written with the shift named rather than EPSG:6316, because for a point here
-# PROJ picks whichever MGI 1901 transformation covers it, not this one.
+# The grid with a stated shift, added to the .prj as TOWGS84 since ESRI's dialect has no place for
+# one. The shift is named rather than EPSG:6316, or PROJ picks another MGI 1901 transformation.
 mkdir -p "$work/shifted"
 ogr2ogr -f 'ESRI Shapefile' -lco ENCODING=UTF-8 \
   -t_srs '+proj=tmerc +lat_0=0 +lon_0=21 +k=0.9999 +x_0=7500000 +y_0=0 +ellps=bessel +towgs84=682,-203,480,0,0,0,0 +units=m +no_defs' \

@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CRS_STUB } from '../stubs/spatial.js';
 
-/**
- * The engine as `applyToEngine` sees it: `configure`, the page's map for the
- * CRS it ended on, and the store spatial's GeoJSON reader takes the data CRS
- * from. The stub engine carries none of the three, so the shim is replaced
- * here, and with it the engine `data/project`'s `crsFor` reads.
- */
+// The stub engine has no `configure`, page map or store, so the shim is replaced here.
 const engine = vi.hoisted(() => ({
   configure: null,
   mapCode: 'EPSG:3857',
@@ -65,10 +60,7 @@ describe('applyToEngine', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  /**
-   * The silent failure this exists for: geometry the engine cannot convert is
-   * read as though it were in the map's CRS, and draws near 0,0.
-   */
+  // Geometry the engine cannot convert would be read in the map's CRS and draw near 0,0.
   it('warns when stored geometry is in a CRS the engine cannot convert from', () => {
     applyToEngine({ dataSrid: '6316' });
     expect(engine.states.dbCRSCode).toEqual({ dbCRS: '6316' });

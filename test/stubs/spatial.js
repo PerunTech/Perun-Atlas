@@ -1,26 +1,5 @@
-/**
- * The map engine, as the modules under test see it.
- *
- * The projections and the distance are Leaflet's own, transcribed rather than
- * invented: `L.Projection.LonLat`, `L.Projection.SphericalMercator`,
- * `L.Projection.Mercator` and `L.CRS.Earth.distance`. That is the whole point of
- * this file. `project.js` measures a projection's scale by projecting two points
- * and dividing by the ground distance between them, so a stub carrying made-up
- * arithmetic would test itself; carrying Leaflet's, the numbers a test asserts
- * are the numbers the browser produces.
- *
- * Both directions of each projection, because the package now uses both:
- * `pointIn` sends a coordinate out and `latLngOf` reads a stored one back. A
- * round trip through a stub holding only half of a pair would prove nothing
- * about either half, and the elliptical inverse in particular has no closed form
- * -- it is the one place where inventing the arithmetic would have been easiest
- * and most wrong.
- *
- * The export shape is the engine's: modules hang off the prototype, because
- * `frontend/spatial.js` reaches them with `getPrototypeOf`. Going through that
- * shim rather than around it keeps the package's one rule -- one caller of the
- * engine -- exercised by every test that touches geometry.
- */
+// Leaflet's own projection and distance arithmetic, transcribed: `project.js` measures scale with it,
+// so made-up numbers would only test the stub.
 
 const R = 6378137;
 const R_MINOR = 6356752.314245179;
@@ -109,13 +88,7 @@ export const latLngBounds = (sw, ne) => ({
   getNorthEast: () => latLng(ne)
 });
 
-/**
- * What the map currently is.
- *
- * Driven by the test rather than by a view, because none of the code under test
- * moves a map -- it asks one where it is. `setView` is this file's whole API to
- * a test, and `resetView` puts it back so one test cannot lean on another.
- */
+// Set by the test; `resetView` keeps one test from leaning on another.
 const INITIAL = {
   crs: CRS.EPSG3857,
   bounds: latLngBounds({ lat: 34.5, lng: 32.2 }, { lat: 35.8, lng: 34.6 }),
@@ -129,11 +102,7 @@ export const setView = (next) => { view = { ...view, ...next }; };
 export const resetView = () => { view = { ...INITIAL }; };
 export const CRS_STUB = CRS;
 
-/**
- * A map of its own, as `createMap` builds one: the page's methods over a view
- * that no `setView` reaches. A test hands it to a function to show that the
- * function reads the map it is given rather than the page's.
- */
+// A map whose view no `setView` reaches, to show a function reads the map it is given.
 export const mapWith = (own = {}) => {
   const at = { ...INITIAL, ...own };
   return {

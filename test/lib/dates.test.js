@@ -19,12 +19,8 @@ describe('the date window', () => {
     expect(monthsAgo(0)).toBe('2026-09-21');
   });
 
-  /**
-   * `setMonth` rolls a day that the shorter month does not have into the next
-   * one: 31 August minus six months is 31 February, which is 3 March. Pinned
-   * because the alternative -- clamping to the last of the month -- would be a
-   * deliberate change and this is what the panel does today.
-   */
+  // 31 August minus six months is 31 February, which `setMonth` rolls to 3 March. Clamping would be a
+  // deliberate change.
   it('rolls forward off the end of a short month', () => {
     vi.setSystemTime(new Date('2026-08-31T11:30:00Z'));
     expect(monthsAgo(6)).toBe('2026-03-03');

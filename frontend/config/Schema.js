@@ -1,10 +1,3 @@
-/**
- * Every environment-specific setting perun-atlas needs, declared once.
- *
- * One entry drives all of it: the remote parameter name, the type coercion, and
- * whether the application may start without a value. Adding a setting means
- * adding a row here and nothing else.
- */
 export const SCHEMA = {
   crs: {
     type: 'crs',
@@ -46,14 +39,7 @@ export const SCHEMA = {
     doc: 'Tile URL drawn when the layer catalogue lists no basemap, on a Web Mercator map only. "none" turns it off.'
   },
 
-  /**
-   * The CRS the database stores geometry in, which is not the CRS the map draws
-   * in and frequently differs from it: a deployment commonly keeps geometry in
-   * 4326 and displays on the Web Mercator tile grid.
-   *
-   * Named by svarog rather than by this project, because it is svarog's own
-   * parameter and has been read under that name since long before SPATIAL_*.
-   */
+  // Often not the map's CRS. svarog's own parameter, hence the name.
   dataSrid: {
     type: 'srid',
     param: 'sys.gis.default_srid',
@@ -62,5 +48,4 @@ export const SCHEMA = {
   }
 };
 
-/** Settings that must resolve to a value before a map may be constructed. */
 export const REQUIRED = Object.keys(SCHEMA).filter(k => SCHEMA[k].required);

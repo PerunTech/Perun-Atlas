@@ -1,48 +1,11 @@
-/*
- * Controls, made clickable.
- *
- * Leaflet's stylesheet is a pair: the corner containers take
- * `pointer-events: none` so a drag can begin anywhere across them, and
- * `.leaflet-control` takes `auto` back so the controls themselves still
- * receive clicks.
- *
- * spatial replaces those corners with its own frame — `control-center` >
- * `control-map` > `control-topright` — and carries the first half of the pair
- * but not the second. Every control it places in a map corner therefore arrives
- * inert, and deployments have been restoring it one screen at a time with
- * `!important` rules keyed to a container id.
- *
- * Restore the missing half here, once, for anything that draws through this
- * package. The durable fix is the same declaration in spatial's own
- * control.css, after which this file can go.
- */
+/* spatial's corners take Leaflet's `pointer-events: none` but not the `auto` that gives the
+   controls their clicks back. Can go once spatial's control.css carries it. */
 .leaflet-control {
   pointer-events: auto;
 }
 
-/*
- * Controls in a shared corner, sized to themselves.
- *
- * The other half of the same omission. Leaflet floats every control, which
- * shrink-wraps it; spatial does not ship that stylesheet, so a control in one
- * of its corners is an ordinary block and stretches to the corner's width. One
- * control per corner hides it -- the corner is shrink-to-fit, so the two agree.
- * Two do not: the narrower grows to the width of the wider, which is a
- * collapsed layer switcher as wide as the legend beneath it.
- *
- * Keyed to spatial's corners rather than Leaflet's `.leaflet-top` and
- * `.leaflet-right`. Those classes are never on anything here -- `_initControlPos`
- * builds `control-topright` and the rest -- which is exactly why the rules in
- * Leaflet's own stylesheet are not doing this already.
- *
- * On the right, keep each control against the edge as well: one narrower than
- * its neighbour would otherwise sit at the far side of a container that is only
- * that wide because of the neighbour.
- *
- * Duplicated in spatial's control.css, where it belongs and where it is now.
- * This copy covers deployments whose engine has not caught up yet, and can go
- * with the rest of this file once they have.
- */
+/* Leaflet floats controls, but spatial does not ship that sheet, so a control stretches to its
+   corner and a narrow one grows to match its neighbour. Also in spatial's control.css now. */
 .control-topleft > .leaflet-control,
 .control-topright > .leaflet-control,
 .control-bottomleft > .leaflet-control,
@@ -56,22 +19,8 @@
   margin-left: auto;
 }
 
-/*
- * The scale bar's ratio line.
- *
- * Not a control. It is a div inside the scale control's own container, which is
- * what keeps it with the bar it restates -- see `AtlasMap` -- so it needs no
- * placement and takes the corner, the margin and the lifetime of its host.
- *
- * Styled to match what spatial's `attribution.css` gives the bar above it: the
- * same eleven pixels, the same ink, the same translucent ground. Said rather
- * than inherited, because the bar's own rules are keyed to
- * `.leaflet-control-scale-line` and none of them reaches a sibling.
- *
- * `tabular-nums` because the digits change under the reader's eye as the map
- * moves, and a denominator whose width changes with its value reads as movement
- * of its own.
- */
+/* Inside the scale control's container, so it shares its placement. Styled to match the bar, whose
+   rules do not reach a sibling; tabular figures so its width holds still as the map moves. */
 .atlas-scale-ratio {
   padding: 1px 5px 0;
   font: 11px/1.3 system-ui, sans-serif;
@@ -82,34 +31,12 @@
   text-indent: 0;
 }
 
-/* Nothing to say yet -- before the first measurement, and wherever a ratio
-   cannot be computed -- takes no room rather than a blank strip. */
 .atlas-scale-ratio:empty {
   display: none;
 }
 
-/*
- * The glyph in a Leaflet button.
- *
- * Three buttons on this map are Leaflet's rather than this package's -- the two
- * zoom buttons and the fullscreen toggle -- and all three now hold a Tabler
- * icon instead of a character or a sprite, so that the corner they share with
- * spatial's locate and measure controls reads as one instrument. The fit button
- * above the `+` is this package's, built the way Leaflet builds the other two,
- * so it takes the same rule. `lib/icons.js` says why the icons are transcribed
- * rather than taken from `elements.Icon`.
- *
- * Centred as a grid, which is what spatial's `toolbar.css` already does for the
- * bar's `button` elements and for the same reason it gives there: what goes in
- * one of these is an icon, not a character on a baseline, so there is no
- * line-height to centre it with.
- *
- * Both classes on purpose. `.leaflet-bar a` in spatial's toolbar.css sets
- * `display: block` and `.leaflet-control-zoom-in` in its zoom.css sets a
- * monospace face and a one-pixel indent for the character that used to be here;
- * a lone class selector loses to the first of those whatever the source order,
- * which is the same arithmetic spatial's own fullscreen rules had to do.
- */
+/* Both classes, to outrank spatial's `.leaflet-bar a` and `.leaflet-control-zoom-in`. A grid,
+   because an icon has no baseline to centre on. */
 .leaflet-bar a.leaflet-control-zoom-in,
 .leaflet-bar a.leaflet-control-zoom-out,
 .leaflet-bar a.leaflet-control-zoom-fullscreen,
@@ -124,14 +51,7 @@
   display: block;
 }
 
-/*
- * One button, two glyphs, one of them showing.
- *
- * The fullscreen plugin writes the button's contents once and then only toggles
- * `leaflet-fullscreen-on`, so the state has to be drawn rather than rebuilt --
- * which is what its two-frame sprite was doing, done here in a form that can
- * say which frame is which.
- */
+/* The fullscreen plugin only toggles `leaflet-fullscreen-on`, so both glyphs are in the button. */
 .leaflet-bar a.leaflet-control-zoom-fullscreen .atlas-icon--minimize,
 .leaflet-bar a.leaflet-control-zoom-fullscreen.leaflet-fullscreen-on .atlas-icon--maximize {
   display: none;

@@ -3,13 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { readShapefile } from '../../frontend/modules/shp';
 import { FILE_LIMITS, fileKind, readLayers } from '../../frontend/data/read';
 
-/**
- * The shapefile reader, against files GDAL wrote.
- *
- * `test/fixtures/shapefiles/make.sh` says how each was made. They hold the same two
- * sites, at the positions below, in one projection or another, so every test
- * that reads one back can say where the sites should land.
- */
+// Files GDAL wrote (see `test/fixtures/shapefiles/make.sh`), each holding the same two sites.
 
 const fixture = (name) => {
   const bytes = readFileSync(new URL(`../fixtures/shapefiles/${name}`, import.meta.url));
@@ -80,8 +74,7 @@ describe('readShapefile', () => {
   });
 
   it('uses a shift the .prj gives', async () => {
-    // Written with the same shift the .prj states, so it reads back to where
-    // it was written from, well within a centimetre.
+    // Written with the shift the .prj states, so it reads back within a centimetre.
     const { layers } = await read('shifted.zip');
     expectSites(layers[0], 1e-7);
   });

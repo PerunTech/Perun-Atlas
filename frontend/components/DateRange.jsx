@@ -3,22 +3,7 @@ import '../style/form.css';
 
 const { useMemo } = React;
 
-/**
- * A from/to pair, for services that take a date window.
- *
- * Built on the RJSF form perun-core already exports rather than on hand-rolled
- * inputs, so it inherits the house widgets, error rendering and styling, and a
- * deployment that restyles its forms restyles this too.
- *
- * `GenericForm` is the other thing perun-core exports and is the wrong one here:
- * it is bound to the svarog save pipeline — it fetches a form configuration by
- * name, keeps form data in redux, and renders save and delete buttons — and this
- * filter saves nothing. This follows MarkdownMetaForm instead, which is the
- * pattern for a form that is not a record.
- *
- * Controlled, and it takes its labels as props so that this package carries no
- * module's translations. Consumers pass whatever their own labelsManager returns.
- */
+// On perun-core's RJSF Form, not GenericForm, which is bound to the svarog save pipeline.
 export const DateRange = ({
   from,
   to,
@@ -33,7 +18,6 @@ export const DateRange = ({
       from: { type: 'string', format: 'date', title: labels.from ?? 'From' },
       to: { type: 'string', format: 'date', title: labels.to ?? 'To' }
     }
-    // Titles are the only thing that changes, and only with the locale.
   }), [labels.from, labels.to]);
 
   const uiSchema = useMemo(() => ({
@@ -43,11 +27,7 @@ export const DateRange = ({
     to: { 'ui:disabled': disabled }
   }), [disabled]);
 
-  /**
-   * A backwards range is not an error the service rejects — it simply matches
-   * nothing, because the filter excludes a window whose start is after its end.
-   * An empty map with no explanation is the worst of both, so say why.
-   */
+  // A backwards range matches nothing rather than failing, which would leave an unexplained empty map.
   const customValidate = (formData, errors) => {
     if (formData?.from && formData?.to && formData.from > formData.to) {
       errors.to.addError(labels.invalidRange ?? 'The end date is before the start date.');
@@ -58,11 +38,7 @@ export const DateRange = ({
   return (
     <div className={className}>
       <Form
-        /* Named, so that the draw row's form and this one do not both call their
-           root `root` and every control under it `root_<field>`. Two elements
-           sharing an id make `<label for>` ambiguous, and the browser resolves
-           it by document order -- which would hand a click meant for a field
-           beside the shape to whichever of these rendered first. */
+        // Its own prefix, or this form and the draw row's share ids and `<label for>` clicks go astray.
         idPrefix='atlas-range'
         schema={schema}
         uiSchema={uiSchema}

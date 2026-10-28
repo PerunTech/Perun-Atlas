@@ -5,16 +5,7 @@ vi.mock('perun-core', () => ({ axios: { get: vi.fn() }, utils: {}, elements: {} 
 const { axios } = await import('perun-core');
 const { fetchSchema, fetchUISchema, pickFields, usableUI, withGroups } = await import('../../frontend/data/form');
 
-/**
- * A table's schema, in the shape these services actually send one.
- *
- * Two things about it are not decoration. A group is a single key with a dot
- * in it holding an object -- not a nested path -- which is what makes a picked
- * name ambiguous and what the backend looks up whole on the way back in. And
- * `required` appears at both levels, which is what a narrowed form has to
- * narrow with it: a form asking for a field that is no longer on it cannot be
- * filled in, and the Save above it never comes back.
- */
+// A group is one dotted key holding an object, not a nested path, and `required` sits at both levels.
 const SCHEMA = Object.freeze({
   title: 'Subject',
   type: 'object',
@@ -57,11 +48,7 @@ describe('pickFields', () => {
     expect(out.properties.NOTE).toEqual(SCHEMA.properties.NOTE);
   });
 
-  /**
-   * The ambiguity the whole matching order exists for. `"subject.info"` is a
-   * key with a dot in it; `"subject.info.NAME"` is that key and a field inside
-   * it. Splitting at the first dot would find neither.
-   */
+  // `"subject.info"` is one key with a dot in it; splitting at the first dot would find neither.
   it('reaches a field inside a group whose own key has dots in it', () => {
     const out = pickFields(SCHEMA, ['subject.info.NAME']);
     expect(Object.keys(out.properties)).toEqual(['subject.info']);
@@ -80,11 +67,7 @@ describe('pickFields', () => {
     expect(out.properties['subject.location.info']).toEqual(SCHEMA.properties['subject.location.info']);
   });
 
-  /**
-   * The code list survives the narrowing, because it is the field. RJSF still
-   * reads the deprecated `enumNames` -- with a warning -- so a picked code
-   * field shows its names rather than its ids.
-   */
+  // RJSF still reads the deprecated `enumNames`, so a picked code field shows names rather than ids.
   it('carries a field over whole, code list and all', () => {
     const out = pickFields(SCHEMA, ['subject.info.UNIT']);
     expect(out.properties['subject.info'].properties.UNIT).toEqual(SCHEMA.properties['subject.info'].properties.UNIT);
@@ -129,11 +112,7 @@ describe('pickFields', () => {
     expect(pickFields(null, ['NOTE'])).toBeNull();
   });
 
-  /**
-   * The schema came from a service and may be handed to this again -- on a
-   * second panel, or a re-render -- so narrowing has to be a copy. A pick that
-   * edited the source would narrow it a little further every time.
-   */
+  // The schema may be handed in again on a re-render; a pick that edited it would narrow it further.
   it('does not touch the schema it was given', () => {
     const copy = JSON.parse(JSON.stringify(SCHEMA));
     pickFields(SCHEMA, ['subject.info.NAME', 'EXTERNAL_ID']);
@@ -173,10 +152,7 @@ describe('fetchSchema', () => {
     expect(schema).toBe(SCHEMA);
   });
 
-  /**
-   * The shape these services refuse in: a label code, under a 200. Handed to
-   * RJSF it is an exception thrown from inside a form; here it is a sentence.
-   */
+  // These services refuse with a label code under a 200, which RJSF would throw on.
   it('answers null for a body that is not a schema, and says which body', async () => {
     axios.get.mockResolvedValue({ data: 'x.error.no_session' });
     expect(await fetchSchema('/Ws/schema/{session}', { session: 'abc' })).toBeNull();
@@ -206,12 +182,7 @@ describe('usableUI', () => {
   beforeEach(() => { warned = vi.spyOn(console, 'warn').mockImplementation(() => {}); });
   afterEach(() => { warned.mockRestore(); });
 
-  /**
-   * The fault this exists for. A deployment registers its own widgets on the
-   * component that renders record forms, and a table's layout names them --
-   * so a layout fetched into this row would not render plainly, it would throw
-   * out of the middle of a render and take the panel with it.
-   */
+  // A layout naming a deployment's own widget would throw out of the render and take the panel down.
   it('drops a widget the form has no component for, and keeps the rest of the entry', () => {
     const ui = { 'a.b': { DATE_FROM: { 'ui:widget': 'CustomDateWithNowButton', 'ui:helpCode': 'help.date' } } };
     const out = usableUI(ui);
@@ -225,11 +196,7 @@ describe('usableUI', () => {
     expect(warned).not.toHaveBeenCalled();
   });
 
-  /**
-   * `updown` is a widget, on a number. Asked for on a string it throws exactly
-   * as loudly as a name nobody has, which is why the schema is walked beside
-   * the layout rather than the names being checked in a flat list.
-   */
+  // `updown` on a string throws as loudly as an unknown name, so the schema is walked beside the layout.
   it('reads a widget against the type of the field it is on', () => {
     const schema = { type: 'object', properties: { N: { type: 'number' }, S: { type: 'string' } } };
     expect(usableUI({ N: { 'ui:widget': 'updown' } }, schema).N).toEqual({ 'ui:widget': 'updown' });
@@ -293,12 +260,7 @@ describe('fetchUISchema', () => {
 });
 
 describe('withGroups', () => {
-  /**
-   * The gap this closes. A grouppath keeps its `required` inside the group and
-   * nothing above says the group has to be there, so `{}` -- which is what an
-   * untouched form is -- satisfies a schema every field of which is mandatory,
-   * and a Save gated on the error count is live over an empty form.
-   */
+  // A grouppath keeps its `required` inside the group, so `{}` would satisfy a form of mandatory fields.
   it('puts an empty object where a group is missing, so its required is read', () => {
     const narrowed = pickFields(SCHEMA, ['subject.info.NAME', 'NOTE']);
     expect(withGroups({}, narrowed)).toEqual({ 'subject.info': {} });

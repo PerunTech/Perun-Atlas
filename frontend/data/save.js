@@ -2,58 +2,13 @@ import { axios } from 'perun-core';
 import { bindPath, valueAt } from './path';
 import { pointIn, ringIn, unitsPerMetre } from './project';
 
-/**
- * Sending something back.
- *
- * Every other file in `data/` reads. This one writes, and it is the first thing
- * in the package that does, so the rules it follows are worth stating rather
- * than inferring.
- *
- * `postTo` knows nothing about what it is saving. A path from configuration, a
- * body from configuration, and the same `{token}` substitution every read here
- * already does -- which is what lets a screen that draws a shape post it to a
- * service this package has never heard of.
- *
- * `shapeContext` is the one thing here that does know, and it is here because
- * it is what those placeholders are filled from. It is arithmetic with no state
- * in it, so it is tested on its own rather than through the panel that draws
- * the shape.
- */
-
-/**
- * A JSON document posted as though it were a form.
- *
- * Several of these services declare `application/x-www-form-urlencoded` and then
- * read the *key* of the first form entry as the whole payload, so the body is
- * one percent-encoded JSON document with nothing on the other side of an `=`.
- * That is not a workaround: it is what the screens in these registries do, and
- * the services parse nothing else.
- *
- * Percent-encoded rather than raw because the container decodes the body before
- * the service sees it -- a bare `&` or `=` inside a value would cut the document
- * in half, and a bare `+` would arrive as a space.
- */
+// These services read the key of the first form entry as the whole payload. Percent-encoded because
+// the container decodes the body first, and a bare `&`, `=` or `+` would mangle it.
 const asFormBody = (payload) => encodeURIComponent(JSON.stringify(payload));
 
-/**
- * The one character a path cannot carry as itself.
- *
- * These services take structured values as path segments -- a point printed as
- * text, a comma-separated box -- and parentheses and commas are legal there.
- * A space is not, and a configured path that contains one is a path whose
- * service asked for it. Encoded here rather than in `bindPath`, which every read
- * in this package shares: encoding a substituted value would rewrite bounding
- * boxes that have worked for as long as there have been maps here.
- */
+// Spaces only: encoding substituted values in bindPath would rewrite bounding boxes that work today.
 const asPath = (path) => path.replace(/ /g, '%20');
 
-/**
- * What the body looks like on the wire.
- *
- * Named by the caller where it matters, and inferred from the content type
- * otherwise, because the two go together in practice and a screen configuring
- * one and forgetting the other should still send something a service can read.
- */
 const encodeBody = (body, encoding, contentType) => {
   if (body === undefined || body === null) return '';
   if (encoding === 'form' || (!encoding && /form-urlencoded/.test(contentType ?? ''))) {
@@ -62,22 +17,8 @@ const encodeBody = (body, encoding, contentType) => {
   return JSON.stringify(body);
 };
 
-/**
- * Whether the service accepted it.
- *
- * Three habits, and a screen meets all three. Most of these services answer a
- * failure with HTTP 200 and `{"type":"ERROR"}` in the body, so the status line
- * says nothing. Some answer with a bare label code -- `x.success.thing` or
- * `x.error.thing` -- which is a 200 carrying a string, and a client that trusts
- * the status reports a save that did not happen. And a few do use the status.
- *
- * The first and the third are read here because they are conventions rather than
- * domain knowledge. The second cannot be: `error` is a word in one deployment's
- * label codes, and this package does not know which word. So a row that talks to
- * such a service says what its refusal looks like, in `failure`, and a row that
- * does not is answered the way every other client here answers -- by the
- * envelope, or by the status.
- */
+// A refusal arrives as `{"type":"ERROR"}` under a 200, as a bare label code under a 200 (matched by the
+// row's `failure`), or as an HTTP error.
 const verdictOf = (data, failure) => {
   const envelope = typeof data === 'string' ? tryParse(data) : data;
   const type = String(envelope?.type ?? '').toUpperCase();
@@ -98,63 +39,15 @@ const tryParse = (text) => {
   try { return JSON.parse(text); } catch { return null; }
 };
 
-/**
- * A string that is one placeholder and nothing else.
- *
- * `bindPath` answers with text, which is what a path wants and what a sentence
- * wants. A body is the case where the placeholder *is* the value: a service
- * expecting a number reads `"5439"` and rejects it, and one expecting a shape
- * reads that shape's JSON as a quoted string. So a template that is exactly one
- * placeholder resolves to what it names -- an object, an array, a number -- and
- * a placeholder with anything either side of it is interpolated as before.
- *
- * Deliberately strict about the braces: `"{a}{b}"` and `" {a}"` are text with
- * substitutions in them, and a body that turned either into a value would be
- * guessing at what the row meant.
- */
+// A body that is exactly one placeholder takes the value itself, so a number or a shape isn't sent
+// as a string.
 const SOLE_PLACEHOLDER = /^\{([^{}]+)\}$/;
 
-/**
- * The key that spreads what it names into the object holding it.
- *
- * A sole placeholder replaces the whole body, which is all a row needed while a
- * body was either one shape or a handful of named fields. A form changes that:
- * its data is already the payload the service wants -- keyed by grouppath,
- * because that is how the table's own schema is keyed -- and the geometry beside
- * it is not the form's business and never will be. Those two have to end up in
- * one object, and `"{form}"` cannot have siblings.
- *
- * So `"..."` is a key that means what it means in JavaScript, which is the one
- * spelling nobody has to be taught:
- *
- *     "body": { "...": "{form}", "geometry": "{draw.geojson}" }
- *
- * Later keys win, as they do in an object literal, because `Object.entries`
- * keeps the order the row was written in. A row can therefore fix a field the
- * form also carries by naming it after the spread, and override the spread with
- * a default by naming it before.
- */
+// `"..."` spreads what it names into the enclosing object, so `{form}` can sit beside a geometry.
+// Later keys win, as in an object literal.
 const SPREAD_KEY = '...';
 
-/**
- * A configured payload, with its placeholders resolved.
- *
- * The same `{token}` substitution the paths take, applied through a body of any
- * shape -- nested objects and arrays included, because these services want their
- * fields sorted into sections and a menu row writes that structure literally.
- *
- * An unmatched placeholder is left standing, as `bindPath` leaves one. In a path
- * that produces a request that fails loudly; in a body it produces a record with
- * `{note}` written in a field, which is worse to read and better than a record
- * saved with a value silently dropped. A sole placeholder that resolves to
- * nothing is left standing as its own text for the same reason.
- *
- * `"..."` spreads -- see `SPREAD_KEY`. A spread of something that is not a plain
- * object is left in place under its own key rather than dropped, on the same
- * argument: a body carrying a visible `"...": "{form}"` is a service call
- * somebody looks at, and a body quietly missing every field a form was meant to
- * supply is a record saved empty.
- */
+// An unmatched placeholder, or a spread of a non-object, is left visible rather than silently dropped.
 export const fillBody = (template, context) => {
   if (typeof template === 'string') {
     const sole = template.match(SOLE_PLACEHOLDER);
@@ -186,22 +79,7 @@ export const fillBody = (template, context) => {
   return template;
 };
 
-/**
- * Posts something to a configured service.
- *
- * Never throws. A write is started by someone pressing a button, and a rejected
- * promise reaching a render is a blank screen where a message belongs -- so
- * every outcome comes back as the same shape and the caller decides what to say.
- *
- * @param {string} servicePath - Path with {token} placeholders, from configuration.
- * @param {Object} context     - Values those placeholders resolve against.
- * @param {Object} [options]
- * @param {Object} [options.body]        - The payload, with its placeholders already resolved.
- * @param {string} [options.contentType] - Defaults to the form convention above.
- * @param {string} [options.encoding]    - 'form' or 'json'; inferred from the content type.
- * @param {string} [options.failure]     - Pattern that marks a refusal in a plain-text answer.
- * @returns {Promise<{ok: boolean, message: ?string, data: *}>}
- */
+// Never throws: a rejected promise reaching a render blanks the screen.
 export const postTo = async (servicePath, context = {}, options = {}) => {
   const { body, contentType = 'application/x-www-form-urlencoded', encoding, failure } = options;
   const url = `${window.server}${asPath(bindPath(servicePath, context))}`;
@@ -216,10 +94,7 @@ export const postTo = async (servicePath, context = {}, options = {}) => {
 
     const verdict = verdictOf(response?.data, failure);
     if (!verdict.ok) {
-      // The URL and the payload together, because a refusal is usually about
-      // one of the two and the service that refused rarely says which. A
-      // service answering with a bare code keeps its reason in its own log,
-      // which is the next place to look and not a place this can reach.
+      // A refusal is usually about the URL or the payload, and the service rarely says which.
       console.error(`perun-atlas: ${url} refused the save`, response?.data);
       console.error('perun-atlas: the payload was', body);
     }
@@ -231,33 +106,8 @@ export const postTo = async (servicePath, context = {}, options = {}) => {
   }
 };
 
-/**
- * A drawn shape, as the values a save's path and body resolve against.
- *
- * The shape is converted here and nowhere else. A radius is drawn in metres on
- * the ground and stored in the units of whatever projection the deployment
- * keeps geometry in, and the two are the same number only at the equator -- at
- * these latitudes a circle sent across unconverted is a fifth too small,
- * silently, in a record nobody re-measures. `unitsPerMetre` asks the projection
- * itself rather than carrying a formula for it.
- *
- * Rounded, because more than one of these services parses its radius as an
- * integer and a decimal point is a rejected save rather than a rounded circle.
- * The centre keeps its decimals: it is read as a pair of doubles everywhere.
- *
- * @param {Object} shape              - The drawn circle: `lat`, `lng`, and `radius` in metres.
- * @param {Object} params
- * @param {Object} params.draw        - The row's `draw` block.
- * @param {number} [params.dataSrid]  - The projection the deployment stores geometry in.
- * @param {Object} [params.bindings]  - What the save path's placeholders resolve against.
- * @param {string} [params.note]
- * @param {Object} [params.selected]  - What the shape caught, when the row asked.
- * @param {Object} [params.form]      - What was typed into the row's form.
- * @param {Object} [params.map]       - The map it was drawn on.
- * @returns {{context: Object, units: number, tooSmall: boolean}} The context; the
- *          radius in stored units, before rounding; and whether a save sending
- *          that radius would send zero.
- */
+// The radius goes from ground metres to stored units here; unconverted, it is a fifth too small at
+// these latitudes. Rounded, because some services parse it as an integer.
 export const shapeContext = (shape, { draw, dataSrid, bindings, note, selected, form, map }) => {
   const centre = { lat: shape.lat, lng: shape.lng };
   const { x, y } = pointIn(centre, dataSrid, map);
@@ -266,48 +116,18 @@ export const shapeContext = (shape, { draw, dataSrid, bindings, note, selected, 
 
   const vertices = ringIn(centre, shape.radius, dataSrid, draw.points, map);
 
-  /**
-   * The shape itself, as a ring in the projection the deployment stores.
-   *
-   * Formatted by the row, because the syntax is the service's and the geometry
-   * is this panel's: `point` is a template for one vertex and `join` is what
-   * goes between them. The default is a WKT coordinate pair, which is the only
-   * spelling that is anybody's standard.
-   */
+  // The row formats the ring, since the syntax is the service's. Defaults to WKT coordinate pairs.
   const ring = vertices
     .map((vertex) => bindPath(draw.ring?.point ?? '{x} {y}', vertex))
     .join(draw.ring?.join ?? ', ');
 
-  /**
-   * The same shape, as GeoJSON.
-   *
-   * Offered beside the ring rather than instead of it: a service that parses
-   * the geometry out of a path segment needs the string, and one that reads a
-   * body needs this, and which of the two a deployment has is not this panel's
-   * to know. A row asking for `{draw.geojson}` gets the object itself, because
-   * `fillBody` hands over a sole placeholder unconverted.
-   *
-   * Closed, unlike the ring: GeoJSON says a linear ring repeats its first
-   * position as its last, and the readers that take it enforce that. The ring
-   * is left open because the services that parse one close it themselves, and
-   * a ring that arrived closed would be closed twice.
-   */
+  // Closed, unlike the ring: GeoJSON requires it, and the services that parse a ring close it themselves.
   const geojson = {
     type: 'Polygon',
     coordinates: [[...vertices, vertices[0]].map((vertex) => [vertex.x, vertex.y])]
   };
 
-  /**
-   * A radius smaller than one unit of the projection it would be sent in.
-   *
-   * Only when that is what is being sent. `{draw.radius}` is the shape's size
-   * in the stored projection, and rounding it is not optional -- more than one
-   * of these services parses a radius as an integer. But a deployment storing
-   * degrees measures a 720 m circle as 0.0065 of a unit, which rounds to
-   * nothing, and a radius of zero is a save that either fails somewhere deep
-   * or stores a shape with no extent. A row in that position wants
-   * `{draw.metres}` and the ring, neither of which has this problem.
-   */
+  // Storing degrees, a small radius rounds to 0; such a row wants `{draw.metres}` or the ring.
   const sendsUnits = [draw.save.onSave, JSON.stringify(draw.save.body ?? null)]
     .some((text) => String(text).includes('{draw.radius}'));
 
@@ -323,15 +143,10 @@ export const shapeContext = (shape, { draw, dataSrid, bindings, note, selected, 
       radius,
       ring,
       geojson,
-      // Only where a row asked for a selection. A screen that draws a shape
-      // and sends it somewhere has no use for `{draw.selected.ids}`, and an
-      // empty one in the context is a placeholder that resolves to nothing
-      // rather than one that is visibly not configured.
+      // Absent unless asked for, so an unconfigured `{draw.selected.ids}` stays visibly unresolved.
       ...(selected ? { selected } : {})
     },
-    // At the top rather than under `draw`, because it is not about the shape.
-    // A row spreads it with `"...": "{form}"`, which is what lets the fields a
-    // schema describes arrive beside a geometry that is never one of them.
+    // Spread into a body with `"...": "{form}"`.
     ...(draw.form ? { form } : {})
   };
 

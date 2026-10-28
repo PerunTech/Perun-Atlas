@@ -1,15 +1,5 @@
-/*
- * The one stylesheet this package ships.
- *
- * `atlas-map` and friends are left to the deployment's stylesheets, as the rest
- * of the front end is. These cannot be: a divIcon with no CSS has no size and no
- * background, so an unstyled marker is not plain, it is invisible. A package
- * whose job is that consumers do not reimplement the map should not ship a map
- * that renders nothing until someone edits a site stylesheet.
- *
- * Neutral on purpose. A descriptor names its own class when a screen wants its
- * own look, and these are single-class selectors, so anything loaded later wins.
- */
+/* A divIcon with no CSS has no size or background, so these ship rather than being left to the
+   deployment. Single-class selectors, so anything loaded later wins. */
 
 .atlas-marker {
   box-sizing: border-box;
@@ -19,20 +9,8 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
 }
 
-/*
- * A cluster badge, on the same argument as the marker above: it is a divIcon, so
- * with no rules it is an invisible hole where a count should be.
- *
- * The chip is the span rather than the element around it. Leaflet builds that
- * element and gives it only the class and the size, so it is the child that can
- * be handed a colour by a menu row -- see `clusterBadge`. Sized from its parent
- * so the band's pixel size stays the one place a badge's size is decided.
- *
- * Deliberately the marker's own colour rather than a scale of its own. A cluster
- * is those markers, not a fourth kind of thing, and the count inside it is what
- * says how many. `.atlas-cluster--sm`, `--md` and `--lg` are there for a
- * deployment that disagrees.
- */
+/* The span is the chip, since Leaflet gives the outer element only its class and size. The
+   marker's own colour; `--sm`, `--md` and `--lg` are for a deployment that wants a scale. */
 .atlas-cluster__count {
   box-sizing: border-box;
   display: flex;
@@ -62,13 +40,7 @@
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 
-  /*
-   * spatial draws every tooltip as white text inside a solid black outline,
-   * which suits a label painted straight onto imagery and ruins one set in a
-   * pill: at this size the outline closes up the counters of the letters and
-   * the text reads as a dark smear. The pill is the legibility mechanism here,
-   * so drop the outline rather than layer the two.
-   */
+  /* spatial outlines tooltip text in black, which turns to a smear inside a pill. */
   text-shadow: none;
 }
 
@@ -76,19 +48,6 @@
   display: none;
 }
 
-/*
- * Popups.
- *
- * Leaflet supplies the frame — the wrapper, the tip, the close button — and these
- * style only what sits inside it. A deployment that restyles .leaflet-popup keeps
- * its own frame and keeps this layout, and one that wants neither overrides these
- * single-class selectors from a stylesheet loaded later.
- *
- * A definition list rather than a table: these are label/value pairs about one
- * feature, which is what a dl is, and it lets the grid line the values up without
- * either column being measured against the other rows of a table that is not
- * there.
- */
 .atlas-popup {
   font-size: 12.5px;
   line-height: 1.45;
@@ -111,8 +70,7 @@
 .atlas-popup-fields dt {
   color: #5b6b73;
   font-weight: 400;
-  /* The label is the narrow column, so it sets the grid's first track and should
-     not be the thing that wraps; the value has the room. */
+  /* The label column sets the first track, so it should not wrap. */
   white-space: nowrap;
 }
 

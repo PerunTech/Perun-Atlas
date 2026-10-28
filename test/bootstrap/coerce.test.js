@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { coerce } from '../../frontend/bootstrap/coerce';
 import { SCHEMA } from '../../frontend/config/Schema';
 
-/**
- * Every setting a deployment gives arrives through here: a parameter as a
- * string whatever its type, a window global as whatever was written, a default
- * already typed. Each case below is one of those shapes, and the throws are the
- * point -- a wrong value still draws a map, somewhere it should not be.
- */
+// Parameters arrive as strings, globals as written. The throws are the point: a wrong value still
+// draws a map, in the wrong place.
 const as = (type, value, entry = {}) => coerce('setting', value, { type, ...entry });
 
 describe('coerce', () => {

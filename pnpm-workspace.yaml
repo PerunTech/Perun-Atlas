@@ -1,21 +1,10 @@
-# pnpm 9 reads this file as a workspace definition alone and refuses it without
-# a packages list. pnpm 10 and 11, which also read their settings from here,
-# accept it either way. Empty is accurate: there are no sub-packages.
+# pnpm 9 refuses this file without a packages list; there are no sub-packages.
 packages: []
 
-# perun-atlas depends on spatial, and spatial on perun-core, both through git
-# URLs -- pnpm 11 refuses git-resolved subdependencies by default. Every
-# dependency in this graph is a first-party repository on gitlab.prtech.mk, so
-# that layering is the house architecture rather than something to work around.
+# spatial and perun-core come from git, and pnpm 11 refuses git-resolved subdependencies by default.
 blockExoticSubdeps: false
 
-# A subdependency carries an advisory its parent pins too tightly to fix on its
-# own: monaco-editor asks for dompurify 3.4.8 exactly. It does not reach the
-# shipped bundle -- monaco arrives through perun-core, which is external -- so
-# this clears the audit and protects the dev machine rather than changing what
-# ships. Mirrors svarog-spatial, which also overrides uuid for the sockjs its
-# webpack-dev-server brings; this package has neither any more.
-#
-# pnpm 9 reads overrides only from package.json, so it cannot install this tree.
+# monaco-editor pins dompurify 3.4.8, which has an advisory; monaco is external, so this only clears
+# the audit. pnpm 9 reads overrides only from package.json, so it cannot install this tree.
 overrides:
   dompurify: ^3.4.17

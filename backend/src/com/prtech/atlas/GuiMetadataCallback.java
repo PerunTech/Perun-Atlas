@@ -11,25 +11,8 @@ import com.prtech.svarog.SvCore;
 import com.prtech.svarog_common.DbDataObject;
 import com.prtech.svarog_common.ISvOnSave;
 
-/**
- * Keeps SVAROG_PERUN_PLUGIN.GUI_METADATA for this bundle stamped with
- * cardHidden = true.
- *
- * perun-atlas is a library, not a product: it registers no routes, so
- * ModuleMenu already declines to draw a card for it. PerunNavbar's burger menu
- * has no such check though -- it tests cardHidden alone -- so without this the
- * bundle shows up there as a link to /main/perun-atlas that resolves to
- * nothing.
- *
- * GUI_METADATA is not part of IPerunPlugin, so a plugin has no way to declare
- * its own. Nothing in svarog writes the column either: buildDboPlugin populates
- * nine fields and leaves this one null, which means a fresh install is visible
- * until an administrator edits the row by hand. Registering here instead of
- * asking svarog for an interface method keeps the change inside this bundle.
- *
- * SvWriter runs on-save callbacks against the live object just before it is
- * batched for writing, so setting the value here is what reaches the database.
- */
+// Stamps cardHidden = true on this bundle's GUI_METADATA. PerunNavbar's burger menu checks only
+// cardHidden and nothing in svarog writes the column, so a fresh install would list a dead link.
 public class GuiMetadataCallback implements ISvOnSave {
 
 	private static final Logger log4j = SvConf.getLogger(GuiMetadataCallback.class);
@@ -40,11 +23,7 @@ public class GuiMetadataCallback implements ISvOnSave {
 	/** Key read by WsConf.cardIsHidden when it builds the module payload. */
 	private static final String CARD_HIDDEN = "cardHidden";
 
-	/**
-	 * The callback list is registered per object type, so only plugin rows arrive
-	 * here -- but every bundle's row does. Anything that is not ours is left
-	 * exactly as it came in.
-	 */
+	// Every bundle's plugin row arrives here; anything not ours is left as it came.
 	@Override
 	public boolean beforeSave(SvCore parentCore, DbDataObject dbo) {
 		try {
@@ -55,10 +34,7 @@ public class GuiMetadataCallback implements ISvOnSave {
 			JsonObject meta = readMetadata(dbo);
 			meta.addProperty(CARD_HIDDEN, true);
 
-			// Written as a string: the column is NVARCHAR(2000) and every reader
-			// handles the string form first. svarog itself hands this field around as
-			// a parsed JsonObject once it has been loaded, so normalising on the way
-			// out keeps what lands in the database predictable.
+			// A string, which every reader handles first; svarog passes it around parsed once loaded.
 			dbo.setVal(Sv.GUI_METADATA, meta.toString());
 		} catch (Exception e) {
 			// Never abort a plugin registration over card visibility.
@@ -72,15 +48,7 @@ public class GuiMetadataCallback implements ISvOnSave {
 		// Nothing to clean up.
 	}
 
-	/**
-	 * Reads the existing metadata so the stamp merges rather than replaces.
-	 *
-	 * The blob is shared: cardHidden lives beside hasPersistReducer, directAccess
-	 * and accessGroup, the last two of which an administrator owns. Overwriting it
-	 * wholesale would silently drop their access configuration.
-	 *
-	 * @return the current metadata, or an empty object when there is none
-	 */
+	// Merges rather than replaces: directAccess and accessGroup in the same blob are an administrator's.
 	private JsonObject readMetadata(DbDataObject dbo) {
 		Object raw = dbo.getVal(Sv.GUI_METADATA);
 
@@ -93,9 +61,7 @@ public class GuiMetadataCallback implements ISvOnSave {
 				if (parsed != null)
 					return parsed;
 			} catch (Exception e) {
-				// An unparseable blob is already inert -- WsConf logs and falls back to
-				// false for every key it holds -- so starting fresh loses no working
-				// configuration. Logged loudly because it points at a bad manual edit.
+				// Already inert, so starting fresh loses nothing; it points at a bad manual edit.
 				log4j.warn("Discarding unparseable GUI_METADATA on the perun-atlas plugin row: " + raw, e);
 			}
 		}

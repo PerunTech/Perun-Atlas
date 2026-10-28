@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { bboxIn, crsFor, fromDegrees, inDegrees, latLngOf, pointIn, ringIn, unitsPerMetre } from '../../frontend/data/project';
 import { latLngBounds, mapWith, resetView, setView } from '../stubs/spatial.js';
 
-/** Somewhere in the deployment's own latitudes, where the scale error is worth having. */
+// The deployment's own latitudes, where the scale error is worth having.
 const CENTRE = { lat: 35.124805, lng: 33.941707 };
 const ground = (a, b) => {
   const rad = Math.PI / 180;
@@ -56,43 +56,22 @@ describe('pointIn', () => {
 });
 
 describe('unitsPerMetre', () => {
-  /**
-   * The number the whole conversion exists for. A degree of longitude at 35.1°N
-   * is about 91 km, so a projected unit is about 91,000 ground metres -- four
-   * orders of magnitude, not a rounding error.
-   */
+  // A degree of longitude at 35.1°N is about 91 km: four orders of magnitude, not a rounding error.
   it('measures a degree of longitude at this latitude', () => {
     expect(1 / unitsPerMetre(CENTRE, 4326)).toBeCloseTo(90_950, -2);
   });
 
-  /**
-   * Web Mercator's scale error, which is the one that goes unnoticed: a metre
-   * on the grid is 0.82 ground metres here, so an unconverted radius is a fifth
-   * short in a record nobody re-measures.
-   */
+  // A grid metre is 0.82 ground metres here, so an unconverted radius is a fifth short.
   it('measures Web Mercator as 1/cos(latitude)', () => {
     expect(unitsPerMetre(CENTRE, 3857)).toBeCloseTo(1 / Math.cos(CENTRE.lat * Math.PI / 180), 2);
   });
 
-  /**
-   * Not quite 1, and correctly so. Leaflet projects on the WGS84 semi-major
-   * axis (6378137 m) and measures ground distance on a 6371 km sphere, so its
-   * own two halves disagree by 0.112% everywhere. Measuring the scale off the
-   * projection inherits that, which is the right trade: it is three orders of
-   * magnitude smaller than the error this function exists to remove, and it is
-   * the same number the map itself draws with.
-   */
+  // Leaflet projects on 6378137 m but measures on a 6371 km sphere, so its halves disagree by 0.112%.
   it('is 1 at the equator, to within the radius Leaflet disagrees with itself by', () => {
     expect(unitsPerMetre({ lat: 0, lng: 0 }, 3857)).toBeCloseTo(6378137 / 6371000, 5);
   });
 
-  /**
-   * The premise of the guard in `shapeContext`. A service parsing an
-   * integer radius cannot be handed a circle measured in degrees: 1500 m is
-   * 0.0165 of a unit, which rounds to nothing, and a radius of zero is a save
-   * that fails somewhere deep or stores a shape with no extent. If this ever
-   * stops being true the guard is dead code and should go.
-   */
+  // The premise of the guard in `shapeContext`; if this stops holding, the guard can go.
   it('rounds a real radius to zero in a projection measured in degrees', () => {
     expect(Math.round(1500 * unitsPerMetre(CENTRE, 4326))).toBe(0);
     expect(Math.round(1500 * unitsPerMetre(CENTRE, 3857))).toBeGreaterThan(1000);
@@ -111,12 +90,7 @@ describe('ringIn', () => {
     expect(ring[0]).not.toEqual(ring[ring.length - 1]);
   });
 
-  /**
-   * Round on the ground, not round on the grid. The radius goes through each
-   * axis's own scale, so every vertex is the distance the reader measured --
-   * which in a geographic projection means the ring is the ellipse a circle on
-   * the ground actually is.
-   */
+  // In a geographic projection the ring is the ellipse a circle on the ground actually is.
   it('puts every vertex the requested distance away on the ground', () => {
     ringIn(CENTRE, 1500, 4326).forEach(({ x, y }) => {
       expect(ground(CENTRE, { lat: y, lng: x })).toBeCloseTo(1500, -1);
@@ -177,12 +151,7 @@ describe('bboxIn', () => {
 });
 
 describe('the map an answer is about', () => {
-  /**
-   * The page's map on Web Mercator, the shown one in degrees, and no code that
-   * names the stored projection: the case where the fallback decides. Each map
-   * an AtlasMap builds takes the deployment's settings, so the two agree on a
-   * real page unless one screen's overrides name another projection.
-   */
+  // The page's map on Web Mercator, the shown one in degrees, and no stored-projection code.
   const shown = mapWith({ crs: crsFor(4326) });
 
   it("falls back to the given map's projection, both ways", () => {

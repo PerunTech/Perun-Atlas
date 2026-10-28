@@ -5,52 +5,10 @@ import { latLngOf } from './project';
 
 const { Map, factory } = core;
 
-/**
- * Which features fall inside a drawn shape.
- *
- * The question a circle on a map is usually being asked: everything within so
- * far of here. It is answered in the browser, over the collection already
- * decoded, because both halves are already here -- the shape was drawn in this
- * page and the features arrived in one response. Nothing is fetched and nothing
- * is posted.
- *
- * Two things about that answer are worth saying plainly, because neither is
- * visible from the result.
- *
- * It is over what the map has, not over the database. `FeatureSet` is for sets
- * that arrive complete in one response, so for those screens the two are the
- * same thing. A bounding-box layer is a different matter: it holds what is in
- * view, and a radius reaching past the edge of the view would be answered from
- * a set that stops there. `withinCircle` cannot tell the difference and does not
- * try; the caller knows which layer it mounted.
- *
- * And the distance is on the ground, not on the screen or in the projection.
- * The map's `distance` is the same haversine every other measurement in this
- * stack uses, which is what makes "3 km" here the same 3 km the scale bar draws
- * and the same one `unitsPerMetre` converts for a save. Which map is the
- * caller's to say, as in `project.js`, and the page's when it does not.
- */
-
-/**
- * The ground distance from a centre to the nearest part of a feature, and to its
- * furthest.
- *
- * Both, in one pass, because the two answer the two readings of "inside": a
- * feature is *touched* by the circle when its nearest position is within the
- * radius, and *contained* by it when its furthest is.
- *
- * Positions are unprojected first. The collection is in whatever the deployment
- * stores -- see `latLngOf` -- and measuring stored units as though they were
- * degrees is the failure this exists to avoid: on a 3857 deployment every
- * feature would be millions of metres from everything.
- *
- * @param {Object} feature - A GeoJSON feature.
- * @param {{lat: number, lng: number}} centre
- * @param {string|number} [srid] - What the feature's coordinates are in.
- * @param {Object} [map] - The map it is drawn on. The page's without one.
- * @returns {{nearest: number, furthest: number}|null} Metres, or null for a
- *          feature with no geometry to measure.
- */
+// Answered over what the map holds, not the database: on a bounding-box layer a radius past the edge
+// of the view is answered from a set that stops there. Distances are on the ground.
+// Nearest and furthest, for the two readings of "inside". Positions are unprojected first: on a 3857
+// deployment stored units read as degrees would put everything millions of metres away.
 export const spanTo = (feature, centre, srid, map) => {
   const positions = positionsOf(feature?.geometry);
   if (positions.length === 0) return null;
@@ -69,24 +27,8 @@ export const spanTo = (feature, centre, srid, map) => {
   return { nearest, furthest };
 };
 
-/**
- * The features a circle catches, and the ones it does not.
- *
- * @param {Object} collection - A GeoJSON FeatureCollection, as it arrived.
- * @param {{lat: number, lng: number, radius: number}|null} circle - Radius in
- *        ground metres, which is what `CirclePicker` reports.
- * @param {Object} [options]
- * @param {string|number} [options.srid] - The projection the collection is in.
- * @param {'touches'|'contains'} [options.mode] - Whether a feature reaching into
- *        the circle counts, or only one wholly inside it. `touches` by default,
- *        because the question behind a radius is usually about reach.
- * @param {Object} [options.map] - The map the circle was drawn on.
- * @returns {Object} `{ inside, outside, has, metres, total }`. `inside` is
- *          nearest first, so a caller that wants the closest five takes them off
- *          the front. `has` and `metres` are keyed by the feature object itself
- *          rather than by an identifier: these are the very objects the layer
- *          drew, and no set of properties here is reliably unique.
- */
+// `has` and `metres` are keyed by the feature object, since no property here is reliably unique.
+// `inside` comes nearest first.
 export const withinCircle = (collection, circle, options = {}) => {
   const { srid, mode = 'touches', map } = options;
   const features = collection?.features ?? [];
@@ -112,9 +54,7 @@ export const withinCircle = (collection, circle, options = {}) => {
   features.forEach((feature) => {
     const span = spanTo(feature, centre, srid, map);
 
-    // A feature with no geometry is not outside the circle; it is not anywhere.
-    // It goes with the ones that were not caught, which is where a caller
-    // looking for what to draw in grey will expect it.
+    // No geometry means not anywhere; it goes with the uncaught ones.
     if (!span) {
       outside.push(feature);
       return;
@@ -145,23 +85,7 @@ export const withinCircle = (collection, circle, options = {}) => {
   };
 };
 
-/**
- * The caught features as a list a service can read.
- *
- * Templated per feature, the way a ring's vertices are: `id` spells one
- * identifier and `join` is what goes between them, so a service wanting `pkid`
- * and one wanting `OBJECT_ID` differ by a menu row rather than by a change here.
- *
- * A feature whose template resolved to nothing is left out rather than sent as
- * the word `{pkid}`. `bindPath` leaves an unresolved placeholder in place, which
- * is right when it is writing a path a person will read and wrong in a list a
- * service is about to parse -- there, a literal brace is either a rejected
- * request or a row created against an identifier nobody has.
- *
- * @param {Array} features - The features to name.
- * @param {Object} [options] - `id`, a template; `join`, the separator.
- * @returns {string}
- */
+// A feature whose template resolves to nothing is left out rather than sent as a literal `{pkid}`.
 export const identifiersOf = (features, options = {}) => {
   const { id = '{pkid}', join = ',' } = options;
 

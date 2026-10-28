@@ -15,30 +15,19 @@ import com.prtech.svarog.SvCore;
 import com.prtech.svarog.svCONST;
 import com.prtech.svarog_interfaces.IPerunPlugin;
 
-/**
- * Bundle lifecycle for perun-atlas.
- *
- * This bundle serves static assets and registers itself as a Perun plugin. It
- * publishes no web services: the geometry endpoints it consumes belong to
- * svarog-spatial, and keeping them there is what lets any deployment with spatial
- * installed use this layer without a product-specific backend.
- */
+// Publishes no web services: the geometry endpoints belong to svarog-spatial, so any deployment with
+// spatial installed can use this layer.
 public class Activator implements BundleActivator {
 
 	static final Logger log4j = SvConf.getLogger(Activator.class);
 
-	/** Context path under which the bundle's /www folder is served. */
 	static final String httpContextPath = "/perun-atlas";
 
-	/** Directory inside the bundle served at the context path. */
 	static final String httpLocalDir = "/www";
 
 	private ArrayList<ServiceRegistration> services = new ArrayList<ServiceRegistration>();
 
-	/**
-	 * Held as a single instance for the life of the bundle: unregistering matches
-	 * on the reference, so a new object on stop would leave this one behind.
-	 */
+	// Unregistering matches on the reference, so stop must see this same instance.
 	private final GuiMetadataCallback guiMetadata = new GuiMetadataCallback();
 
 	@SuppressWarnings("rawtypes")
@@ -48,10 +37,7 @@ public class Activator implements BundleActivator {
 	public void start(BundleContext context) {
 		log4j.info("Starting perun-atlas OSGI bundle");
 
-		// Registered before the IPerunPlugin service is published, and deliberately
-		// so: svarog inserts this bundle's SVAROG_PERUN_PLUGIN row in response to
-		// that service appearing, and the callback has to already be in place to
-		// stamp the row on its first insert rather than one deployment later.
+		// Before the plugin service is published, since svarog inserts this bundle's plugin row as it appears.
 		SvCore.registerOnSaveCallback(guiMetadata, svCONST.OBJECT_TYPE_PERUN_PLUGIN);
 
 		IPerunPlugin publisher = new PerunPluginInfo();

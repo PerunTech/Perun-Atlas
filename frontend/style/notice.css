@@ -1,13 +1,5 @@
-/*
- * What the map says when it cannot be drawn, or is drawn on a basemap nobody
- * chose: the card in its place, the note along its bottom and the line under
- * the layer switcher's list.
- *
- * Every colour comes from the panel's tokens, falling back to the values the
- * deployment sets, so a map outside a panel still reads. Margins, padding and
- * fonts are said on each class because the deployment's bare `p`, `button` and
- * `code` rules would otherwise reach in (see README.md).
- */
+/* Margins, padding and fonts are set on each class, or the deployment's bare `p`, `button` and
+   `code` rules reach in (see README.md). */
 
 .atlas-unavailable {
   box-sizing: border-box;

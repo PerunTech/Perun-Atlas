@@ -6,40 +6,14 @@ import '../../style/picker.css';
 const { factory } = core;
 const { useEffect, useRef } = React;
 
-/**
- * The default pin: a teardrop with a hole, drawn inline.
- *
- * Inline rather than an image, because Leaflet's own marker resolves its png
- * through the spatial package's css, and that does not survive bundling. It is
- * drawn smaller than its viewBox so the stroke and the inner dot scale with it,
- * and it fills with `currentColor` so the stylesheet decides the colour.
- */
+// Inline, because Leaflet's own marker resolves its png through spatial's CSS, which bundling breaks.
 const PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="28" viewBox="0 0 26 36">
   <path d="M13 0C5.82 0 0 5.82 0 13c0 9.75 13 23 13 23s13-13.25 13-23C26 5.82 20.18 0 13 0z"
         fill="currentColor" stroke="#ffffff" stroke-width="1.75"/>
   <circle cx="13" cy="13" r="4" fill="#ffffff"/>
 </svg>`;
 
-/**
- * One point on the map, placed by clicking and moved by dragging.
- *
- * Controlled: it draws `value` and reports every move through `onChange`, and
- * holds no position of its own. The caller therefore owns the coordinate — it can
- * seed it from a record, round it, clear it, or refuse a change — and this
- * component never has an opinion about what a coordinate means.
- *
- * The reported position is always the raw one. Rounding here would visibly shift
- * the pin away from where it was dropped, so a caller that displays degrees and
- * minutes should format for display and keep this value.
- *
- * @param {{lat: number, lng: number}|null} value - the placed point, or null for none
- * @param {Function} onChange   - called with { lat, lng } on click and while dragging
- * @param {boolean}  draggable
- * @param {string}   className  - class on the pin, for styling
- * @param {string}   html       - markup for the pin, if the default will not do
- * @param {number[]} size       - [width, height] in pixels
- * @param {number[]} anchor     - the point of the icon that sits on the coordinate
- */
+// Controlled, and reports the raw position: rounding here would shift the pin away from where it was dropped.
 export const PointPicker = ({
   value,
   onChange,
@@ -68,10 +42,7 @@ export const PointPicker = ({
     };
   }, [map]);
 
-  /**
-   * The pin follows `value`. Its appearance is read when the pin is created and
-   * not afterwards: an icon that changed mid-drag would fight the drag.
-   */
+  // The icon is read only when the pin is created, so it can't fight a drag.
   useEffect(() => {
     if (!value) {
       if (markerRef.current) {

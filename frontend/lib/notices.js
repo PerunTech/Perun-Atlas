@@ -1,12 +1,6 @@
 import { bindPath } from '../data/path';
 
-/**
- * What the map says when it cannot be drawn, or is drawn on a basemap nobody
- * chose: the card in place of the map and the note along its bottom edge.
- *
- * Words by label key, each falling back to the English here. The details for
- * administrators are English only: they name parameters, which are English too.
- */
+// The details for administrators stay English: they name parameters, which are English too.
 const WORDS = {
   mapNotSetUp: 'This map isn\'t set up yet',
   mapNotSetUpHint: 'Some settings the map needs are missing or can\'t be read, so it can\'t be drawn. Ask your administrator to check the map\'s system parameters.',
@@ -36,25 +30,8 @@ const WORDS = {
   dismiss: 'Dismiss'
 };
 
-/**
- * One notice's words.
- *
- * @param {string} key - A key of `WORDS`.
- * @param {Object} [labels] - Resolved words by the same keys.
- * @param {Object} [values] - What the `{placeholders}` say.
- */
 export const say = (key, labels = {}, values = {}) => bindPath(labels[key] ?? WORDS[key], values);
 
-/**
- * What the card says about a map that failed to build.
- *
- * @param {Error} err - What `AtlasMap` caught. A `ConfigError` carries
- *        `problems`; the engine refusal carries `engine`.
- * @returns {{ kind: string, rows: Array, retry: boolean }} `kind` is
- *          `settings`, `unreachable`, `engine` or `failed`. Each row is
- *          `{ param, status, value, doc }`, `status` being `missing`,
- *          `invalid` or `unreachable`.
- */
 export const failureNotice = (err) => {
   const problems = err?.problems;
   if (problems) {
@@ -75,7 +52,6 @@ export const failureNotice = (err) => {
   return { kind: 'failed', rows: [], retry: true };
 };
 
-/** The card's heading, hint and glyph for each `kind`. */
 export const FAILURE_CARD = {
   settings: { icon: 'map-off', title: 'mapNotSetUp', hint: 'mapNotSetUpHint' },
   unreachable: { icon: 'cloud-off', title: 'mapUnreachable', hint: 'mapUnreachableHint' },
@@ -83,24 +59,12 @@ export const FAILURE_CARD = {
   failed: { icon: 'map-off', title: 'mapFailed', hint: 'mapFailedHint' }
 };
 
-/** A row's status, in words. */
 export const statusText = (row, labels) => {
   if (row.status === 'invalid') return say('settingUnreadable', labels, { value: row.value });
   if (row.status === 'unreachable') return say('settingNoAnswer', labels);
   return say('settingNotSet', labels);
 };
 
-/**
- * What the basemap note says, given what the catalogue answered.
- *
- * @param {string} catalogue - `ok`, `empty` or `unreachable`, as `fetchLayers`
- *        says it.
- * @param {Object} fallback - What `fallbackBasemap` returned, or null when it
- *        was not asked.
- * @param {string} [crs] - The map's CRS code, for the details.
- * @returns {Object|null} `{ kind, unreachable, name, details }`, `kind` being
- *          `fallback` or `none`; null when the catalogue had a basemap.
- */
 export const basemapNotice = (catalogue, fallback, crs) => {
   if (catalogue === 'ok' || !fallback) return null;
   const unreachable = catalogue === 'unreachable';
@@ -115,12 +79,7 @@ export const basemapNotice = (catalogue, fallback, crs) => {
 
 const DISMISSED = 'perun-atlas.basemap-notice';
 
-/**
- * Whether the reader has put this note away before, in this browser.
- *
- * Only the notes about how the system is set up are remembered. A catalogue
- * that did not answer is news each time.
- */
+// Only notes about the set-up are remembered; an unreachable catalogue is news each time.
 export const noticeDismissed = (notice) => {
   if (!notice || notice.unreachable) return false;
   try {

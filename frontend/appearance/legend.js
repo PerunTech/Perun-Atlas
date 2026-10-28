@@ -1,86 +1,22 @@
 import { BASE_STYLE, pathOptions, variantOf } from './descriptor';
 
-/**
- * What the colours on a map mean.
- *
- * Two screens grew the same gap from different directions. A movements map draws
- * arriving lines in one colour and leaving ones in another, and nothing on
- * screen says which is which -- the distinction is legible only to whoever wrote
- * the menu row. A choropleth fills areas from a palette, which is the one map in
- * the stack where misreading a colour has consequences. Both are answered by a
- * list of swatches and words, so both are answered here.
- *
- * Nothing in this file is configured. The descriptors already carry the names,
- * the cases and the colours, and the palette already carries the categories --
- * a legend is a second reading of what is on the map rather than a second
- * description of it, which is what keeps it from drifting out of step.
- *
- * Engine-free and pure: entries in, entries out, no Leaflet and no DOM.
- */
-
-/** Separates a descriptor name from its variant case in an entry's key. */
 const KEY_SEPARATOR = '::';
 
-/**
- * Below this many rows there is nothing to tell apart, so there is no legend --
- * unless a row is switched off, which `legendShown` adds.
- */
 export const MINIMUM_ENTRIES = 2;
 
-/**
- * Whether there is a key to show.
- *
- * Two rows or more -- or any row the reader has switched off, however few rows
- * there are. A kind switched off beside others can come back as the only thing
- * in the next set. Under the plain count its key would go with it, and nothing
- * on screen would say why the map was empty or offer the way back.
- *
- * Asked by `Legend`, which renders nothing without a key, and by
- * `LegendControl`, which then takes its control off the map rather than leave
- * an empty one in the corner. One rule for both, so the two cannot disagree.
- *
- * @param {Array} entries - As `legendFrom` or `legendFromPalette` built them.
- * @param {Array} [hidden] - The keys switched off.
- * @returns {boolean}
- */
+// Also shown when a row is switched off, or a map that switch emptied would offer no way back.
 export const legendShown = (entries = [], hidden = []) =>
   entries.length >= MINIMUM_ENTRIES || entries.some(entry => hidden.includes(entry.key));
 
-/**
- * The key a legend row goes by: a descriptor, and the variant case it matched.
- *
- * Spelled in one place because two things have to agree on it. The row a
- * reader clicks is one; the features a layer takes off the map for that click
- * are the other. Two copies of one template string agreeing today is how a row
- * that hides nothing arrives later.
- */
+// Shared by the legend rows and the layers that hide features for them.
 export const kindKey = (name, value) => `${name ?? ''}${KEY_SEPARATOR}${value ?? ''}`;
 
 /** The fallback band's key, which no category value can spell. */
 export const FALLBACK_KEY = `${KEY_SEPARATOR}fallback`;
 
-/**
- * The key of the row for a file the reader opened.
- *
- * Kept in `hidden` like any other row's, so the key switches the file off the
- * way it switches a kind off. No feature in a fetched set is ever drawn under
- * it, so neither layer takes anything off the map for it.
- */
 export const FILE_KEY = `${KEY_SEPARATOR}file`;
 
-/**
- * Which legend row a feature is drawn under.
- *
- * Its descriptor, and the variant case it matched. Only a value with a case
- * behind it distinguishes anything: a column carrying forty values and two
- * cases splits the descriptor in two, not in forty.
- *
- * @param {string} name - The descriptor the feature is drawn with.
- * @param {Object} [descriptor] - That descriptor as configured, before any case
- *        is merged into it -- the cases are what is being read.
- * @param {Object} feature
- * @returns {{ name: string, value: *, key: string }}
- */
+// Only a value with a case behind it gets its own row: forty values and two cases make two rows.
 export const drawnAs = (name, descriptor, feature) => {
   const by = descriptor?.variants?.by;
   const raw = by ? feature?.properties?.[by] : undefined;
@@ -89,60 +25,24 @@ export const drawnAs = (name, descriptor, feature) => {
   return { name, value, key: kindKey(name, value) };
 };
 
-/**
- * One draw's reading of its descriptors: which one each feature is drawn with,
- * the legend row it falls under, and the rows that reached the map.
- *
- * Built once per draw and thrown away with it.
- *
- * @param {Object} params
- * @param {Object} params.descriptors - Descriptor name to descriptor, as configured.
- * @param {Function} params.nameOf    - A feature -> the name of the descriptor it
- *        is drawn with: the producer's stamp, or the caller's override.
- * @returns {Object} `entryFor`, `kindOf`, `note` and `drawn`, below.
- */
 export const drawnKinds = ({ descriptors, nameOf }) => {
   const entries = new WeakMap();
 
-  /**
-   * The descriptor a feature is drawn with, its variant already merged in.
-   *
-   * Every read of a descriptor goes through here rather than indexing the map
-   * directly, so a variant reaches the marker, the label, the popup and the
-   * arrow alike -- a colour that applied to the line but not to its arrow
-   * heads would be the obvious way to get this half right.
-   */
   const entryFor = (feature) => {
-    // Every feature is asked this two or three times in one draw -- the
-    // marker or the path style, `onEachFeature`, and the arrow pass -- and
-    // `variantOf` builds six objects each time it merges a case. Three times
-    // six, per line, on a set large enough to want clustering, is work that
-    // produces the same answer every time. Keyed by the feature itself, so
-    // nothing has to be cleared and nothing is retained: the map is built per
-    // draw and holds its keys weakly.
+    // Each feature is asked two or three times per draw, and variantOf allocates on every merge.
     if (entries.has(feature)) return entries.get(feature);
     const entry = variantOf(descriptors[nameOf(feature)], feature);
     entries.set(feature, entry);
     return entry;
   };
 
-  /** The legend row a feature is drawn under. See `drawnAs`. */
   const kindOf = (feature) => {
     const name = nameOf(feature);
     return drawnAs(name, descriptors[name], feature);
   };
 
-  /**
-   * The distinct kinds this draw put on the map.
-   *
-   * Keyed by descriptor and variant case together, since one descriptor with
-   * two cases is two things a reader has to tell apart. Insertion order is the
-   * order the producer sent the features in, which is as much of an order as
-   * there is and is at least stable within a set.
-   */
   const kinds = new Map();
 
-  /** Records the feature's kind for the key, and says which one it was. */
   const note = (feature) => {
     const { name, value, key } = kindOf(feature);
     if (!kinds.has(key)) {
@@ -160,31 +60,17 @@ export const drawnKinds = ({ descriptors, nameOf }) => {
     entryFor,
     kindOf,
     note,
-    /** `[{ name, value, descriptor, geometry }]`, what `onLegend` reports. */
     drawn: () => [...kinds.values()]
   };
 };
 
-/** Which shape a swatch draws, from the geometry it stands for. */
 const kindOf = (geometry = '') => {
   if (/Point$/.test(geometry)) return 'point';
   if (/LineString$/.test(geometry)) return 'line';
   return 'area';
 };
 
-/**
- * The label for one entry, and the ladder it climbs.
- *
- * A variant case asks about its own value first -- `IN` and `OUT` are what the
- * two colours actually distinguish, and the descriptor name they share says
- * nothing about either. A plain descriptor asks about its name. Both accept an
- * explicit `legend` code on the descriptor for the case where neither reads
- * well, which is the only key this feature adds and the only optional one.
- *
- * Every rung is legible on screen and says which was reached: a translated word,
- * then the raw value or name. A bare `CONNECTION` in a legend is exactly the
- * instruction to register `connection`.
- */
+// A variant asks about its own value first: `IN` and `OUT` are what its colours tell apart.
 const labelFor = ({ name, value, descriptor }, resolveLabel) => {
   const explicit = descriptor?.legend;
   if (explicit) {
@@ -198,14 +84,7 @@ const labelFor = ({ name, value, descriptor }, resolveLabel) => {
   return resolveLabel?.(String(own).toLowerCase()) || String(own);
 };
 
-/**
- * One drawn kind, as something a legend can render.
- *
- * The swatch carries the descriptor's own style rather than a square of its
- * colour, because a legend that draws a line descriptor as a block lies about
- * what is on the map: a dashed amber line and a solid amber fill are different
- * things and the difference is the point.
- */
+// The descriptor's own style rather than a square of its colour: a dashed line is not a fill.
 const entryFor = (drawn, resolveLabel) => {
   const kind = kindOf(drawn.geometry);
   const descriptor = drawn.descriptor ?? {};
@@ -214,52 +93,18 @@ const entryFor = (drawn, resolveLabel) => {
     key: kindKey(drawn.name, drawn.value),
     label: labelFor(drawn, resolveLabel),
     kind,
-    // Resolved through the same function the map draws with, so a legend cannot
-    // disagree with the feature beside it.
     path: pathOptions(descriptor),
     marker: kind === 'point' ? (descriptor.marker ?? {}) : null,
     arrow: kind === 'line' ? (descriptor.arrow ?? null) : null
   };
 };
 
-/**
- * A legend for the kinds a set actually drew.
- *
- * `drawn` is collected by whatever rendered the features, not read back out of
- * the configuration, and the difference matters: a menu row commonly configures
- * more descriptors than any one response carries, and a key listing things that
- * are not on the map is worse than no key at all.
- *
- * Entries with nothing to say are dropped -- a descriptor with no name and no
- * case resolves to an empty label, and a blank row beside a swatch explains
- * nothing.
- *
- * @param {Array} drawn - [{ name, value, descriptor, geometry }], one per
- *        distinct kind rendered. `value` is the variant case, where there was one.
- * @param {Function} [resolveLabel] - Turns a label code into display text.
- * @returns {Array} [{ key, label, kind, path, marker, arrow }]
- */
+// From what was drawn, not what was configured: a key listing things that are not on the map is
+// worse than no key.
 export const legendFrom = (drawn = [], resolveLabel) =>
   drawn.map(item => entryFor(item, resolveLabel)).filter(entry => entry.label !== '');
 
-/**
- * A legend for a categorical fill.
- *
- * The palette is already the mapping, so this is mostly a reshaping -- with one
- * decision in it. Only the categories a response actually contained are listed,
- * for the same reason as above, and the fallback colour is listed only when
- * something actually fell back to it. A palette with forty codes and a map
- * showing three of them should produce three rows.
- *
- * @param {Object} options
- * @param {Object} options.palette         - { categoryValue: cssColour }.
- * @param {Array}  options.values          - The category values actually drawn.
- * @param {string} [options.fallback]      - The colour used for unmapped values.
- * @param {boolean} [options.usedFallback] - Whether anything reached it.
- * @param {string} [options.unknownLabel]  - Label code for the fallback row.
- * @param {Function} [resolveLabel]
- * @returns {Array} Entries in the same shape `legendFrom` returns.
- */
+// Lists only the categories drawn, and the fallback row only if something fell back to it.
 export const legendFromPalette = (
   { palette = {}, values = [], fallback, usedFallback = false, unknownLabel = 'unknown' } = {},
   resolveLabel
@@ -269,9 +114,7 @@ export const legendFromPalette = (
   });
 
   const rows = values
-    // Own properties only, for the reason `isMapped` is written that way: a
-    // palette inherits `toString` like any object, and a band spelled that way
-    // would pass this filter and be drawn with a function for a colour.
+    // Own properties only, as in isMapped.
     .filter(value => Object.prototype.hasOwnProperty.call(Object(palette), value) && palette[value])
     .map(value => ({
       key: String(value),
