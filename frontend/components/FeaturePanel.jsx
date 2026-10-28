@@ -32,84 +32,9 @@ import '../style/panel.css';
 import '../style/overlay.css';
 const { useEffect, useMemo, useState } = React;
 
-/**
- * A geometry set, with a date window over it when the service takes one.
- *
- * Deliberately knows nothing about what it is drawing. It fetches a service
- * path, draws whatever descriptors it is handed, and frames the result with a
- * title, a footer, and a date range when there is one to offer. Everything with
- * a domain in it --
- * what the features are called, which record the screen is about, which field
- * names it, what colour marks it -- arrives as a prop, so the next screen that
- * needs a map of something else needs no change here.
- *
- * Structure ships with it in `panel.css`; the look does not. A deployment's own
- * `atlas-panel.css` is later in the cascade and wins, so every map screen can be
- * restyled without releasing a bundle, and one that serves no sheet still gets a
- * panel rather than a stack of divs.
- *
- * The date window -- the picker, the quick ranges, the footer's range and the
- * reset button -- appears only when `servicePath` names a `{from}` or a `{to}`.
- * A set that is not scoped to a window gets a plain toolbar instead of a control
- * that cannot change what it is looking at. See `timeScoped`.
- *
- * Nothing in this file may name a table, a service, a field or a descriptor.
- * That is the whole point of it: it is what lets one panel serve every screen
- * that draws a set of features.
- *
- * A feature whose descriptor declares `details` opens a pane beside the map
- * carrying its whole record. A pane rather than a popup, because a service that
- * returns fifteen columns has already decided the answer is long, and a bubble
- * that size covers the thing it is describing. What it shows is resolved by
- * `FeatureSet`, which owns the descriptors -- this renders rows and still never
- * reads one.
- *
- * `draw` is one key rather than a mode because that is the honest shape:
- * everything else on this panel -- the title, the record, the file buttons, the
- * key, the empty state -- is the same either way, and only the layer under them
- * differs.
- *
- * The props are a menu row's keys, and `docs/menu-row.md` is where each is
- * described: every option, default and placeholder. The differences from a row
- * are that words arrive resolved rather than as label codes, and the four below.
- *
- * The pieces it renders are in `panel/`, and its state is in `hooks/`. What is
- * left here is how they fit together.
- *
- * @param {string} session      - Session the service is called with.
- * @param {string} servicePath  - The row's `service`: a path with {token} placeholders.
- * @param {Object} context      - Extra values those placeholders resolve against.
- * @param {Object} descriptors  - Descriptor name to how it is drawn. Caller-owned.
- * @param {Object} [subject]    - `{ id, descriptor, match }`: the row's `subject`
- *                                with the record's own id.
- * @param {Function} [labelResolver] - Resolves the label codes a descriptor
- *                                carries. Passed straight to the layer;
- *                                descriptors are the one part of the
- *                                configuration this panel never reads.
- * @param {Object|boolean} [exportable] - The row's `export`.
- * @param {boolean} [overlay]   - The row's `overlay`: `false` withholds the
- *                                button that opens a file over the map.
- * @param {Array}  [presets]    - `[{ months, label }]`, longest last, labels resolved.
- * @param {number} [defaultMonths]
- * @param {Object} [labels]     - The panel's words, resolved. Any key left out
- *                                falls back to neutral English.
- * @param {boolean|number|Object} [cluster]
- * @param {Object} [map]        - Passed to `AtlasMap`, merged over `layerSwitcher: true`.
- * @param {boolean|string} [legend]
- * @param {boolean} [notice]
- * @param {Object} [tokens]     - CSS custom properties for the panel's root.
- * @param {Object} [choropleth]
- * @param {Object} [draw]
- * @param {string} [title]
- * @param {Object} [view]       - Where to open, as a link carries it:
- *                                `{ center, zoom, basemap, from, to }`, any of
- *                                them. See `lib/link.js`.
- * @param {string|number} [linkId] - This screen's name in a link. Without one
- *                                there is no Copy link button, since a link
- *                                could not reopen the screen.
- * @param {boolean} [link]      - The row's `link`: `false` withholds the button.
- */
-
+// Knows nothing about what it draws: everything with a domain in it arrives as a prop, and nothing here
+// may name a table, a service, a field or a descriptor. The props are a menu row's keys, described in
+// `docs/menu-row.md`.
 export const FeaturePanel = ({
   session,
   servicePath,
@@ -138,60 +63,21 @@ export const FeaturePanel = ({
 }) => {
   const [labelled, setLabelled] = useState(true);
 
-  /**
-   * Whether the map is still where a link put it.
-   *
-   * A feature set frames what it drew, and on a screen opened from a link that
-   * would move the map off the view the link was made to show. So the first
-   * draw is not framed, and every later one is: a new window is a new set, and
-   * framing it is what the reader expects.
-   */
+  // A link's view holds through the first draw instead of framing the set; later draws frame as usual.
   const [viewHeld, setViewHeld] = useState(Boolean(view?.center));
   const releaseView = () => { if (viewHeld) setViewHeld(false); };
 
-  /**
-   * The EPSG code this deployment stores geometry in, once the map has resolved
-   * its settings.
-   *
-   * Offered to a service path as `{srid}`, because a bbox-scoped service that
-   * asks which projection it is being sent needs an answer that is the
-   * deployment's rather than the screen's, and `sys.gis.default_srid` is where
-   * svarog already keeps it. `AtlasMap` resolves it before its children mount --
-   * it renders them only once it is ready -- so a path naming it is never sent
-   * with the placeholder still in it.
-   *
-   * The file buttons convert out of it too, because every file is written in
-   * longitude and latitude whatever the deployment stores.
-   *
-   * Not the same question as which projection the bounding box is *in*: that is
-   * the map's CRS, and where the two disagree the engine converts incoming
-   * geometry and nothing converts the box going out. That is worth knowing
-   * before a path is written; it is not something this can decide.
-   */
+  // Offered to service paths as `{srid}`. AtlasMap resolves it before its children mount, so a path
+  // never goes out with the placeholder still in it.
   const [dataSrid, setDataSrid] = useState(null);
 
-  /**
-   * The map `AtlasMap` shows, from the same callback.
-   *
-   * The hooks below convert a drawn shape and the set through it: the shape is
-   * measured on this map, and the set is drawn there. Undefined until then,
-   * which the conversions read as the page's map, on the same projection.
-   */
+  // Undefined until ready, and the conversions then use the page's map, on the same projection.
   const [drawnOn, setDrawnOn] = useState(undefined);
 
   // A map that failed to build never mounts the layer that would end `loading`.
   const [mapFailed, setMapFailed] = useState(false);
 
-  /**
-   * The panel's own state, in the pieces it is made of.
-   *
-   * Ordered by what each piece needs from the one above: the window feeds the
-   * bindings, the bindings feed the rows and the save, and the record pane needs
-   * to know whether the draw tool is armed. The one backward reference is
-   * `onMoved`, naming `forget` and `closeRecord`, and it is a closure rather
-   * than a call -- created here, run from an event handler, by which time both
-   * hooks have been declared.
-   */
+  // `onMoved` names hooks declared below; it runs from an event handler, by which time they exist.
   const { timeScoped, preset, range, initial, longest, applyPreset, onRangeChange } = useDateWindow({
     presets,
     defaultMonths,
@@ -206,10 +92,7 @@ export const FeaturePanel = ({
     ...(dataSrid && { srid: dataSrid })
   }), [context, timeScoped, range.from, range.to, dataSrid]);
 
-  // Bindings are a small flat object rebuilt on every render, so the effects that
-  // depend on them compare them by value; by identity they would refetch on each
-  // one. Handed down beside the bindings themselves, because the hook that reads
-  // them cannot tell a rebuilt object from a changed one either.
+  // Rebuilt every render, so effects compare the bindings by value.
   const bindingKey = JSON.stringify(bindings);
 
   const { coloured, statusPath, rows, tooltip: colourTooltip } = useChoropleth({
@@ -223,32 +106,15 @@ export const FeaturePanel = ({
     setDrawn, setShown, setExtent, onFetchStart, onFetched, onFetchFailed, forget
   } = useLayerReport({ coloured });
 
-  /**
-   * The key's rows the reader has switched off, by the entries' own keys.
-   *
-   * Kept across fetches on purpose. A kind switched off before the date window
-   * moved is still one the reader does not want after it, and on a coloured
-   * map every pan is a fetch -- a filter that reset whenever the view moved
-   * would last until the first drag. A key for something no longer drawn does
-   * nothing until it is drawn again, and then it is still off, and the key says
-   * so.
-   */
+  // Kept across fetches: on a coloured map every pan is a fetch, and a reset would undo the filter on
+  // the first drag.
   const [hidden, setHidden] = useState([]);
   const toggleKind = (key) => setHidden((current) => (
     current.includes(key) ? current.filter((k) => k !== key) : [...current, key]
   ));
   const showAll = () => setHidden([]);
 
-  /**
-   * The question the reader closed the empty card on, as its `bindingKey`.
-   *
-   * The card covers the middle of the map, and a reader who has read it may
-   * want the map back without changing anything. Closed, it stays closed for
-   * as long as the question is the same one -- through a reload after a save,
-   * and through every pan on a coloured map, whose box is not part of the key.
-   * A different window, or a different record, is a new question, and an empty
-   * answer to it is news again.
-   */
+  // Closed, the empty card stays closed while the question (the window, the record) is the same.
   const [emptyClosedFor, setEmptyClosedFor] = useState(null);
 
   const {
@@ -258,12 +124,6 @@ export const FeaturePanel = ({
 
   const { record, openRecord, closeRecord, descriptorFor, isPinnedFeature } = useRecord({ subject, drawing });
 
-  /**
-   * A file the reader opened over the map, and the key's row for it.
-   *
-   * A new file comes in switched on, whatever the reader did with the last
-   * one's row: they opened it to look at it.
-   */
   const fileOverlay = useFileOverlay({
     overlay,
     labels,
@@ -271,21 +131,13 @@ export const FeaturePanel = ({
   });
   const { file } = fileOverlay;
 
-  // A record read from a file goes with the file. What the pane holds is a copy,
-  // so nothing else would take it down, and a pane describing a file that is no
-  // longer on the map is describing nothing.
+  // The pane holds a copy, so nothing else would close it when its file goes.
   useEffect(() => {
     if (record?.file && record.file !== file) closeRecord();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file]);
 
-  /**
-   * The descriptor a feature is drawn with, in the steps the mounted layer
-   * takes: a coloured map's one descriptor, or else the record's own override,
-   * then the name the producer stamped, with the variant case merged in, as
-   * `FeatureSet` does. The KML export reads it so a placemark has the name the
-   * feature has on the map.
-   */
+  // As the mounted layer resolves it, so a KML placemark gets the name the feature has on the map.
   const drawnWith = (feature) => (coloured
     ? descriptors?.[choropleth.descriptor]
     : variantOf(descriptors?.[descriptorFor(feature) ?? descriptorOf(feature)], feature));
@@ -304,19 +156,8 @@ export const FeaturePanel = ({
 
   const viewLink = useViewLink({ linkId, link, timeScoped, range, labels });
 
-  /**
-   * Whether to say that nothing came back.
-   *
-   * Not while a fetch is out: an empty set from the previous range is not news
-   * about the one being fetched, and the two messages would flicker past each
-   * other on every change.
-   *
-   * And not while a shape is being drawn, whatever the row asked for. The card
-   * is the one thing on this panel that takes pointer events in the middle of
-   * the map, which is exactly where a centre gets placed -- so a reader drawing
-   * on an empty map would click the explanation instead of the map. A screen
-   * that draws is a screen whose empty state is its ordinary one anyway.
-   */
+  // Not while a fetch is out, and not while drawing: the card takes clicks in the middle of the map,
+  // where a centre gets placed.
   const nothingFound = !loading && set !== null && (set.features?.length ?? 0) === 0;
   const empty = nothingFound && notice !== false && !drawing && !shape && !file &&
     emptyClosedFor !== bindingKey;
@@ -343,9 +184,7 @@ export const FeaturePanel = ({
           />
         )}
 
-        {/* A control for permanent labels, which only one of the two layers
-            draws. A coloured map names its areas on hover instead, so the switch
-            would be a toggle with nothing on the other side of it. */}
+        {/* A coloured map names its areas on hover, so it has no label switch. */}
         {!coloured && (
           <button
             type='button'
@@ -360,14 +199,7 @@ export const FeaturePanel = ({
           </button>
         )}
 
-        {/* Everything the reader presses, in one group at the far end of the
-            row. A tool that draws and a button that writes a file are different
-            kinds of thing -- one changes what is on the server, the other takes
-            a copy of what is on screen -- but they are alike in the way that
-            decides where they go: they are what there is to do here, as against
-            the date window and the label switch, which change what is shown.
-            Two clusters said otherwise and lined up differently as the toolbar
-            wrapped. A second tool is another button in here. */}
+        {/* Everything the reader can do, in one group, so the toolbar wraps it as one. */}
         {(drawable || exporter.canExport || fileOverlay.offered || viewLink.offered) && (
           <div className='atlas-panel__actions'>
             {drawable && (
@@ -384,26 +216,18 @@ export const FeaturePanel = ({
 
             <FileActions fileOverlay={fileOverlay} labels={labels} />
 
-            {/* Last: not a file, but a copy of where the reader is, for
-                someone else to open. */}
             {viewLink.offered && <LinkButton viewLink={viewLink} labels={labels} />}
           </div>
         )}
 
         <FileNotices fileOverlay={fileOverlay} labels={labels} />
 
-        {/* The tool's own row, under everything else, and only while it has
-            something to say: what to click, then the shape's radius and note.
-            A row that is always there is a row of empty space on every screen
-            that draws, which is every screen this panel renders. */}
         {drawable && (drawing || shape) && (
           <DrawBar
             shape={shape}
             drawing={drawing}
             busy={saving}
             limits={draw.radius}
-            // Only what a row asked to see. `selecting` is false unless
-            // `draw.select` is set, and the row then shows nothing extra.
             caught={selection.selecting ? { count: selection.count, total: selection.total } : undefined}
             savable={Boolean(draw.save?.onSave)}
             note={draw.note ? { value: note, onChange: setNote, required: draw.note.required } : undefined}
@@ -419,15 +243,7 @@ export const FeaturePanel = ({
       <div className='atlas-panel__body'>
         <div className='atlas-panel__mapwrap'>
           <div className='atlas-panel__map'>
-            {/* Merged rather than defaulted: a caller setting one of AtlasMap's
-                options should not silently lose the others. */}
-            {/* `onReady` after the spread on purpose: `map` comes from a menu row,
-                which is JSON and cannot carry a function, so nothing there can be
-                shadowing this -- and if a caller ever passes one in code, losing
-                the panel's own settings silently would be the worse failure. */}
-            {/* `extent` after the spread for the same reason: it is the layer's
-                report, and nothing in a row can know it. So is `view`, which a
-                link carries. */}
+            {/* `onReady`, `extent` and `view` follow the spread so a row's `map` cannot shadow them. */}
             <AtlasMap
               session={session}
               {...{ layerSwitcher: true, ...map }}
@@ -442,11 +258,7 @@ export const FeaturePanel = ({
               }}
               onError={() => setMapFailed(true)}
             >
-              {/* One layer or the other, never both. The callbacks are the same
-                  pair of hands either way -- which is what let this be a branch
-                  here rather than a second panel. A coloured map waits for its
-                  rows before it is mounted at all, so an area is never drawn in
-                  the unclassified colour and then corrected a moment later. */}
+              {/* A coloured map waits for its rows, so no area is first drawn in the fallback colour. */}
               {coloured
                 ? (rows !== null || !statusPath) && (
                   <Choropleth
@@ -493,8 +305,6 @@ export const FeaturePanel = ({
                   />
                 )}
 
-              {/* A file the reader opened, over the set and under the shape being
-                  drawn. Its row in the key switches it off like any other. */}
               {file && (
                 <FileOverlay
                   file={file}
@@ -507,10 +317,6 @@ export const FeaturePanel = ({
                 />
               )}
 
-              {/* The shape the reader is drawing, over everything the service
-                  returned. `drawing` arms the map; once a shape exists the tool is
-                  disarmed and the handles take over, so a second circle is drawn
-                  by pressing the button again rather than by an unlucky click. */}
               {drawable && (
                 <CirclePicker
                   value={shape}
@@ -521,12 +327,8 @@ export const FeaturePanel = ({
                 />
               )}
 
-              {/* Inside the map, so it lives in the container that goes
-                  fullscreen and comes off with it. Kept mounted across a reload
-                  rather than gated on `loading`: `drawn` empties at the start of
-                  every fetch, which takes the control off the map by itself, and
-                  leaving the component up is what lets a reader who collapsed the
-                  key find it still collapsed afterwards. */}
+              {/* Inside the map so it goes fullscreen with it. Kept mounted across fetches, so a collapsed
+                  key stays collapsed. */}
               {legend !== false && (
                 <LegendControl
                   entries={[

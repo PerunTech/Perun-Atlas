@@ -1,28 +1,8 @@
-/*
- * The legend's structure, and nothing about its look.
- *
- * Same division as panel.css: what makes this a readable box rather than a stack
- * of divs ships here, because a deployment serving no stylesheet must still get
- * a legend. Colours, type and radii belong to the deployment's own sheet, which
- * is later in the cascade and wins.
- *
- * It carries its own opaque ground because it sits over tiles. A translucent one
- * lets whatever is underneath through, and a swatch read against moving imagery
- * is not a swatch -- the colours are the content here, so they get a fixed white
- * behind them rather than a tinted approximation of one.
- *
- * It places nothing. The legend is a Leaflet control, so its corner, its offset
- * from the edge and its stacking all come from the map's own chrome -- which is
- * what keeps it inside the element that goes fullscreen and out of a z-index
- * argument with the frame drawn around it.
- */
+/* Structure only; colours, type and radii are the deployment's. An opaque ground, since a swatch
+   read against tiles is not a swatch. */
 
 .atlas-legend {
-  /* Its own offset from the corner. Leaflet's stylesheet is where a control's
-     margin normally comes from and spatial does not ship it, so every control
-     in a corner carries one -- `.measure-control` and `.locate-control` do the
-     same. Without it the legend is flush against the map edge and against the
-     layer switcher above it. */
+  /* spatial does not ship Leaflet's control margin, so every corner control carries its own. */
   margin: 10px;
   max-width: 15rem;
   background-color: #ffffff;
@@ -113,15 +93,8 @@
   overflow-wrap: anywhere;
 }
 
-/*
- * A row as a switch for what it stands for.
- *
- * Laid out exactly as a plain row, so a key that filters and one that does not
- * look the same until someone switches a row off. Every property that matters
- * is said here rather than inherited, because a deployment's bare `button`
- * rules reach into this package and win whatever a class does not claim.
- * `frontend/style/README.md` has the case that taught us.
- */
+/* Every property set here, since a deployment's bare `button` rules win whatever a class does not
+   claim (see README.md). */
 .atlas-legend__item {
   display: flex;
   align-items: center;
@@ -151,15 +124,8 @@
   outline-offset: 1px;
 }
 
-/*
- * Switched off: still in the key, so the way back is where the reader left it,
- * and plainly not on the map.
- *
- * The swatch keeps its colour, faded, because the colour is how the reader
- * finds the row again. The fade is a `filter` rather than `opacity` because a
- * point's swatch carries its marker's own CSS inline, and an inline `opacity`
- * in a menu row would win over any class here.
- */
+/* A `filter` rather than `opacity`: a point's swatch carries its marker's inline CSS, whose
+   `opacity` would win. */
 .atlas-legend__item[aria-pressed='false'] .atlas-legend__swatch,
 .atlas-legend__item[aria-pressed='false'] .atlas-legend__point {
   filter: opacity(0.3);
@@ -170,7 +136,6 @@
   text-decoration: line-through;
 }
 
-/* Every row back on, offered only while one is off. */
 .atlas-legend__reset {
   display: block;
   margin: 0 8px 6px;
@@ -196,15 +161,8 @@
   outline-offset: 1px;
 }
 
-/*
- * The key moved to the bottom right, which a row may ask for.
- *
- * spatial's `navigation.css` makes every button in that corner absolute,
- * padded, bordered and round -- `.control-bottomright button:not(.disabled)`,
- * written for its own navigation buttons. Each of the key's buttons gets its
- * own box back here, one class more specific than that rule and only in its
- * four properties.
- */
+/* spatial's `.control-bottomright button:not(.disabled)` makes every button there absolute, padded
+   and round; one class more specific undoes it. */
 .control-bottomright .atlas-legend .atlas-legend__toggle {
   position: static;
   padding: 5px 8px;
@@ -226,7 +184,6 @@
   border-radius: 0;
 }
 
-/* On a narrow map, room to be read matters more than the corner it sits in. */
 @media (max-width: 30rem) {
   .atlas-legend {
     max-width: calc(100vw - 4rem);

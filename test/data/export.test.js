@@ -7,7 +7,6 @@ import { FILE_LIMITS } from '../../frontend/data/read';
 import { readShapefile } from '../../frontend/modules/shp';
 import { resetView } from '../stubs/spatial.js';
 
-// The half that touches the page. What the hook hands it is what a file holds.
 vi.mock('../../frontend/lib/dom', () => ({ download: vi.fn() }));
 
 const point = (properties, coordinates = [33.9, 35.1]) =>
@@ -21,9 +20,7 @@ describe('toGeoJSON', () => {
 });
 
 describe('toCSV', () => {
-  // A denormalised reader names a related column `TABLE.COLUMN`, flat. The
-  // column is collected under that name, so the cell has to be read under it
-  // too rather than walked as two levels that are not there.
+  // A denormalised reader names a related column `TABLE.COLUMN`, flat rather than two levels.
   it('fills a column whose name has a dot in it', () => {
     const csv = toCSV({ features: [point({ 'T.CODE': 'x' })] });
     expect(rows(csv)[0]).toBe('T.CODE,latitude,longitude');
@@ -64,11 +61,7 @@ describe('toCSV', () => {
     expect(rows(toCSV({ features: [point({ A: 'say "x"' })] }))[1]).toMatch(/^"say ""x"""/);
   });
 
-  /**
-   * A cell opening with `=`, `+`, `-` or `@` is a formula to a spreadsheet, and
-   * these cells hold whatever a registry's free-text field holds. The quote
-   * makes it text. A negative number is not defused, because it is a number.
-   */
+  // These cells hold free text. A negative number is left alone because it is a number.
   it('defuses a cell a spreadsheet would run, and leaves a number alone', () => {
     expect(rows(toCSV({ features: [point({ A: '=1+1' })] }))[1]).toMatch(/^'=1\+1/);
     expect(rows(toCSV({ features: [point({ A: '-5' })] }))[1]).toMatch(/^-5/);
@@ -174,11 +167,6 @@ describe('toKML', () => {
     expect(placemarks(toKML({ features }))[0]).not.toMatch('<name>');
   });
 
-  /**
-   * These values are whatever a registry's free-text field holds. Unescaped, a
-   * `<` ends an element and a `&` starts an entity, and one such record makes
-   * the whole file unreadable.
-   */
   it('escapes every text node and attribute', () => {
     const nasty = `<b class="x">Tom & 'Jerry'</b>`;
     const escaped = '&lt;b class=&quot;x&quot;&gt;Tom &amp; &apos;Jerry&apos;&lt;/b&gt;';
@@ -189,21 +177,14 @@ describe('toKML', () => {
     expect(one).not.toMatch(/<b|'Jerry'|"x"/);
   });
 
-  // XML 1.0 has no way to write these at all, and a parser that meets one
-  // refuses the document.
+  // XML 1.0 cannot write these at all, and a parser that meets one refuses the document.
   it('drops the control characters XML cannot hold, and keeps tab and newline', () => {
     const one = only(point({ A: 'a\u0000b\u000Cc\td\ne' }));
     expect(one).toMatch('<value>abc\td\ne</value>');
   });
 });
 
-/**
- * A place on the ground, and where a deployment storing Web Mercator keeps it.
- *
- * The metres come from the formula rather than from `pointIn`, so the tests below
- * check the stub's inverse against the projection itself and not against its
- * own forward half.
- */
+// The metres come from the formula, so the stub's inverse is checked against the projection itself.
 const CENTRE = { lat: 35.124805, lng: 33.941707 };
 const mercator = ({ lat, lng }) => {
   const R = 6378137;
@@ -251,11 +232,7 @@ describe('inDegrees', () => {
     expect(inDegrees(stored, 3857).features[0].geometry.coordinates[2]).toBe(120);
   });
 
-  /**
-   * Both deployments this has run against store 4326, and the files they write
-   * must not move by a byte: the same digits, in the same order, with nothing
-   * added.
-   */
+  // Both deployments so far store 4326, and their files must not move by a byte.
   it('changes nothing in either file for a set stored in 4326', () => {
     const shape = { type: 'Feature', properties: { A: 2 }, geometry: { type: 'Polygon', coordinates: [[[33.9, 35.1], [33.95, 35.1], [33.95, 35.11], [33.9, 35.1]]] } };
     const stored = { type: 'FeatureCollection', features: [point({ A: 1 }, [33.941707, 35.124805]), shape, { type: 'Feature', properties: {}, geometry: null }] };
@@ -265,10 +242,6 @@ describe('inDegrees', () => {
   });
 });
 
-/**
- * The same conversion the other way, for a file the reader opens: degrees in,
- * stored units out, so the engine's own unprojection puts it back where it was.
- */
 describe('fromDegrees', () => {
   beforeEach(() => resetView());
 

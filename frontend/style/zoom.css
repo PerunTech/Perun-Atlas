@@ -1,37 +1,18 @@
-/*
- * The zoom rail's structure, and nothing about its look.
- *
- * Same division as legend.css: what makes this a readable ladder rather than a
- * pile of absolutely positioned spans ships here, because a deployment serving
- * no stylesheet of its own must still get a working control. Colours and type
- * come from the panel's tokens, so a screen described entirely in a menu row
- * gets a rail that matches its accent.
- *
- * It places nothing. The rail is a Leaflet control, so its corner and its
- * stacking come from the map's own chrome.
- *
- * One length governs the whole thing. Every rung, every mark and the handle are
- * positioned as a percentage of it, so a deployment retunes the control by
- * setting `--atlas-zoom-length` and nothing else has to agree.
- */
+/* Every rung, mark and the handle is a percentage of `--atlas-zoom-length`, so a deployment
+   retunes the rail with that one variable. */
 
 .atlas-zoom {
   --atlas-zoom-length: 168px;
-  /* Where the track sits across the control's width, and how wide it is. The
-     numbers occupy everything to the left of it. */
   --atlas-zoom-axis: 22px;
 
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  /* Its own offset from the corner. Leaflet's stylesheet is where a control's
-     margin normally comes from and spatial does not ship it, so every control
-     in a corner carries one -- the legend and the measure control do the same. */
+  /* spatial does not ship Leaflet's control margin, so every corner control carries its own. */
   margin: 10px;
   padding: 3px;
-  /* Opaque, because it sits over tiles and every part of it is a position being
-     read against a scale. */
+  /* Opaque, since every part of it is read against a scale over tiles. */
   background: var(--ap-surface, #ffffff);
   border: 1px solid var(--ap-rule, rgba(0, 0, 0, 0.2));
   border-radius: var(--ap-radius, 3px);
@@ -39,19 +20,8 @@
   color: var(--ap-ink, #212529);
 }
 
-/*
- * The two buttons.
- *
- * 26 pixels, because that is what spatial's `toolbar.css` gives every other
- * button on this map and a control in the same corner that does not match them
- * reads as something else's chrome that wandered in. Centred as a grid for the
- * reason that file gives: what goes in one of these is an icon, not a character
- * on a baseline.
- *
- * Said rather than inherited: a deployment's bare `button` rules reach into this
- * package and win everything a class does not claim. `frontend/style/README.md`
- * has the case that taught us.
- */
+/* 26px to match spatial's toolbar buttons. Set in full, since a deployment's bare `button` rules
+   win whatever a class does not claim (see README.md). */
 .atlas-zoom__step {
   display: grid;
   place-items: center;
@@ -68,17 +38,8 @@
   cursor: pointer;
 }
 
-/*
- * The same box again, where spatial's `navigation.css` would take it away.
- *
- * `.control-bottomright button:not(.disabled)` makes every button in that
- * corner absolute, padded, bordered and round -- written for spatial's own
- * navigation buttons, and it reaches every button anyone else puts there. The
- * bottom right is where the rail sits by default, so without this the `+`, the
- * `-` and the fit button all pile up at the top of the rail, under the slider,
- * which then takes their clicks. One class more specific than that rule, and
- * only its four properties, so everything else stays with the rule above.
- */
+/* spatial's `.control-bottomright button:not(.disabled)` makes every button there absolute, which
+   piles the steps up under the slider; one class more specific undoes it. */
 .control-bottomright .atlas-zoom .atlas-zoom__step {
   position: static;
   padding: 0;
@@ -96,13 +57,7 @@
   cursor: default;
 }
 
-/*
- * The button that frames the data, set a little apart from the `+` under it.
- * It moves the view to the set rather than one level in, and a reader skimming
- * the rail should not take it for a third step. A shadow rather than a border,
- * so the rule costs no height and the button stays the 26 pixels its
- * neighbours are.
- */
+/* Set apart from the `+`, so it is not taken for a third step; a shadow, so it costs no height. */
 .atlas-zoom__fit {
   margin-bottom: 3px;
   box-shadow: 0 1px 0 var(--ap-rule, rgba(0, 0, 0, 0.12));
@@ -120,7 +75,6 @@
   margin: 4px 0;
 }
 
-/* The axis the levels are read against. */
 .atlas-zoom__track {
   position: absolute;
   top: 0;
@@ -131,12 +85,7 @@
   background: var(--ap-rule, #d8dde3);
 }
 
-/*
- * A threshold, drawn over the track.
- *
- * `min-height` is what makes a line and a band the same element: a mark with no
- * end has a span of zero, and zero percent of the rail is nothing to see.
- */
+/* `min-height`, so a mark with no end still shows as a line. */
 .atlas-zoom__mark {
   position: absolute;
   left: calc(var(--atlas-zoom-axis) - 4px);
@@ -146,16 +95,8 @@
   background: var(--ap-muted, #6c757d);
 }
 
-/*
- * Above here the basemap is enlarged rather than sharper. Hatched rather than
- * filled: the map still works up there, it just stops gaining detail, and a
- * solid block reads as a part of the range that has been taken away.
- *
- * Lifted above the other marks. A screen's own bands are drawn after this one
- * -- `AtlasMap` puts what it knows first and the screen's after -- and a band
- * reaching the top of the range would otherwise bury the ceiling underneath it.
- * Of the two, the ceiling is the one nobody configured and nobody expects.
- */
+/* Hatched, since the map still works up there and only stops gaining detail. Lifted above a
+   screen's own bands, which are drawn after it and would bury it. */
 .atlas-zoom__mark--upscaled {
   z-index: 1;
   background: repeating-linear-gradient(
@@ -167,7 +108,6 @@
   border-radius: 2px;
 }
 
-/* A zoom band a screen declared -- where its labels open, where its rows change. */
 .atlas-zoom__mark--labels {
   background: var(--ap-accent, #4a6a85);
   opacity: 0.35;
@@ -194,13 +134,8 @@
   background: var(--ap-muted, #6c757d);
 }
 
-/*
- * The number beside a rung.
- *
- * Positioned off the rung rather than flowed, so the type can change size
- * without moving the level it names. `tabular-nums` keeps a two-digit column
- * from stepping sideways at ten.
- */
+/* Positioned off the rung, so the type can change size without moving the level it names;
+   tabular figures keep the column from stepping sideways at ten. */
 .atlas-zoom__number {
   position: absolute;
   bottom: -6px;
@@ -218,17 +153,8 @@
   font-weight: 700;
 }
 
-/*
- * The native control, turned on its side.
- *
- * A rotation rather than one of the three vertical spellings -- see ZoomRail.jsx
- * for why. It is laid out horizontally at the rail's own length, then centred on
- * the axis and turned, so its travel is exactly the rail's travel and the two
- * cannot drift apart.
- *
- * The track is transparent because the rail underneath already draws one, with
- * the marks on it. Only the handle is the slider's own.
- */
+/* Rotated rather than a vertical spelling (see ZoomRail.jsx), at the rail's length so their travel
+   matches. The track is transparent because the rail draws its own. */
 .atlas-zoom__slider {
   position: absolute;
   top: 50%;
@@ -281,12 +207,7 @@
   outline-offset: 1px;
 }
 
-/*
- * What the marks say, for a reader who cannot see where they are.
- *
- * Clipped rather than hidden: `display: none` and `visibility: hidden` both take
- * it out of the accessibility tree, which is the one place it exists to be.
- */
+/* Clipped rather than hidden, which would take it out of the accessibility tree. */
 .atlas-zoom__described {
   position: absolute;
   width: 1px;
@@ -308,15 +229,7 @@
   color: var(--ap-muted, #6c757d);
 }
 
-/*
- * A short window gets a short rail.
- *
- * The viewport rather than the container, which is the wrong question -- a map
- * in a modal can be short inside a tall window -- but it is the question CSS can
- * answer here, and it catches the case that actually happens: the whole screen
- * is small. The control degrades to its buttons by itself when even this does
- * not fit, because the rail is the only part with a height.
- */
+/* The viewport rather than the map's height, which CSS cannot ask here; it catches a small screen. */
 @media (max-height: 640px) {
   .atlas-zoom {
     --atlas-zoom-length: 104px;

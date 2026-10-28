@@ -18,12 +18,7 @@ describe('pathOptions', () => {
     expect(pathOptions()).toEqual(BASE_STYLE);
   });
 
-  /**
-   * These reach Leaflet's `style` unchanged, so whatever a menu row writes is a
-   * path option and nothing translates it. Pinned because it is the reason a
-   * descriptor cannot carry a casing or a halo: one path per feature, one set
-   * of keys, and both are Leaflet's.
-   */
+  // These reach Leaflet's `style` unchanged, which is why a descriptor cannot carry a casing or a halo.
   it('passes an unknown key through rather than dropping it', () => {
     expect(pathOptions({ style: { dashArray: '8 5' } }).dashArray).toBe('8 5');
   });

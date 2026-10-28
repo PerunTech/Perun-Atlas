@@ -1,54 +1,18 @@
 import { reader } from '../data/path';
 import { FALLBACK_KEY } from './legend';
 
-/**
- * Colouring features by a categorical attribute.
- *
- * Deliberately categorical rather than a continuous ramp: what these screens
- * colour by is a code list, not a measurement. A sequential scale for numeric
- * attributes is a separate concern and should not be bolted onto this one.
- *
- * The category is read through `reader` in `data/path`, as both sides of a join
- * are in `data/join.js`, so a related field may arrive nested or as a flat
- * `TABLE.COLUMN` key and the same row describes either.
- */
-
-/**
- * A neutral fallback palette. Deployments should supply their own via the
- * `palette` option so that a status colour means the same thing across screens.
- */
 export const DEFAULT_PALETTE = {
   __unknown: '#B8C6CC'
 };
 
-/**
- * Whether the palette has a colour for this value.
- *
- * One line, and shared, because two things ask it: the fill, and the key drawn
- * beside it. A key that disagreed with the map about which values are known
- * would be worse than no key at all, and two copies of a predicate agreeing
- * today is how that disagreement arrives later.
- *
- * Own properties only. A palette is an object out of a menu row, so it inherits
- * `toString` and `constructor` like any other -- and a category that happened to
- * be spelled that way would be answered yes, and then coloured with a function.
- */
+// Shared by the fill and the key so the two agree. Own properties only, so a category spelled
+// `toString` is not taken for a colour.
 const isMapped = (palette, value) =>
   Object.prototype.hasOwnProperty.call(Object(palette), value) && Boolean(palette[value]);
 
-/**
- * Builds a lookup from feature to fill colour.
- *
- * @param {Object} options
- * @param {string} options.field      - Feature property holding the category.
- * @param {Object} options.palette    - { categoryValue: cssColour }.
- * @param {string} [options.fallback] - Colour for values absent from the palette.
- */
 export const colourBy = ({ field, palette = DEFAULT_PALETTE, fallback = DEFAULT_PALETTE.__unknown }) => {
   const seenUnmapped = new Set();
 
-  // Dotted, so a category can live on a joined record rather than forcing
-  // callers to flatten before colouring.
   const readField = reader(field);
   const read = (feature) => readField(feature?.properties);
 
@@ -58,8 +22,7 @@ export const colourBy = ({ field, palette = DEFAULT_PALETTE, fallback = DEFAULT_
 
     if (isMapped(palette, value)) return palette[value];
 
-    // Say it once per category rather than once per feature — a missing palette
-    // entry is a configuration gap worth noticing, not worth flooding the console.
+    // Once per category, not once per feature.
     if (!seenUnmapped.has(value)) {
       seenUnmapped.add(value);
       console.warn(`perun-atlas: no palette entry for ${field}="${value}"`);
@@ -68,27 +31,7 @@ export const colourBy = ({ field, palette = DEFAULT_PALETTE, fallback = DEFAULT_
   };
 };
 
-/**
- * Which categories a set actually drew, and whether anything fell through.
- *
- * A key built from the palette lists what a deployment configured. A key built
- * from this lists what is on the screen -- and on a bbox-scoped map those differ
- * with every pan. The second is the one worth reading: a key naming six bands
- * when two are drawn is a key nobody checks a third time.
- *
- * The fallback rule is `colourBy`'s -- the same `isMapped`, not a second copy of
- * it. A value that is absent and a value the palette does not know are both
- * drawn in the fallback colour, so both count here as having used it.
- *
- * Every value seen is reported, mapped or not, in the order the features first
- * mention them. `legendFromPalette` decides which of them the palette can draw a
- * swatch for; deciding it twice, in two files, is the same drift by another
- * route.
- *
- * @param {Array} features - The features as drawn, after any join.
- * @param {Object} options - `field` and `palette`, as `colourBy` was given them.
- * @returns {{ values: Array, usedFallback: boolean }} Shaped for `legendFromPalette`.
- */
+// The categories on screen rather than the palette's; on a bbox-scoped map they differ with every pan.
 export const categoriesDrawn = (features = [], { field, palette = DEFAULT_PALETTE } = {}) => {
   const readField = reader(field);
   const read = (feature) => readField(feature?.properties);
@@ -113,18 +56,7 @@ export const categoriesDrawn = (features = [], { field, palette = DEFAULT_PALETT
   return { values, usedFallback };
 };
 
-/**
- * Which band of the key a feature is drawn in, by that band's key.
- *
- * The keys are `legendFromPalette`'s, so the row a reader switches off and the
- * areas that go with it are found the same way. A mapped value is its own band.
- * Anything else -- absent, or a value the palette does not know -- is filled
- * with the fallback colour, so it belongs to the fallback row. The same
- * `isMapped` as the fill, for the reason given there.
- *
- * @param {Object} options - `field` and `palette`, as `colourBy` was given them.
- * @returns {Function} A feature -> its band's key.
- */
+// Returns legendFromPalette's keys, so switching a key row off hides the matching areas.
 export const bandOf = ({ field, palette = DEFAULT_PALETTE } = {}) => {
   const readField = reader(field);
 

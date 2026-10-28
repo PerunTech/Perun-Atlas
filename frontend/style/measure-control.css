@@ -1,23 +1,6 @@
-/* --------------- */
-/* Measure control */
-/* --------------- */
-/* Class names are set in components/controls/MeasureControl.jsx. The control sits in a
-   map corner under the zoom buttons, so it carries its own ground: a readout
-   over tiles is unreadable without one, whatever the basemap happens to be.
-   Kept apart from measurement.css, which styles the older toolbar's dialog and
-   is scoped to #measure-dialog.
-
-   No margin. Leaflet's stylesheet, which is where a control's offset from its
-   corner normally comes from, is not shipped here, so the zoom and fullscreen
-   buttons sit flush against the map's edge and against each other. This joins
-   that column rather than floating beside it: one continuous bar of buttons,
-   all the same size, is a toolbar, while the same buttons spaced apart read as
-   several unrelated controls that happen to be stacked.
-
-   Moved here from spatial's assets with the control, rules unchanged. spatial
-   bundles its own copy until a 6.0 removes its React parts, and appends it to
-   the end of <head>, after this package's sheets and the deployment's, so until
-   then that copy is the one that settles a tie. */
+/* No margin: Leaflet's stylesheet is not shipped, so this joins the zoom and fullscreen column
+   flush, as one toolbar. spatial bundles its own copy of these rules until its 6.0 and appends it
+   after this sheet, so that copy wins a tie. */
 .measure-control {
     display: inline-flex;
     flex-direction: column;
@@ -28,10 +11,8 @@
     color: #212529;
 }
 
-/* The buttons are `.leaflet-bar button` -- size, ground, hover and the rest are
-   in toolbar.css, drawn the same as the zoom and fullscreen buttons this stacks
-   under. This carries only the laying out: across rather than down, which is
-   what makes a row of tools out of a bar meant for a column of them. */
+/* Size, ground and hover come from `.leaflet-bar button` in toolbar.css; this only lays the tools
+   out in a row. */
 .measure-control__tools {
     display: inline-flex;
     align-items: stretch;
@@ -43,12 +24,8 @@
     outline-offset: -2px;
 }
 
-/* The armed tool. A border rather than a fill, so the icon inside keeps the
-   same contrast it has at rest -- these glyphs are strokes, and a solid
-   background under one makes it the hardest button to read of the five. */
-/* Also stated for `:hover`, which is `.leaflet-bar button:hover` here and
-   outranks a single state class -- without it the armed tool loses its mark
-   under the pointer, which is the moment it most needs to keep it. */
+/* A border rather than a fill, so the stroked icon keeps its contrast. Also on `:hover`, which
+   `.leaflet-bar button:hover` would otherwise override. */
 .measure-control__tool.is-active,
 .measure-control__tool.is-active:hover {
     background-color: #fff3cd;
@@ -56,11 +33,8 @@
     color: #212529;
 }
 
-/* The icon is loaded from perun-core's lazy Tabler chunk, so a button may have
-   nothing in it for a moment -- or for good, if the chunk never arrives. The
-   one-character mark beside the icon covers that: it shows only when it is the
-   button's sole child, which is exactly the case where the icon rendered
-   nothing. When the icon is there, the mark is not. */
+/* The icon comes from perun-core's lazy Tabler chunk and may never arrive; this mark shows only
+   when it is the button's sole child. */
 .measure-control__fallback {
     display: none;
     font-family: monospace;
@@ -84,8 +58,7 @@
     font-size: 17px;
 }
 
-/* Tabular figures, because these are read as a column and compared: proportional
-   digits make each row start in a different place. */
+/* Tabular figures, so the readings line up as a column. */
 .measure-control__readout {
     margin: 0;
     padding: 5px 8px;
@@ -110,8 +83,6 @@
     border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* The newest reading is the one being taken; the two under it are there to
-   compare against, and say so by being quieter. */
 .measure-control__line + .measure-control__line dt,
 .measure-control__line + .measure-control__line dd {
     color: #868e96;

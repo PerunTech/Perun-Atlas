@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { canLocate, cornerFor, locatePress, pointsOf, readingFor } from '../../frontend/lib/controls';
 
-/**
- * The engine's measure, as far as `readingFor` uses it: plain arithmetic over
- * the numbers handed in, and formats that show what they were given, so a test
- * reads which value reached which formatter.
- */
+// Formats that echo what they were given, so a test reads which value reached which formatter.
 const measure = {
   distance: (points) => points.reduce((sum, point) => sum + point.d, 0),
   area: (points) => points.reduce((sum, point) => sum + point.a, 0),

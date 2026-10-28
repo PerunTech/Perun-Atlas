@@ -1,20 +1,6 @@
-/* -------------- */
-/* Locate control */
-/* -------------- */
-/* Class names are set in components/controls/LocateControl.jsx. Sized to match the zoom
-   and measure controls it stacks with in a map corner.
-
-   No margin. Leaflet's stylesheet, which is where a control's offset from its
-   corner normally comes from, is not shipped here, so the zoom and fullscreen
-   buttons sit flush against the map's edge and against each other. This joins
-   that column rather than floating beside it: one continuous bar of buttons,
-   all the same size, is a toolbar, while the same buttons spaced apart read as
-   several unrelated controls that happen to be stacked.
-
-   Moved here from spatial's assets with the control, rules unchanged. spatial
-   bundles its own copy until a 6.0 removes its React parts, and appends it to
-   the end of <head>, after this package's sheets and the deployment's, so until
-   then that copy is the one that settles a tie. */
+/* No margin: Leaflet's stylesheet is not shipped, so this joins the zoom and fullscreen column
+   flush, as one toolbar. spatial bundles its own copy of these rules until its 6.0 and appends it
+   after this sheet, so that copy wins a tie. */
 .locate-control {
     position: relative;
     display: inline-flex;
@@ -22,18 +8,13 @@
     align-items: flex-start;
 }
 
-/* Size, ground, hover and the rest come from `.leaflet-bar button` in
-   toolbar.css, which is what the zoom and fullscreen buttons above this one
-   are drawn with. Only what is this control's own is here. */
+/* Size, ground and hover come from `.leaflet-bar button` in toolbar.css. */
 .locate-control__button:focus-visible {
     outline: 2px solid #3399ff;
     outline-offset: -2px;
 }
 
-/* Located, and the mark is on the map. Pressing again clears it, which is why
-   this reads as a toggle rather than as a colour for its own sake. */
-/* `:hover` stated too, for the same reason as the measure control's armed tool:
-   `.leaflet-bar button:hover` sets a colour and outranks a lone state class. */
+/* `:hover` too, since `.leaflet-bar button:hover` outranks a lone state class. */
 .locate-control__button.is-found,
 .locate-control__button.is-found:hover {
     color: #1a73e8;
@@ -55,8 +36,8 @@
     .locate-control__button.is-busy { animation: none; }
 }
 
-/* The icon comes from perun-core's lazy Tabler chunk, so it may be absent for a
-   moment or for good. This shows only when it is the button's sole child. */
+/* The icon comes from perun-core's lazy Tabler chunk and may never arrive; this shows only when it
+   is the button's sole child. */
 .locate-control__fallback {
     display: none;
     font-size: 15px;
@@ -67,8 +48,7 @@
     display: block;
 }
 
-/* Beside the button rather than under it: this control sits in a top corner and
-   a message below would be over the map rather than clear of it. */
+/* Beside the button, since this control sits in a top corner and below would cover the map. */
 .locate-control__message {
     position: absolute;
     top: 0;

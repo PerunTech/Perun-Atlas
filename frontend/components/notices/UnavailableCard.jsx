@@ -6,21 +6,6 @@ import '../../style/notice.css';
 
 const { useEffect, useRef, useState } = React;
 
-/**
- * A card in place of a map that cannot be drawn.
- *
- * The heading and hint are for whoever opened the screen; the parameters at
- * fault and the error itself sit behind a toggle, for whoever can fix them.
- *
- * @param {string} icon - A glyph name.
- * @param {string} title
- * @param {string} hint
- * @param {Array} [rows] - `{ param, status, value, doc }`, as `failureNotice` gives them.
- * @param {string} [details] - Shown under the rows, or alone.
- * @param {string} [copy] - What Copy details puts on the clipboard. No button without it.
- * @param {Function} [onRetry] - No Try again without it.
- * @param {Object} [labels] - Resolved words, by the keys in `lib/notices.js`.
- */
 export const UnavailableCard = ({ icon, title, hint, rows = [], details, copy, onRetry, labels, className }) => {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);

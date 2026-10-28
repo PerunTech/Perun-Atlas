@@ -1,16 +1,5 @@
-/**
- * Type coercion for configuration values.
- *
- * Remote parameters arrive as strings whatever their declared type, overrides
- * arrive as whatever the caller passed, and defaults arrive already typed. Everything funnels through here, so the rest of the project
- * can assume a resolved value is the shape its schema entry promised.
- *
- * A coercion that cannot produce the declared type throws rather than falling
- * back. A map is the one screen where a wrong value still draws: the tiles
- * load, the controls work, and nothing reports that the view is somewhere it
- * should not be. An exception at startup is the only thing that says so.
- */
-
+// Throws rather than falling back: a map with a wrong setting still draws, so startup is the only
+// place the mistake gets noticed.
 const fail = (key, value, expected) => {
   const err = new TypeError(
     `perun-atlas: cannot read "${key}" as ${expected} (got ${JSON.stringify(value)})`
@@ -35,7 +24,7 @@ const toLatLng = (key, raw) => {
   if (value && typeof value === 'object' && 'lat' in value && 'lng' in value) {
     return { lat: Number(value.lat), lng: Number(value.lng) };
   }
-  // "lat,lng" as well, which is how a hand-edited parameter tends to be written.
+  // A hand-edited parameter tends to be written "lat,lng".
   if (typeof value === 'string' && value.includes(',')) {
     const [lat, lng] = value.split(',').map(Number);
     if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
@@ -72,19 +61,11 @@ export const COERCE = {
     return fail(key, raw, 'a [southwest, northeast] pair');
   },
 
-  /**
-   * A bare EPSG code, the number alone, as svarog writes it. The `EPSG:` prefix
-   * is accepted and stripped, since that is how the code is usually quoted.
-   */
   srid: (key, value) => {
     const s = String(value).trim().replace(/^EPSG:/i, '');
     return /^\d{4,6}$/.test(s) ? s : fail(key, value, 'an EPSG code such as 4326');
   },
 
-  /**
-   * A CRS is either a bare EPSG code that spatial resolves itself, or a
-   * { code, def } pair carrying a proj4 definition for a local projection.
-   */
   crs: (key, raw) => {
     const value = parseMaybeJson(raw);
     if (typeof value === 'string' && value.startsWith('EPSG:')) return value;

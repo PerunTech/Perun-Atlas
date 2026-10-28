@@ -5,13 +5,7 @@ import { FILE_LIMITS } from '../../frontend/data/read';
 import { crc32, zip } from '../../frontend/lib/zip';
 import { readShapefile } from '../../frontend/modules/shp';
 
-/**
- * The shapefile writer, read back through the shapefile reader.
- *
- * Session 4's reader is shpjs, which the writer shares nothing with, so a file
- * that comes back as it went in was written the way the format says. GDAL reads
- * the same files in the bench; this is the half that runs on every pipeline.
- */
+// Read back through shpjs, which shares nothing with the writer. GDAL reads the same files in the bench.
 
 const feature = (properties, geometry) => ({ type: 'Feature', properties, geometry });
 const point = (properties, coordinates) => feature(properties, { type: 'Point', coordinates });

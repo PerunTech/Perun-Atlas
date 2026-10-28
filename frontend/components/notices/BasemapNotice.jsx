@@ -8,15 +8,6 @@ import '../../style/notice.css';
 
 const { useState } = React;
 
-/**
- * The note along the bottom of a map drawn without a basemap from the
- * catalogue: on the default one, or on none.
- *
- * @param {Object} notice - As `basemapNotice` gives it.
- * @param {Object} [labels] - Resolved words, by the keys in `lib/notices.js`.
- * @param {Function} [onRetry] - Asks the catalogue again.
- * @param {boolean} [reloading] - While it is being asked.
- */
 export const BasemapNotice = ({ notice, labels, onRetry, reloading }) => {
   const map = useAtlasMap();
   const [dismissed, setDismissed] = useState(() => noticeDismissed(notice));

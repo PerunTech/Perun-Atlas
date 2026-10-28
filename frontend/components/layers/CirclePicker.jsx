@@ -6,7 +6,6 @@ import '../../style/draw.css';
 const { factory } = core;
 const { useEffect, useRef } = React;
 
-/** Takes the named layers off the map, if they are on it. */
 const clear = (map, ...refs) => refs.forEach((ref) => {
   if (ref.current) {
     map.removeLayer(ref.current);
@@ -14,7 +13,6 @@ const clear = (map, ...refs) => refs.forEach((ref) => {
   }
 });
 
-/** How the drawn shape looks, unless a caller says otherwise. */
 const STYLE = {
   color: '#b3261e',
   weight: 2,
@@ -23,51 +21,10 @@ const STYLE = {
   fillOpacity: 0.12
 };
 
-/** The preview while the circle is being drawn: the same colour, lighter. */
 const PREVIEW = { ...STYLE, dashArray: '5 4', fillOpacity: 0.06 };
 
-/**
- * A circle on the map: a centre, and a radius in metres.
- *
- * Controlled, as `PointPicker` is. It draws `value` and reports every change
- * through `onChange`, and holds no shape of its own — so the caller can seed it
- * from a record, round the radius, clear it, or refuse a change, and this
- * component never has an opinion about what a circle means. That is what keeps
- * it usable wherever a screen means *around here, about this far*: a point and a
- * distance is the whole of the geometry, whatever the screen calls it.
- *
- * Two ways to set one, because the two answer different questions. Drawing it —
- * `drawing`, one click for the centre and a second for the edge — is how a
- * reader says *around here, about this far*. Dragging the handles afterwards, or
- * typing a radius into whatever the caller renders, is how they say *exactly
- * 3 km*. Both end in the same `{ lat, lng, radius }`.
- *
- * The drawing itself is the engine's: the map's own `draw.circle`, a port of
- * leaflet.pm carrying the live preview, the hint line and the cursor tooltip
- * already, or the module-level `tools.draw.circle` on an engine whose maps carry
- * no tools of their own, which is the same set on the page's map. It is
- * armed while `drawing` is true and disarmed the moment a shape is finished, and
- * the layer it leaves behind is removed — what stays on the map is the
- * controlled circle below, drawn from `value`, so there is never a moment with
- * two circles on screen disagreeing about where the shape is.
- *
- * Snapping to whatever else is already drawn is the engine's own default, which
- * is why nothing here asks for it. The options below are the ones this panel
- * needs to differ on: its colours, and silence instead of the engine's tooltips,
- * whose label codes belong to a domain this package does not register.
- *
- * The radius travels in metres on the ground, which is what Leaflet sizes a
- * circle by and what a reader measured. A service storing a projected CRS wants
- * it in its own units; converting is the caller's, through `unitsPerMetre`,
- * because only the caller knows which projection it is sending to.
- *
- * @param {{lat: number, lng: number, radius: number}|null} value - the circle, or null
- * @param {boolean}  drawing   - arm the engine's draw tool
- * @param {Function} onChange  - called with { lat, lng, radius } on every change
- * @param {Function} [onDrawn] - called once when a drawn shape is finished
- * @param {Object}   [style]   - path options for the drawn circle
- * @param {boolean}  [editable] - draggable centre and edge handles
- */
+// Controlled, as PointPicker is. Drawn with the engine's own circle tool, whose layer is removed once
+// finished so only the circle drawn from `value` stays. The radius is in ground metres.
 export const CirclePicker = ({
   value,
   drawing = false,
@@ -81,21 +38,13 @@ export const CirclePicker = ({
   const centreRef = useRef(null);
   const handleRef = useRef(null);
 
-  // Bound once, so the map and the handles keep one handler however often the
-  // caller re-renders.
+  // Refs, so the map and the handles keep one handler however often the caller re-renders.
   const report = useRef(onChange);
   report.current = onChange;
   const drawn = useRef(onDrawn);
   drawn.current = onDrawn;
 
-  /**
-   * The engine's draw tool, while `drawing` is true.
-   *
-   * `new_shape` is fired after the tool has already added its own circle to the
-   * map and disabled itself, so this reads the shape off that layer and takes it
-   * away again. Leaving it would put an uncontrolled circle on the map that no
-   * later change to `value` could move.
-   */
+  // The tool adds its own circle before `new_shape`; it is removed so nothing uncontrolled stays on the map.
   useEffect(() => {
     const circle = (map.draw ?? tools?.draw)?.circle;
     if (!drawing || !circle) {
@@ -124,11 +73,7 @@ export const CirclePicker = ({
       hintlineStyle: { ...PREVIEW, fillOpacity: 0 },
       pathOptions: { ...STYLE, ...style },
       cursorMarker: true,
-      // The engine's own tooltips, and they are its own label codes: an
-      // unregistered one renders as `perun.spatial.start_circle` on the cursor,
-      // which is worse than silence. The caller says what to do in its own
-      // words, in the bar above the map, and in a language this package is not
-      // choosing for it.
+      // Its tooltips use spatial's label codes, which would render raw where unregistered.
       tooltips: false
     });
 
@@ -139,16 +84,8 @@ export const CirclePicker = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, drawing]);
 
-  /**
-   * The circle follows `value`, and the handles follow the circle.
-   *
-   * The east handle is placed from the circle's own bounds rather than from
-   * arithmetic on the radius, so it sits where the engine actually drew the edge
-   * at this latitude and in this projection. Dragging it back the other way
-   * measures with Leaflet's own distance, which is the same function the circle
-   * was sized by — so a handle that is not moved reports the radius unchanged
-   * rather than one rounded through two conversions.
-   */
+  // The edge handle is placed from the circle's bounds and dragged with Leaflet's distance, so an
+  // unmoved handle reports the radius unchanged.
   useEffect(() => {
     if (!value || !(value.radius > 0)) { clear(map, circleRef, centreRef, handleRef); return undefined; }
 
@@ -159,8 +96,6 @@ export const CirclePicker = ({
         ...STYLE,
         ...style,
         radius: value.radius,
-        // The area readout the engine draws on a measured circle. Where the
-        // build has no measure module the option is simply unread.
         showMeasurements: true,
         interactive: false
       }).addTo(map);
@@ -208,10 +143,7 @@ export const CirclePicker = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, value?.lat, value?.lng, value?.radius, editable]);
 
-  // Everything above is imperative and lives on the map. The effect that draws
-  // it deliberately has no cleanup -- tearing the circle down and rebuilding it
-  // on every change to the radius would flicker it -- so unmounting is what
-  // takes it off.
+  // The effect above has no cleanup, since rebuilding on every radius change would flicker.
   useEffect(() => () => clear(map, circleRef, centreRef, handleRef), [map]);
 
   return null;

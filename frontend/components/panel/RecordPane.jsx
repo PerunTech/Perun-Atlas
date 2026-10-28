@@ -1,17 +1,6 @@
 import { React } from 'perun-core';
 import { CloseButton } from './CloseButton';
 
-/**
- * A feature's whole record, in a pane beside the map.
- *
- * What it shows arrives resolved: `record` is what the layer handed a click,
- * `{ title, rows, spec }`, with `spec` the descriptor's `details` carrying the
- * pane's look. This renders rows and still never reads a descriptor.
- *
- * @param {Object} record
- * @param {Function} onClose
- * @param {Object} [labels]
- */
 export const RecordPane = ({ record, onClose, labels = {} }) => (
   <aside
     className={['atlas-panel__details', record.spec?.className].filter(Boolean).join(' ')}

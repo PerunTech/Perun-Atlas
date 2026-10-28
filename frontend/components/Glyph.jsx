@@ -1,14 +1,7 @@
 import { React, PropTypes } from 'perun-core';
 import { GLYPHS, ICON_SIZE, ICON_STROKE } from '../lib/icons';
 
-/**
- * A glyph from `lib/icons.js`, as JSX.
- *
- * The same preset `svgMarkup` serialises for the Leaflet controls, said again
- * here because a React tree cannot take a string of markup. The paths, the
- * default size and the stroke come from there, so the two renderings cannot
- * disagree about the part that could change.
- */
+// The JSX twin of `svgMarkup`; both take the paths, size and stroke from `lib/icons.js`.
 export const Glyph = ({ name, size = ICON_SIZE }) => (
   <svg
     className={`atlas-icon atlas-icon--${name}`}

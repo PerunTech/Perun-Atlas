@@ -3,15 +3,8 @@ import { DOMParser } from '@xmldom/xmldom';
 import { FILE_LIMITS, readFile, sizeRefusal } from '../../frontend/data/read';
 import { toKML } from '../../frontend/data/export';
 
-/**
- * The suite runs in node, which has no DOMParser. xmldom is the parser
- * togeojson's own tests use, and `readFile` takes one for exactly this.
- *
- * With no `onError`, xmldom prints every parse error to stderr before throwing,
- * so the test that feeds it broken XML on purpose left a `[xmldom fatalError]`
- * in the CI log beside a pass. A fatal error still throws with this one, which
- * is what the reader catches; it just says nothing first.
- */
+// Node has no DOMParser. Without `onError` xmldom prints the deliberate parse error to the CI log
+// before throwing.
 const parse = (text) => new DOMParser({ onError: () => {} }).parseFromString(text, 'application/xml');
 const read = (text, options) => readFile(text, { parse, ...options });
 
@@ -207,15 +200,7 @@ describe('readFile: GPX', () => {
   });
 });
 
-/**
- * The file this package writes, read back by the reader it now has.
- *
- * Each column is a `Data` element named after the column, so it should come back
- * as a property of the same name and the same text. The placemark's `<name>`
- * comes back as `name`, beside them. A column spelled exactly `name` is the one
- * place the two meet, and the column wins, since togeojson reads the extended
- * data after the name.
- */
+// A column spelled exactly `name` meets the placemark's `<name>`, and the column wins.
 describe('a KML written by toKML, read back', () => {
   const features = [
     feature({ type: 'Point', coordinates: [33.941707, 35.124805] }, { NAME: 'Gazimağusa <Pen 4>', HEADS: 12, OWNER: 'A & B' }),

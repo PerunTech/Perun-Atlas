@@ -35,13 +35,7 @@ describe('joinStatus', () => {
     expect(out.features[0].properties.status).toBeUndefined();
   });
 
-  /**
-   * Pinned, not endorsed. Two rows carrying the same key silently overwrite,
-   * and which one survives is the order the service sent them in. A deployment
-   * whose status service returns one row per area per disease gets whichever
-   * disease sorted last, with nothing logged. If that is ever made an error or
-   * a merge, this test is the one that should fail and say so.
-   */
+  // Pinned, not endorsed: if duplicate keys ever become an error or a merge, this should fail.
   it('keeps the last of two rows sharing a key, silently', () => {
     const out = joinStatus(
       collection,

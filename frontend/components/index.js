@@ -1,34 +1,5 @@
-/**
- * Everything this package offers a consumer, and where each kind lives.
- *
- * The directory has two subdivisions, and each is drawn on something real
- * rather than on how the files sort.
- *
- * `layers/` is the components that render nothing. They return null and put
- * their features on the map imperatively, through Leaflet, which makes them
- * adapters wearing a React interface -- a distinction worth seeing before
- * reading one, because none of the usual reasoning about what a component
- * returns applies to them.
- *
- * `panel/` is what `FeaturePanel` renders: its cards, its record pane, its
- * footer and the buttons in its toolbar. None of it is exported. They are how
- * that one screen is drawn, and a consumer building its own screen has the
- * layers and the controls for that.
- *
- * `controls/` is what goes on a map as a control, one file each, and the host a
- * control portals into. `LegendControl` and `ZoomRail` are exported, as they
- * were before the directory existed; `AtlasMap` takes the rest's options as its
- * own props.
- *
- * Everything else sits at the top level: the map, the screen around it, and the
- * chrome on it. So does `context.js`, the map an `AtlasMap` hands down, which
- * the layers read as much as the controls do.
- *
- * What these are built out of is not here: `frontend/lib/` holds the small
- * shared pieces and `frontend/hooks/` the panel's state, and neither is
- * exported from the package.
- */
-
+// layers/ render nothing and draw through Leaflet; panel/ is FeaturePanel's own and not exported;
+// controls/ go on a map as controls.
 export { AtlasMap } from './AtlasMap';
 export { Choropleth } from './layers/Choropleth';
 export { CirclePicker } from './layers/CirclePicker';
@@ -41,7 +12,5 @@ export { LegendControl } from './controls/LegendControl';
 export { PointPicker } from './layers/PointPicker';
 export { ZoomRail } from './controls/ZoomRail';
 
-// The connected one is the public name: a consumer wants the screen that finds
-// its own session, and the bare component next to it in ConfiguredMap.jsx is for
-// tests and for anything rendering outside a store.
+// The connected one, which finds its own session; the bare component is for tests.
 export { default as ConfiguredMap } from './ConfiguredMap';

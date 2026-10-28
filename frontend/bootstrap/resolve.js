@@ -2,22 +2,8 @@ import { REQUIRED, SCHEMA } from '../config/Schema';
 import { coerce } from './coerce';
 import { remoteSource, defaultSource } from './sources';
 
-/**
- * Resolves the configuration a map needs before it can be constructed.
- *
- * Precedence, highest first:
- *   1. explicit overrides passed by the caller  (tests, embedding)
- *   2. remote parameters from SVAROG_SYS_PARAMS (the deployment's own values)
- *   3. schema defaults
- *
- * A required setting with no value anywhere throws, naming the parameter. That is
- * deliberate: a deployment missing its CRS should fail at startup with something
- * an administrator can act on, rather than render a plausible map of the wrong
- * country. Section H of the plan has the reasoning.
- *
- * What it throws is a `ConfigError`, which carries the same findings as data
- * for the card that shows them.
- */
+// Overrides beat remote parameters, which beat schema defaults. A required setting with no value
+// throws a ConfigError at startup rather than letting the map draw the wrong country.
 export const resolve = async (overrides = {}) => {
   const remote = await remoteSource();
   const layered = {
@@ -55,11 +41,6 @@ const setting = (key) => ({ key, param: SCHEMA[key].param, doc: SCHEMA[key].doc 
 const listed = (settings) => settings.map(({ key, param }) => `${key} (parameter ${param})`).join(', ');
 
 export class ConfigError extends Error {
-  /**
-   * @param {Object} problems - `invalid`, `missing` and `unreachable`, each a
-   *        list of `{ key, param, doc }`; an invalid one adds `got`, `expected`
-   *        and its own `message`.
-   */
   constructor (problems) {
     const lines = [
       ...problems.invalid.map(p => p.message),

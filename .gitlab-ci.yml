@@ -36,9 +36,7 @@ after_script:
       echo "ok - the engine has exactly one caller"
     - |
       echo "--- no deployment coordinates in the bundle ---"
-      # This layer ships to every deployment and must carry nothing specific to
-      # any of them. A coordinate pair in source is how that promise breaks:
-      # centre, bounds and CRS all resolve from SVAROG_SYS_PARAMS at runtime.
+      # Centre, bounds and CRS resolve from SVAROG_SYS_PARAMS at runtime; none belongs in source.
       coords=$(grep -rnE '\[[[:space:]]*-?[0-9]{1,3}\.[0-9]+[[:space:]]*,[[:space:]]*-?[0-9]{1,3}\.[0-9]+[[:space:]]*\]' --include='*.js' --include='*.jsx' frontend/ || true)
       if [ -n "$coords" ]; then
         echo "Coordinate literal in source:"
@@ -49,11 +47,7 @@ after_script:
       echo "ok - no coordinates baked in"
     - |
       echo "--- nothing from any one deployment's domain ---"
-      # This layer is shared by every bundle that draws a map, so it must not
-      # know what any of them are about. Descriptor names, field names, table
-      # names and service paths all belong to the caller and arrive as props or
-      # configuration. The pattern is deliberately upper-case and word-bounded so
-      # that ordinary prose -- "the property holding the category" -- is fine.
+      # Upper-case and word-bounded, so ordinary prose passes.
       domain=$(grep -rnE '\b(ANIMAL|ANIMALS|HOLDING|HOLDINGS|MOVEMENT|MOVEMENTS|EAR_TAG|EARTAG|PIC|AREA_HEALTH|AREA_STATUS|SVAROG_SDI_UNITS|QUARANTINE)\b' --include='*.js' --include='*.jsx' --include='*.css' frontend/ || true)
       endpoints=$(grep -rniE 'WsAims|/SDI/' --include='*.js' --include='*.jsx' --include='*.css' frontend/ || true)
       if [ -n "$domain$endpoints" ]; then
@@ -69,19 +63,8 @@ after_script:
   script:
     - pwd
     - git reset --hard HEAD
-    # The floor is stated once, in package.json's `engines`, and read back here
-    # rather than repeated -- the two cannot drift into disagreeing.
-    #
-    # It is checked rather than merely declared because declaring it is not
-    # enough: pnpm only warns when a regular dependency's engines do not match,
-    # and says nothing at all when it skips an *optional* one for the same
-    # reason. Every `@rolldown/binding-*` that vitest needs is optional, so a
-    # runner below the floor installs cleanly and then fails inside rolldown
-    # with a missing-module trace that names neither node nor the version. That
-    # happened on the first pipeline that ran this suite, against a runner one
-    # minor release short. Ten seconds here buys a sentence instead. oxlint is
-    # built the same way, one optional `@oxlint/binding-*` per platform, and
-    # asks for the same floor.
+    # pnpm silently skips an optional native binding whose engines do not match, so a runner below
+    # package.json's floor would fail deep inside rolldown instead of here.
     - |
       floor=$(node -p "require('./package.json').engines.node.replace(/[^0-9.]/g,'')")
       have=$(node -p "process.versions.node")
@@ -96,10 +79,6 @@ after_script:
       echo "ok - node $have meets the floor of $floor"
     - rm -rf node_modules
     - pnpm install --frozen-lockfile
-    # `test` used to be `eslint --fix frontend/ || exit 0`, which could never
-    # fail a pipeline and repaired every auto-fixable violation before a strict
-    # run could see it -- so CI called eslint directly and said why. It now runs
-    # the unit suite, and the fix pass kept its own name: `pnpm run lint:fix`.
     - pnpm run lint
     - pnpm run test
     - pnpm run build
@@ -128,17 +107,8 @@ after_script:
   only:
     - main
 
-# backend/www/perun-atlas.js is committed, because consumers install this
-# package from git and resolve package.json's `main` out of the checkout. That
-# makes it the one build artifact that can go stale: change frontend/ without
-# rebuilding and consumers keep getting the previous bundle. The modules it
-# loads on demand sit beside it -- shp.perun-atlas.js so far -- and the bundle
-# asks for each by a version taken from its contents, so they are committed
-# together.
-#
-# This regenerates and commits them, the same way spatial and perun-core do.
-# Manual on purpose -- it writes to the repository, so it should be a decision
-# rather than something every pipeline does.
+# Manual, since it writes to the repository. The bundle and its on-demand modules are committed
+# because consumers install this package from git.
 1_perun-atlas-generate-js:
   stage: 4_generate_js
   script:

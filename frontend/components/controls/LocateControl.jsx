@@ -17,29 +17,8 @@ const available = () => canLocate(
   typeof window === 'undefined' ? undefined : window
 );
 
-/**
- * Where the reader is, on a map that may not cover it.
- *
- * `map.locate({ setView: true })` is one line and this is not, because the one
- * line is wrong in three ways that all show up in the field. It flies the map to
- * wherever the browser says, which on a national deployment may be another
- * country and leaves the user looking at grey; it reports nothing at all while
- * the fix is being taken, which on a tablet outdoors is several seconds of a
- * button that appears not to have worked; and it reports failure only to the
- * console.
- *
- * So: locate without moving, check the position against the deployment's own
- * limits the way the coordinate readout checks a typed one, and move only if it
- * is somewhere this map can show. A position outside is not an error -- it is an
- * answer, and saying so is more useful than a blank map.
- *
- * Ported from spatial's `ui.LocateControl`, which is frozen, with the same
- * markup, classes and label codes. It reads its map from `AtlasMap`.
- *
- * @param {string} [position] - The corner it sits in.
- * @param {number} [maxZoom] - How far to zoom in on a fix. The accuracy circle
- *        is drawn regardless, which is the honest picture of what was found.
- */
+// Locates without moving, then flies there only if the fix is inside the deployment's bounds; a
+// national map would otherwise fly to grey. Ported from spatial's frozen `ui.LocateControl`.
 export const LocateControl = ({ position = 'topleft', maxZoom }) =>
   (typeof readout?.inside === 'function'
     ? <MapControl position={position}><Locate maxZoom={maxZoom} /></MapControl>
@@ -52,8 +31,7 @@ const Locate = ({ maxZoom = 16 }) => {
   const [state, setState] = useState(available() ? 'idle' : 'unavailable');
   const [message, setMessage] = useState(null);
 
-  /* Created here and taken off on unmount: a mark left on a map that outlives
-     this control is a mark on the next screen. */
+  // Taken off on unmount, or the mark would show on the next screen's map.
   const groupRef = useRef(null);
   useEffect(() => {
     const group = factory.layerGroup().addTo(map);
@@ -84,8 +62,7 @@ const Locate = ({ maxZoom = 16 }) => {
         radius: 5, weight: 2, color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 1
       }).addTo(group);
 
-      // What the browser actually promised, drawn rather than described. A
-      // fix good to 2km and one good to 5m are the same dot otherwise.
+      // A fix good to 2 km and one good to 5 m are otherwise the same dot.
       if (Number.isFinite(event.accuracy) && event.accuracy > 0) {
         factory.circle(event.latlng, {
           radius: event.accuracy, weight: 1, color: '#1a73e8',
@@ -100,8 +77,7 @@ const Locate = ({ maxZoom = 16 }) => {
         return;
       }
 
-      // Marked but not flown to. The mark is still worth having: it says
-      // the fix succeeded and the map is simply somewhere else.
+      // Still marked: the fix worked, the map is simply somewhere else.
       setState('outside');
       setMessage(label('outside_bounds', 'You are outside this map'));
     };
@@ -138,8 +114,7 @@ const Locate = ({ maxZoom = 16 }) => {
 
     setState('locating');
     setMessage(null);
-    // `setView: false` deliberately -- `locationfound` decides whether the
-    // map may go there, which it cannot do once Leaflet has already moved it.
+    // `locationfound` decides whether the map may go there, which it can't once Leaflet has moved it.
     map.locate({ setView: false, enableHighAccuracy: true, timeout: 10000 });
   };
 
@@ -149,9 +124,7 @@ const Locate = ({ maxZoom = 16 }) => {
 
   return (
     <div className='locate-control'>
-      {/* `leaflet-bar` is the look, shared with the zoom and fullscreen
-          buttons this stacks under. Wrapping only the button, so the
-          message below it does not pick up the bar's shadow. */}
+      {/* Only the button is wrapped, so the message below doesn't pick up the bar's shadow. */}
       <div className='leaflet-bar'>
         <button
           type='button'

@@ -3,80 +3,21 @@ import { mapPositions } from './positions';
 
 const { Map, factory } = core;
 
-/**
- * Coordinates in the projection a service keeps its geometry in.
- *
- * A map and the database under it need not share a projection, and on these
- * deployments they routinely do not: the map is drawn in `SPATIAL_CRS` because
- * that is the grid its basemap tiles are published on, and geometry is stored in
- * `sys.gis.default_srid` because that is what the SDI tables hold. The engine
- * already reconciles one direction -- it is told the data's SRID and unprojects
- * incoming geometry through it.
- *
- * The other direction had nothing doing the same job. A map's `getBBox()`
- * projects the view through the *map's* CRS, which is right for a WMS request,
- * because a tile server is asked in the CRS the tiles are published on. It is
- * wrong for a geometry service, which compares the box against stored
- * coordinates: Web Mercator metres read as degrees describe a box far outside
- * any real extent, so the query matches nothing and the screen shows an empty
- * map rather than an error.
- */
-
-/**
- * The CRS objects the engine can build from a bare EPSG code.
- *
- * Thunks rather than values: this module is imported before a map exists, and
- * `factory.CRS` is not there to be read at that point.
- *
- * The same three the engine's GeoJSON reader can convert between, which is not a
- * coincidence -- a deployment it cannot read geometry from is one this cannot
- * address a bounding box to either, and both say so rather than guessing.
- */
+// Thunks: `factory.CRS` does not exist yet when this module is imported.
 const CONVERTIBLE = {
   3857: () => factory.CRS.EPSG3857,
   3395: () => factory.CRS.EPSG3395,
   4326: () => factory.CRS.EPSG4326
 };
 
-/** A CRS object for a bare EPSG code, or null where the engine has none. */
 export const crsFor = (srid) => CONVERTIBLE[String(srid)]?.() ?? null;
 
-/**
- * The map an answer is about: the one the caller names, or the page's.
- *
- * Every function below takes the map as its last argument, because a page can
- * hold more than one: each `AtlasMap` builds its own. What they read from it is
- * its projection, its ground distance and, for `bboxIn`, its view. The page's
- * map, spatial's own, is the fallback for a caller that names none. This package
- * never shows it, but it takes the deployment's settings, so it is on the same
- * projection as a map built from them. Its view is nobody's, which is why a
- * bounding box should always name its map.
- */
+// A page can hold several maps. spatial's own is the fallback: right projection, nobody's view.
 const mapFor = (map) => map ?? Map;
 
-/** Said once per code: a warning per pan would bury the console on a bbox map. */
+// Once per code: a warning per pan would bury the console on a bbox map.
 const warned = new Set();
 
-/**
- * The current view as `minx,miny,maxx,maxy` in the given projection.
- *
- * With no code, or one the engine cannot build, the map's own CRS is used and
- * the result is exactly what the map's `getBBox()` returns -- which is the right
- * answer when the two agree, and the only answer available when they do not.
- * The second case says so, because a box in the wrong projection fails by
- * matching nothing, and an empty map is the least informative symptom there is.
- *
- * @param {string|number} [srid] - EPSG code to express the box in.
- * @param {Object} [map] - The map whose view it is. See `mapFor`.
- * @returns {string} Four comma-separated numbers, as the services expect.
- */
-/**
- * The CRS to express a coordinate in, or null to use the map's own.
- *
- * Said once per code rather than per call, and shared by everything below so
- * that one unconvertible SRID is one line in the console however many things
- * ask about it.
- */
 const projectionFor = (srid) => {
   if (srid === undefined || srid === null) return null;
 
@@ -94,6 +35,8 @@ const projectionFor = (srid) => {
   return null;
 };
 
+// The map's getBBox() projects through the map's CRS, which suits a tile server but not a geometry
+// service comparing against stored coordinates: it matches nothing and the map shows empty.
 export const bboxIn = (srid, map) => {
   const crs = projectionFor(srid);
   if (!crs) return mapFor(map).getBBox();
@@ -105,46 +48,14 @@ export const bboxIn = (srid, map) => {
   return `${sw.x},${sw.y},${ne.x},${ne.y}`;
 };
 
-/**
- * One point, in the projection a service stores.
- *
- * The same conversion `bboxIn` makes for the two corners of the view, for the
- * one coordinate a screen sends back -- a drawn centre, a picked location. With
- * no code, or one the engine cannot build, the map's own projection is used, and
- * the warning above says so once.
- *
- * @param {{lat: number, lng: number}} latlng
- * @param {string|number} [srid] - EPSG code to express the point in.
- * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
- * @returns {{x: number, y: number}}
- */
 export const pointIn = (latlng, srid, map) => {
   const crs = projectionFor(srid) ?? mapFor(map).getCRS();
   const { x, y } = crs.projection.project(factory.latLng(latlng));
   return { x, y };
 };
 
-/**
- * The other direction: a stored coordinate, as a place on the ground.
- *
- * The inverse of `pointIn`, and the one this package had been doing without --
- * because the engine does it for anything that reaches the map. spatial's
- * GeoJSON override installs a `coordsToLatLng` that unprojects through
- * `dbCRSCode` on every `addData`, so a layer draws in the right place while the
- * collection behind it is never converted at all. Anything that reads the
- * *collection* rather than the layer -- a test against a drawn shape, a file
- * written out -- is therefore holding stored units and has to say so.
- *
- * Written the way the engine writes it rather than by another route, so the two
- * cannot disagree about where a feature is: the same three convertible CRSs, the
- * same `projection.unproject`.
- *
- * @param {{x: number, y: number}|number[]} position - A stored coordinate, or a
- *        GeoJSON position, which is `[x, y]` and therefore `[lng, lat]` in 4326.
- * @param {string|number} [srid] - The EPSG code it is expressed in.
- * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
- * @returns {{lat: number, lng: number}}
- */
+// spatial unprojects only what reaches a layer, so anything reading the collection itself holds
+// stored units.
 export const latLngOf = (position, srid, map) => {
   const [x, y] = Array.isArray(position) ? position : [position?.x, position?.y];
   const crs = projectionFor(srid) ?? mapFor(map).getCRS();
@@ -152,93 +63,23 @@ export const latLngOf = (position, srid, map) => {
   return { lat, lng };
 };
 
-/**
- * A stored collection, as longitude and latitude.
- *
- * What a file written out of the browser has to hold. RFC 7946 defines a GeoJSON
- * position as WGS 84 longitude and latitude, and so does KML; a CSV's columns
- * say `latitude` and `longitude` in their headers. The collection the panel
- * holds is in stored units, so on a deployment that stores Web Mercator every
- * one of those files would carry metres where degrees are declared.
- *
- * `latLngOf` for each position, turned round into GeoJSON's `[lng, lat]`, so a
- * file and the map cannot disagree about where a feature is. A third number,
- * an altitude, is carried through as it was. In 4326 the conversion is the
- * identity and the copy holds the same numbers as the original.
- *
- * @param {Object|null} collection - A GeoJSON FeatureCollection in stored units.
- * @param {string|number} [srid] - The EPSG code it is stored in.
- * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
- * @returns {Object|null} A copy in degrees; the original is not touched.
- */
+// For files written out: GeoJSON and KML positions are WGS 84 by definition.
 export const inDegrees = (collection, srid, map) => mapPositions(collection, (position) => {
   const { lat, lng } = latLngOf(position, srid, map);
   return [lng, lat, ...position.slice(2)];
 });
 
-/**
- * A collection in longitude and latitude, as stored units.
- *
- * The inverse of `inDegrees`, for a file coming in rather than going out. It is
- * needed for the same reason: spatial's GeoJSON layer installs its own
- * `coordsToLatLng` on every `addData`, which reads each position as stored
- * units, and ignores the one a caller passes. A file in degrees drawn straight
- * through it lands in the right place only where the deployment stores 4326. So
- * the file is converted into what the engine expects, with `pointIn`, the
- * inverse of the conversion the engine then makes. The overlay is then the same
- * kind of collection as a fetched set.
- *
- * @param {Object|null} collection - A GeoJSON FeatureCollection in degrees.
- * @param {string|number} [srid] - The EPSG code the deployment stores.
- * @param {Object} [map] - Whose projection is the fallback. See `mapFor`.
- * @returns {Object|null} A copy in stored units; the original is not touched.
- */
+// spatial's GeoJSON layer reads every position as stored units, whatever coordsToLatLng a caller passes.
 export const fromDegrees = (collection, srid, map) => mapPositions(collection, (position) => {
   const { x, y } = pointIn({ lat: position[1], lng: position[0] }, srid, map);
   return [x, y, ...position.slice(2)];
 });
 
-/**
- * How many units of a projection go to a metre on the ground, at a place.
- *
- * A distance drawn on the map is in metres, because that is what the reader
- * measured and what Leaflet sizes a circle by. A service that stores Web
- * Mercator wants the same distance in *its* units, and those are not metres
- * anywhere but the equator -- at 35° north a projected metre is about 0.82 real
- * ones, so a circle sent across unconverted is a fifth too small. In degrees the
- * gap is four orders of magnitude rather than a fifth, and the shape is a dot.
- *
- * Measured rather than derived: the ratio is read off the projection itself, by
- * projecting two points a short way apart and comparing that to the ground
- * distance Leaflet computes between them. No projection's scale formula is
- * written down here, so this is right for any CRS the engine can build and stays
- * right for the next one.
- *
- * East-west and at the point's own latitude, which is where a conformal
- * projection's scale is the same in every direction. It is not constant over a
- * large shape -- a circle spanning degrees of latitude has no single scale --
- * and neither does the service that receives it, which draws its circle in
- * projected units from one radius.
- *
- * @param {{lat: number, lng: number}} latlng - Where the scale is measured.
- * @param {string|number} [srid]
- * @param {Object} [map] - Whose projection and distance. See `mapFor`.
- * @returns {number} Projected units per ground metre, or 1 where it cannot be measured.
- */
+// Measured off the projection rather than derived, so it holds for any CRS the engine builds. Sent
+// unconverted, a Web Mercator circle at 35°N is a fifth too small.
 export const unitsPerMetre = (latlng, srid, map) => scalesAt(latlng, srid, map).ew;
 
-/**
- * The same ratio along both axes.
- *
- * East-west and north-south are the same number in a conformal projection and
- * are not in a geographic one: a degree of longitude at 35° north is 91 km and a
- * degree of latitude is 111. A shape drawn round on the map is an ellipse in
- * degrees, and drawing it as a circle would make it 20% too wide.
- *
- * A thousandth of a degree in each direction: far enough that floating point
- * noise is nothing beside it, near enough that the scale has not changed across
- * it.
- */
+// The two differ in a geographic CRS: at 35°N a degree of longitude is 91 km, one of latitude 111.
 const scalesAt = (latlng, srid, map) => {
   const step = 0.001;
   const here = factory.latLng(latlng);
@@ -255,16 +96,7 @@ const scalesAt = (latlng, srid, map) => {
   };
 };
 
-/**
- * How many decimals a coordinate is worth writing at.
- *
- * A thousandth of the shape's own size, which is finer than anything a reader
- * placed by hand and coarser than the noise in the last digits of a double. The
- * rule is derived from the shape rather than from the units, so it lands on six
- * decimals for degrees -- which is what the screens in this system have always
- * written, because that is Leaflet's own `formatNum` default -- and on one for
- * metres, where six would be micrometres in a URL.
- */
+// A thousandth of the shape's size: six decimals for degrees, Leaflet's own default, and one for metres.
 const decimalsFor = (size) => {
   if (!(size > 0)) return 6;
   return Math.min(12, Math.max(0, 3 - Math.floor(Math.log10(size))));
@@ -275,29 +107,8 @@ const roundTo = (value, places) => {
   return Math.round(value * factor) / factor;
 };
 
-/**
- * A circle as a ring of points, in the projection a service stores.
- *
- * For the services that take a shape rather than a centre and a radius -- which
- * is most of them, and the only honest option where a radius would have to be
- * expressed in a projection's own units. A circle drawn at 720 m is 0.0065 of a
- * degree, and a service reading an integer radius cannot be given that; the same
- * circle as twenty-four points is exact and needs no unit at all.
- *
- * Round on the ground rather than round in the projection: the radius is applied
- * through each axis's own scale, so the ring passes through the points the
- * reader would measure at that distance in every direction. In a conformal
- * projection the two scales are equal and this is a circle; in a geographic one
- * it is the ellipse that a circle on the ground actually is.
- *
- * @param {{lat: number, lng: number}} centre
- * @param {number} metres - Radius on the ground.
- * @param {string|number} [srid]
- * @param {number} [points] - How many vertices. The shape is not closed: the
- *        services that take one close it themselves.
- * @param {Object} [map] - Whose projection and distance. See `mapFor`.
- * @returns {Array<{x: number, y: number}>}
- */
+// Round on the ground: each axis takes its own scale, so in degrees the ring is an ellipse. Left open,
+// since the services close it themselves.
 export const ringIn = (centre, metres, srid, points = 24, map) => {
   const { ew, ns } = scalesAt(centre, srid, map);
   const { x, y } = pointIn(centre, srid, map);

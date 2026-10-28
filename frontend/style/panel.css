@@ -1,26 +1,6 @@
-/*
- * The panel's structure, and nothing about its look.
- *
- * `FeaturePanel` ships in this package, so the rules that make it a panel rather
- * than a stack of divs have to ship with it: a deployment that serves no
- * stylesheet of its own must still get a header, a toolbar, a map that fills the
- * space left over, and an empty-state that sits on top of the map instead of
- * below it.
- *
- * What it deliberately does not carry is the design -- colours, type, radii,
- * shadows, spacing. That lives in the deployment's own `atlas-panel.css`, which
- * is how the look of every map screen changes without releasing a bundle.
- *
- * For that to work the deployment's sheet has to win, and it does: the build
- * inserts this at the *top* of `<head>`, before the links the page adds for its
- * own stylesheets. Appending would have put this last and made the package the
- * final word on a look it should not have an opinion about. See
- * `stylesAtTopOfHead` in vite.config.mjs.
- *
- * Everything stays scoped under `.atlas-panel`. The Leaflet container is a single
- * instance borrowed from spatial and handed back, so a bare `.leaflet-container`
- * rule here would follow it onto every other screen that draws a map.
- */
+/* Structure only; the look is the deployment's `atlas-panel.css`, which wins because the build puts
+   this at the top of `<head>` (`stylesAtTopOfHead` in vite.config.mjs). Scoped under `.atlas-panel`,
+   since the Leaflet container is spatial's single instance and a bare rule would follow it. */
 
 .atlas-panel {
   display: flex;
@@ -44,8 +24,7 @@
 }
 
 .atlas-panel__title {
-  /* Takes the row and lets the close button keep its corner. `min-width: 0` so a
-     long title ellipsises inside the flex item rather than widening it. */
+  /* `min-width: 0` so a long title ellipsises rather than widening the flex item. */
   flex: 1 1 240px;
   min-width: 0;
 }
@@ -59,50 +38,21 @@
   gap: 8px;
 }
 
-/*
- * The map and anything drawn over it.
- *
- * `position: relative` is what the empty-state is absolutely positioned against,
- * and `min-height: 0` is what stops a flex item from refusing to shrink below
- * its content -- without it the map pushes the footer off the bottom.
- */
-/*
- * The map and the record beside it.
- *
- * One row, so a record opens next to what it describes rather than on top of
- * it. `min-height: 0` for the same reason the panel root has it -- a flex item
- * that will not shrink below its content pushes the footer off the bottom.
- */
+/* One row, so a record opens next to what it describes. `min-height: 0`, or the flex item will not
+   shrink and pushes the footer off the bottom. */
 .atlas-panel__body {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/*
- * How tall a map is when nothing above it says.
- *
- * `.atlas-panel` takes its height from whatever contains it, and a good many
- * containers -- a bootstrap modal body among them -- have none of their own, so
- * the panel is only as tall as its parts and the map falls back to this floor.
- * At 20rem that was 320px of map under a toolbar, which is a thumbnail rather
- * than something to measure on.
- *
- * Viewport-relative rather than a fixed rem, because the containers that supply
- * no height are the ones filling the window, and a token rather than a constant
- * so a screen that wants a short map can say so from its menu row:
- *
- *     "tokens": { "--ap-map-height": "24rem" }
- *
- * Still a floor, not a height: a container that does give the panel a height
- * keeps deciding, and this never fights it.
- */
+/* A floor, not a height: many containers, a bootstrap modal body among them, give the panel no
+   height of their own. A token, so a menu row can set `"--ap-map-height"` in `tokens`. */
 .atlas-panel__mapwrap {
   position: relative;
   flex: 1 1 auto;
   min-height: var(--ap-map-height, 55vh);
-  /* The map is what gives way when the pane opens, and a flex item will not go
-     below its content width without this. */
+  /* The map gives way when the pane opens, which a flex item will not do without this. */
   min-width: 0;
 }
 
@@ -116,15 +66,7 @@
   height: 100%;
 }
 
-/*
- * The record pane.
- *
- * A fixed column rather than a share of the row: a record of four fields and one
- * of twenty should not resize the map by different amounts. Only the list
- * scrolls, so the heading and its close button stay reachable however long the
- * record is -- which, with a spec that shows everything a feature carries, is
- * not a length this package gets to assume.
- */
+/* A fixed column, so a short record and a long one resize the map alike. Only the list scrolls. */
 .atlas-panel__details {
   flex: 0 0 20rem;
   min-width: 0;
@@ -148,14 +90,10 @@
 .atlas-panel__detailsbody {
   margin: 0;
   padding: 0 16px 16px;
-  /* Takes the space the heading leaves, and `min-height: 0` is what lets it:
-     without it a flex item will not shrink below its content, so a long record
-     would push past the pane and be clipped by the `overflow: hidden` above
-     rather than scrolling inside it. */
+  /* `min-height: 0`, or a long record pushes past the pane and is clipped instead of scrolling. */
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  /* A record scrolled to its end should not then scroll the page behind it. */
   overscroll-behavior: contain;
 }
 
@@ -166,16 +104,11 @@
 .atlas-panel__detailsrow dt,
 .atlas-panel__detailsrow dd {
   margin: 0;
-  /* An identifier or an address has no spaces to break at, and a column this
-     narrow is where that shows as text running out of the panel. */
+  /* Identifiers and addresses have no spaces to break at. */
   overflow-wrap: anywhere;
 }
 
-/*
- * Narrow: the pane goes under the map rather than beside it, and takes a share
- * of the height instead of a fixed width. Half at most, so the map it is
- * describing is still on screen.
- */
+/* Under the map on a narrow screen, at most half the height so the map stays in view. */
 @media (max-width: 40rem) {
   .atlas-panel__body {
     flex-direction: column;
@@ -193,15 +126,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Above Leaflet's panes (400) and its controls (1000 is the shadow pane), so
-     the message is not drawn underneath the tiles it is explaining. */
+  /* Above Leaflet's panes and controls. */
   z-index: 1001;
-  /* The map underneath stays usable: only the card takes pointer events. */
   pointer-events: none;
 }
 
 .atlas-panel__emptycard {
-  /* What the close button below is placed against. */
   position: relative;
   pointer-events: auto;
   max-width: 22rem;
@@ -210,15 +140,7 @@
   background: #fff;
 }
 
-/*
- * The card's close, in its corner.
- *
- * `atlas-panel__close` like every other close on the panel, so a deployment's
- * sheet gives it the same look as the others; only its place and its size are
- * said here, at the size the record pane's close is drawn at. Two classes, so
- * this wins over a deployment's single-class `.atlas-panel__close` wherever the
- * two disagree about the size.
- */
+/* Two classes, so the size wins over a deployment's single-class `.atlas-panel__close`. */
 .atlas-panel__emptycard .atlas-panel__close {
   position: absolute;
   top: 8px;
@@ -232,23 +154,12 @@
   cursor: pointer;
 }
 
-/* Room for the close on both sides, so the title stays centred and clear of it. */
 .atlas-panel__emptycard .atlas-panel__emptytitle {
   padding-inline: 32px;
 }
 
-/*
- * The labels switch, which is behaviour rather than decoration.
- *
- * The button is part of the component now, so the rule that makes it do
- * something has to ship with it -- a deployment serving no stylesheet would
- * otherwise get a control that toggles a class nothing reads.
- *
- * Hiding is the honest half of the switch: a label is opened and closed by its
- * zoom band, and CSS can take one off the screen but cannot put one on the
- * screen that Leaflet has not opened. So this hides what is showing, and the
- * band still decides what shows.
- */
+/* Ships with the component, or the switch toggles a class nothing reads. CSS can hide an open label
+   but not open one, so the zoom band still decides what shows. */
 .atlas-panel--nolabels .atlas-label {
   display: none;
 }
@@ -261,21 +172,7 @@
   }
 }
 
-/*
- * What there is to do here: the tools, and the file buttons.
- *
- * One group at the far end of the toolbar, away from the controls that change
- * what is on screen -- the date window, the label switch -- because these are
- * the other kind of control: a tool changes what is on the server, a file button
- * takes a copy of what is on screen, and both are things the reader does rather
- * than ways of looking. Two groups made that one distinction into two, and the
- * two ends drifted apart as the row wrapped.
- *
- * `margin-inline-start: auto` rather than a spacer element, so the group still
- * wraps onto its own line at a narrow width instead of being held out by a gap.
- * It wraps within itself as well: a third tool takes the row it needs rather
- * than pushing the file buttons off the end.
- */
+/* `margin-inline-start: auto` rather than a spacer, so the group can still wrap onto its own line. */
 .atlas-panel__actions {
   display: flex;
   flex-wrap: wrap;
@@ -284,38 +181,15 @@
   margin-inline-start: auto;
 }
 
-/*
- * Icon and label on one line.
- *
- * Two classes deep, so this holds whatever the deployment's sheet does to
- * `.atlas-panel__btn` at one class: that rule owns the look of the button, and
- * this owns the arrangement of the two things inside it, which it cannot know
- * about. An icon that fails to load leaves the label where it was.
- */
+/* Two classes deep, so this holds whatever the deployment does to `.atlas-panel__btn`. */
 .atlas-panel__actions .atlas-panel__btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-/*
- * Waiting.
- *
- * Its own overlay rather than perun-core's `Loading`: that component's
- * `.fade-wrapper` is a fixed, full-viewport blackout at z-index 9999, which is
- * right for a page transition and would black out the whole application every
- * time a map panel changed its date range.
- *
- * Non-blocking on purpose. `pointer-events: none` leaves the map underneath
- * usable while a request is out, so a slow service feels like a map still
- * loading rather than a screen that has seized. The chip is a report, not a
- * modal -- and it reports a write the same way, because the controls a write
- * must not be pressed twice from are disabled for its duration anyway.
- *
- * Same overlay-and-card shape as the empty state, and the same z-index, because
- * they are the same slot: one is what waiting looks like and the other is what
- * the answer looked like, and they are never both true.
- */
+/* Not perun-core's `Loading`, whose `.fade-wrapper` blacks out the whole viewport at z-index 9999.
+   `pointer-events: none` keeps the map usable while a request is out. */
 .atlas-panel__loading {
   position: absolute;
   inset: 0;
@@ -350,12 +224,6 @@
   to { transform: rotate(360deg); }
 }
 
-/*
- * Slowed rather than stopped. A spinner that does not move is not a still
- * picture of waiting, it is a picture of something broken -- and this is the one
- * element on the panel whose whole job is to say that something is still
- * happening.
- */
 @media (prefers-reduced-motion: reduce) {
   .atlas-panel__spinner { animation-duration: 2.4s; }
 }

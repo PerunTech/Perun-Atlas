@@ -7,49 +7,8 @@ import '../../style/zoom.css';
 
 const { useEffect, useMemo, useState } = React;
 
-/**
- * The zoom control as a ladder rather than a pair of buttons.
- *
- * Two buttons say which way; they do not say where you are, how much further
- * there is to go, or that anything happens on the way. This map has three
- * answers to that last question and none of them was visible anywhere:
- *
- *   - A basemap stops serving real tiles somewhere below the deployment's
- *     ceiling -- `data/tiles.js` knows where, per provider -- and past it
- *     Leaflet enlarges the last tile it got. The reader sees blur and reads it
- *     as missing data.
- *   - A descriptor's labels are banded by zoom (`appearance/labelVisible`), so
- *     names appear and vanish at a level nobody can guess.
- *   - A choropleth refetches when the zoom changes.
- *
- * Marks put those on the rail, which is the only reason to build one: a slider
- * that does what `+` and `-` already do is chrome, and a slider that says where
- * the map changes behaviour is an instrument. Anything this package can work out
- * for itself is passed in by `AtlasMap`; a screen adds its own through
- * `zoomMarks`.
- *
- * Mounted as a Leaflet control for the reasons `LegendControl` sets out -- it
- * travels into fullscreen with the map, and the corner owns its placement --
- * and by the same means: the tree is portalled into the control, so its props
- * update in place. Here that is not a nicety. Everything this draws changes on
- * every zoom.
- *
- * @param {string} [position] - Any corner of the map. Defaults
- *        to the bottom right, above the attribution: Leaflet stacks a bottom
- *        corner in reverse arrival order, so a control added after the credit
- *        line sits on top of it and the credit keeps the map edge.
- * @param {Array} [marks] - `[{ from, to, kind, label }]`, as `lib/zoom` reads
- *        them. `kind` becomes a class, so a deployment styles a threshold by
- *        what it means.
- * @param {Object} [labels] - The control's own copy. Any key left out falls back
- *        to neutral English, so an unresolved label code is never shown.
- * @param {Function} [onFit] - Frames the map on the data again. Given, the rail
- *        carries a button for it at the top, above the `+`, the way the plain
- *        zoom bar carries its own; left out, there is no button. `AtlasMap`
- *        passes it only while a layer has reported somewhere to go back to.
- */
-
-/** Neutral English, for a caller that resolves no copy of its own. */
+// A ladder whose marks show where the map changes behaviour: where the basemap stops sharpening, where
+// labels appear. AtlasMap passes what it knows; screens add theirs through `zoomMarks`.
 export const ZOOM_LABELS = {
   in: 'Zoom in',
   out: 'Zoom out',
@@ -58,13 +17,7 @@ export const ZOOM_LABELS = {
   fit: 'Zoom to the data'
 };
 
-/**
- * Unique enough for `aria-describedby`, and stable across a re-render.
- *
- * More than one map can be on a page, each with a rail, and an id that collides
- * is an id that points a screen reader at the wrong control. A counter costs a
- * line.
- */
+// Several maps can share a page, so ids for `aria-describedby` are counted.
 let instances = 0;
 
 const percent = (fraction) => `${(fraction * 100).toFixed(4)}%`;
@@ -89,12 +42,10 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
     };
 
     map.on('zoomend', readZoom);
-    // Fired when `setMinZoom`/`setMaxZoom` run and when a layer with its own
-    // limits arrives, which is how a basemap narrows the range under us.
+    // Also fires when a layer with its own limits narrows the range.
     map.on('zoomlevelschange', readRange);
 
-    // The map is AtlasMap's rather than this control's, so it may have moved
-    // between this state being initialised and the listeners being attached.
+    // The map may have moved between this state's initialisation and the listeners being attached.
     readRange();
 
     return () => {
@@ -107,8 +58,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
   const ladder = useMemo(() => rungs(min, max), [min, max]);
   const placed = useMemo(() => marksIn(marks, min, max), [marks, min, max]);
 
-  // The reader's level, not the animation's: a fractional zoom mid-flight would
-  // otherwise print a number no rung carries.
+  // The reader's level: a fractional zoom mid-animation matches no rung.
   const level = Math.round(zoom);
   const described = placed.filter(mark => mark.label).map(mark => mark.label).join('. ');
 
@@ -137,10 +87,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
         <Glyph name='plus' />
       </button>
 
-      {/* A range with no room in it gets the buttons alone. That is a real
-          configuration -- a deployment can pin SPATIAL_MIN_ZOOM and
-          SPATIAL_MAX_ZOOM together -- and a ladder with one rung says nothing
-          while still taking the height of one. */}
+      {/* A deployment can pin the min and max zoom together, and a one-rung ladder says nothing. */}
       {ladder.length > 1 && (
         <div className='atlas-zoom__rail'>
           <div className='atlas-zoom__track' />
@@ -168,13 +115,8 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
             </span>
           ))}
 
-          {/* A horizontal slider turned on its side.
-              `writing-mode`, `appearance: slider-vertical` and Firefox's `orient`
-              are three spellings of a vertical range input and no one of them
-              covers every browser these registries are opened in. A rotation is
-              one line of CSS that all of them have always had, and it keeps the
-              keyboard, the drag and the ARIA that come with the native control
-              -- which is the whole reason not to build this out of divs. */}
+          {/* A rotated horizontal slider: no single vertical spelling works in every browser, and this
+              keeps the native keyboard, drag and ARIA. */}
           <input
             type='range'
             className='atlas-zoom__slider'
@@ -206,8 +148,7 @@ export const ZoomRail = ({ position = 'bottomright', marks = [], labels, onFit }
     </div>
   );
 
-  // On this control `containEvents` is not cosmetic: a drag on the handle would
-  // pan the map underneath it, and a wheel over the rail would zoom twice.
+  // A drag on the handle would otherwise pan the map, and a wheel over the rail zoom it twice.
   return (
     <MapControl position={position}>
       <div className='atlas-zoom__host' ref={containEvents}>{rail}</div>
