@@ -165,7 +165,9 @@ commit names its git dependencies by tag or by commit, never by branch.
   number, rebuilds, and is tagged (`1.0.0`). The next commit moves the pom to
   the next snapshot, and `package.json` stays until the next candidate. Push the
   release commit on its own first: CI deploys only the commit at the head of a
-  push, so pushed together with the snapshot it would never be deployed.
+  push, so pushed together with the snapshot it would never be deployed. That
+  push deploys it to GitLab's Maven repository, and pushing the tag publishes it
+  to Maven Central, from the GitHub mirror's release workflow.
 
 Push each tag by name (`git push origin 1.0.0-rc.1`); `--follow-tags` skips
 lightweight tags. A consumer depends on this package by tag:
