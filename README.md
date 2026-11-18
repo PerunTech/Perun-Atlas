@@ -193,13 +193,16 @@ pnpm takes the newest tag in the range, and the lockfile records its commit.
 `^1.0.1-rc.1` takes candidates of 1.0.1 and then 1.0.1 itself, once a
 `pnpm update perun-atlas` asks for it.
 
-This package has no dependencies of its own: everything it uses is bundled, and
-`perun-core` and `spatial` are the shell's globals. A consumer installs no
-spatial and no second perun-core through it, so it needs no override for
-either. What this package is built from is in `devDependencies`, all from npm,
-spatial under its npm name `svarog-spatial`, because the GitHub workflow cannot
-reach this GitLab. Neither the build nor the tests read perun-core or spatial
-from there: they are externals in the bundle and stubs in the suite.
+Its one dependency is spatial, from npm under its name there, `svarog-spatial`.
+The bundle does not need it, since spatial is the shell's global, but a
+consumer's dev server serves `spatial.js` from this package's install, so
+spatial arrives with this package and a consumer names no spatial of its own.
+perun-core the consumer names itself: here it is only in `devDependencies`, so
+no second copy comes in through this package and no override is needed.
+Everything else is bundled. What this package is built from is in
+`devDependencies`, all from npm, because the GitHub workflow cannot reach this
+GitLab. Neither the build nor the tests read perun-core or spatial from the
+install: they are externals in the bundle and stubs in the suite.
 
 The tags have to stay lightweight: for an annotated tag pnpm 9 and 10 record
 the tag's own hash and pnpm 11 the commit's, and pnpm 11 then refuses a lockfile
