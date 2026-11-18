@@ -155,36 +155,51 @@ one with `-SNAPSHOT`, as Maven expects. spatial is versioned the same way.
 
 `package.json` names the last version cut, a release or a release candidate,
 and the bundle's `version` export reports it at runtime. Each is tagged with its
-number, as a lightweight tag, on the commit whose `package.json` says it. That
-commit names its git dependencies by tag or by commit, never by branch.
+number, as a lightweight tag, on the commit whose `package.json` says it.
 
 - A candidate sets `package.json` to the pom's number with `-rc.N`
   (`1.0.0-rc.1`), rebuilds the bundle, and is tagged. The pom keeps its
-  `-SNAPSHOT`, so nothing is released to Maven.
+  `-SNAPSHOT`, so nothing is released to Maven, and candidates are not
+  published to npm.
 - A release drops the `-SNAPSHOT` from the pom, sets `package.json` to the same
   number, rebuilds, and is tagged (`1.0.0`). The next commit moves the pom to
   the next snapshot, and `package.json` stays until the next candidate. Push the
   release commit on its own first: CI deploys only the commit at the head of a
   push, so pushed together with the snapshot it would never be deployed. That
   push deploys it to GitLab's Maven repository, and pushing the tag publishes it
-  to Maven Central, from the GitHub mirror's release workflow.
+  to Maven Central and npm, from the GitHub mirror's release workflow.
+
+npm takes a release by trusted publishing: the package's settings on npmjs.com
+name the GitHub repository and `release.yml`, so no token is stored anywhere. A
+version can be published only once, and never again under the same number even
+after an unpublish, so the job stops when the tag and `package.json` disagree,
+and it skips a version that is already on npm. The package holds the bundle and
+the modules it loads on demand (`files` in `package.json`).
 
 Push each tag by name (`git push origin 1.0.0-rc.1`); `--follow-tags` skips
-lightweight tags. A consumer depends on this package by tag:
+lightweight tags. A consumer depends on releases from npm:
 
 ```json
-"perun-atlas": "git+https://git@gitlab.prtech.mk/svarog4/perun-atlas#semver:^1.0.0-rc.1"
+"perun-atlas": "^1.0.0"
+```
+
+A candidate is only on GitLab, and a consumer takes it by tag:
+
+```json
+"perun-atlas": "git+https://git@gitlab.prtech.mk/svarog4/perun-atlas#semver:^1.0.1-rc.1"
 ```
 
 pnpm takes the newest tag in the range, and the lockfile records its commit.
-`^1.0.0-rc.1` takes candidates of 1.0.0 and then 1.0.0 itself, once a
-`pnpm update perun-atlas` asks for it; `^1.0.0` skips candidates. spatial
-arrives with this package, at the version it names, so a consumer names no
-spatial of its own. perun-core it names itself. This package and spatial both
-name it `#semver:^4.5.8-rc.1`, and a consumer naming the same range installs
-the one copy all three resolve to. A consumer that pins perun-core any other
-way, by commit for instance, also needs an override for it, because its own
-specifier does not reach a dependency of a dependency.
+`^1.0.1-rc.1` takes candidates of 1.0.1 and then 1.0.1 itself, once a
+`pnpm update perun-atlas` asks for it.
+
+This package has no dependencies of its own: everything it uses is bundled, and
+`perun-core` and `spatial` are the shell's globals. A consumer installs no
+spatial and no second perun-core through it, so it needs no override for
+either. What this package is built from is in `devDependencies`, all from npm,
+spatial under its npm name `svarog-spatial`, because the GitHub workflow cannot
+reach this GitLab. Neither the build nor the tests read perun-core or spatial
+from there: they are externals in the bundle and stubs in the suite.
 
 The tags have to stay lightweight: for an annotated tag pnpm 9 and 10 record
 the tag's own hash and pnpm 11 the commit's, and pnpm 11 then refuses a lockfile

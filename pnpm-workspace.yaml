@@ -1,10 +1,2 @@
 # pnpm 9 refuses this file without a packages list; there are no sub-packages.
 packages: []
-
-# spatial and perun-core come from git, and pnpm 11 refuses git-resolved subdependencies by default.
-blockExoticSubdeps: false
-
-# monaco-editor pins dompurify 3.4.8, which has an advisory; monaco is external, so this only clears
-# the audit. pnpm 9 reads overrides only from package.json, so it cannot install this tree.
-overrides:
-  dompurify: ^3.4.17
